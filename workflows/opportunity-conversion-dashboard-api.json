@@ -1,0 +1,428 @@
+{
+  "id": "ajAQAUHdKSDDbTxE",
+  "name": "Opportunity Conversion Dashboard API",
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "qNBar1hj0obiccij"
+  },
+  "nodes": [
+    {
+      "id": "171d0038-45ed-49dc-880e-48fc180275e3",
+      "name": "GET /oce/priority-queue",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        96
+      ],
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "oce/priority-queue",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "4e39ba94-3682-4285-8350-4bae66a7b681"
+    },
+    {
+      "id": "8149f03f-1d36-43f4-806b-222e1fcaf2d3",
+      "name": "Normalize Auth A",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        96
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "token",
+              "name": "token",
+              "value": "={{ $json.query.token ?? ($json.headers.authorization ? $json.headers.authorization.replace(\"Bearer \", \"\") : null) }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "fe3a0162-3e6c-478a-925d-389f24f27a26",
+      "name": "Validate Session",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        96
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT count(*)::int AS valid FROM leads.dashboard_sessions WHERE token = $1 AND expires_at > now()",
+        "options": {
+          "queryReplacement": "={{ [ $json.token ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "fd041938-fe62-41ec-bb34-e104ce3bcb6c",
+      "name": "Session Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        96
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.valid }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              },
+              "rightValue": 0
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "f902e0ad-75f2-40e1-925e-be3373dbb0a0",
+      "name": "Fetch Priority Queue",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT os.candidate_id, c.business_name, c.suburb, os.conversion_score, os.opportunity_health, os.next_best_action, os.next_best_action_reason, os.proposal_readiness, os.customer_readiness, os.conversion_probability, os.estimated_value, os.has_crm_record, os.is_customer, r.pipeline_stage\nFROM leads.opportunity_scores os\nJOIN leads.candidates c ON c.id = os.candidate_id\nLEFT JOIN leads.crm_records r ON r.candidate_id = os.candidate_id\nWHERE os.is_customer = false\nORDER BY os.conversion_score DESC\nLIMIT 20"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "d383684b-79ab-4095-a146-91fccc200cb8",
+      "name": "Respond Priority Queue",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      }
+    },
+    {
+      "id": "c1d20135-8e2f-4e86-980b-d7090f294d8c",
+      "name": "Respond Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        896,
+        192
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"error\": \"Unauthorized\" } }}",
+        "options": {
+          "responseCode": 401
+        }
+      }
+    },
+    {
+      "id": "b527699b-d880-46d3-99b0-592de7a2815b",
+      "name": "GET /oce/opportunity/:id",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        512
+      ],
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "oce/opportunity/:id",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "23de19e3-84ca-4946-8e15-3935d2c97446"
+    },
+    {
+      "id": "d32440dd-a9eb-4c40-980e-968c0ac45131",
+      "name": "Normalize Auth B",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        512
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "token",
+              "name": "token",
+              "value": "={{ $json.query.token ?? ($json.headers.authorization ? $json.headers.authorization.replace(\"Bearer \", \"\") : null) }}",
+              "type": "string"
+            },
+            {
+              "id": "candidateId",
+              "name": "candidateId",
+              "value": "={{ $json.params.id }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "0bd43745-4450-48b4-9b99-56098215ed6c",
+      "name": "Fetch Opportunity Detail",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        512
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT os.candidate_id, os.conversion_score, os.conversion_factors, os.opportunity_health, os.next_best_action, os.next_best_action_reason, os.proposal_readiness, os.customer_readiness, os.conversion_probability, os.estimated_value, os.has_crm_record, os.is_customer, os.scored_at,\n  r.pipeline_stage, r.last_contact_at, r.pipeline_stage_updated_at,\n  c.business_name, c.address, c.suburb, c.phone, c.website, c.email, c.qualification_score,\n  p.status AS proposal_status, p.sent_at AS proposal_sent_at, p.amount AS proposal_amount,\n  (SELECT json_agg(t) FROM (\n    SELECT event_type, event_at, summary, detail FROM leads.v_sales_timeline vt\n    WHERE vt.candidate_id = c.id ORDER BY vt.event_at DESC LIMIT 50\n  ) t) AS timeline\nFROM leads.opportunity_scores os\nJOIN leads.candidates c ON c.id = os.candidate_id\nLEFT JOIN leads.crm_records r ON r.candidate_id = os.candidate_id\nLEFT JOIN LATERAL (\n  SELECT status, sent_at, amount FROM leads.proposals pr WHERE pr.candidate_id = c.id ORDER BY created_at DESC LIMIT 1\n) p ON true\nWHERE os.candidate_id = $2 AND EXISTS (SELECT 1 FROM leads.dashboard_sessions WHERE token = $1 AND expires_at > now())",
+        "options": {
+          "queryReplacement": "={{ [ $json.token, $json.candidateId ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "28c825a5-b17e-4ff0-8f53-4a2d964c3038",
+      "name": "Check Found",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        512
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "\nconst items = $input.all();\nif (items.length === 0) {\n  return [{ json: { found: false } }];\n}\nconst result = Object.assign({}, items[0].json, { found: true });\nreturn [{ json: result }];\n"
+      }
+    },
+    {
+      "id": "925ad5c7-d052-46cb-87d1-d43347bdbb5d",
+      "name": "Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        896,
+        512
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.found }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "7d2651b3-7325-4354-a491-9f9a37e7c8eb",
+      "name": "Respond Detail",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1120,
+        416
+      ],
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {}
+      }
+    },
+    {
+      "id": "e2d420eb-a1e8-47bb-a826-766d60e2f698",
+      "name": "Respond Not Found",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1120,
+        608
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"error\": \"Not found or unauthorized\" } }}",
+        "options": {
+          "responseCode": 404
+        }
+      }
+    }
+  ],
+  "connections": {
+    "GET /oce/priority-queue": {
+      "main": [
+        [
+          {
+            "node": "Normalize Auth A",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Auth A": {
+      "main": [
+        [
+          {
+            "node": "Validate Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Session": {
+      "main": [
+        [
+          {
+            "node": "Session Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Session Valid?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Priority Queue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Priority Queue": {
+      "main": [
+        [
+          {
+            "node": "Respond Priority Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET /oce/opportunity/:id": {
+      "main": [
+        [
+          {
+            "node": "Normalize Auth B",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Auth B": {
+      "main": [
+        [
+          {
+            "node": "Fetch Opportunity Detail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Opportunity Detail": {
+      "main": [
+        [
+          {
+            "node": "Check Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Found": {
+      "main": [
+        [
+          {
+            "node": "Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Found?": {
+      "main": [
+        [
+          {
+            "node": "Respond Detail",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

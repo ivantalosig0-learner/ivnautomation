@@ -1,0 +1,710 @@
+{
+  "id": "xAQVVw5pVJE2uLR3",
+  "name": "Lead Intelligence Engine",
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "39Vcvm1lkmQZXFpS",
+    "timezone": "Australia/Adelaide",
+    "executionTimeout": 3000,
+    "saveDataSuccessExecution": "all"
+  },
+  "nodes": [
+    {
+      "id": "68ddfa44-ee11-47ac-aafe-54b69eeaef51",
+      "name": "Every 30 Minutes Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "disabled": false
+    },
+    {
+      "id": "6dfc4da5-7dc6-4082-a40b-92acfec6329f",
+      "name": "Fetch Pending Candidates",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, website, business_name FROM leads.candidates WHERE website IS NOT NULL AND duplicate_of IS NULL AND (stage = 'discovered' OR (stage IN ('enriched','qualified') AND enrichment->'profile' IS NULL)) ORDER BY (stage = 'discovered') DESC, id LIMIT 60"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "2c1db6ac-e088-4878-ab97-dc83f4f6f889",
+      "name": "Batch Complete",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        660,
+        140
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "completedAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "82335806-8c7e-46b1-b7fd-86e32927bc6e",
+      "name": "Fetch Website Homepage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        660,
+        400
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.website }}",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 12000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "80632fac-9db8-4d8a-b0e3-499fa5263f4e",
+      "name": "Extract Homepage Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        400
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const cand = $('Enrichment Batch').item.json;\nconst resp = $json;\nconst emailRe = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,10}/g;\nconst bad = /(\\.png|\\.jpg|\\.jpeg|\\.gif|\\.svg|\\.webp|\\.css|\\.js)$|example\\.com|sentry|wixpress|godaddy|schema\\.org|@2x|no-?reply|\\.wixsite\\.|placeholder/i;\nconst extract = (h) => [...new Set((h.match(emailRe) || []).map(e => e.toLowerCase()))].filter(e => !bad.test(e));\nconst originMatch = String(cand.website || '').match(/^https?:\\/\\/[^\\/]+/);\nconst origin = originMatch ? originMatch[0] : null;\nconst domain = origin ? origin.replace(/^https?:\\/\\//, '').replace(/^www\\./, '') : null;\nconst resolveUrl = (href) => { if (!href) return null; if (/^https?:\\/\\//i.test(href)) return href; if (href.startsWith('//')) return 'https:' + href; if (!origin) return null; if (href.startsWith('/')) return origin + href; return origin + '/' + href; };\nconst toText = (h) => h.replace(/<script[\\s\\S]*?<\\/script>/gi, ' ').replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/\\s+/g, ' ').trim();\nlet error = null, emails = [], socials = {}, contactUrl = null, title = null, metaDesc = null, ogDesc = null, aboutUrl = null, pageText = null;\nconst html = typeof resp.data === 'string' ? resp.data : null;\nif (resp.error) { error = String(resp.error.message ?? resp.error); } else if (!html) { error = 'empty or non-text response'; }\nif (html) {\n  pageText = toText(html).slice(0, 3000);\n  emails = extract(html).slice(0, 10);\n  const lk = html.match(/https?:\\/\\/(?:[a-z]{2,3}\\.)?linkedin\\.com\\/(?:company|in)\\/[A-Za-z0-9._%\\-]+/i); if (lk) socials.linkedin = lk[0];\n  const fb = html.match(/https?:\\/\\/(?:www\\.)?facebook\\.com\\/(?!sharer|share|plugins)[A-Za-z0-9.\\-_]{3,}/i); if (fb) socials.facebook = fb[0];\n  const ig = html.match(/https?:\\/\\/(?:www\\.)?instagram\\.com\\/(?!p\\/)[A-Za-z0-9._\\-]{3,}/i); if (ig) socials.instagram = ig[0];\n  const links = [...html.matchAll(/href=[\"']([^\"']*(?:contact|get-in-touch|enquir)[^\"']*)[\"']/gi)].map(m => m[1]).filter(l => !/mailto:|javascript:|\\.pdf$|#/i.test(l));\n  const pick = links.find(l => /contact|get-in-touch|enquir/i.test(l)) ?? links[0];\n  contactUrl = resolveUrl(pick);\n  const abLinks = [...html.matchAll(/href=[\"']([^\"']*(?:about|team|our-story|who-we-are|meet-the)[^\"']*)[\"']/gi)].map(m => m[1]).filter(l => !/mailto:|javascript:|\\.pdf$|#/i.test(l));\n  aboutUrl = resolveUrl(abLinks[0]);\n  const t = html.match(/<title[^>]*>\\s*([^<]{3,200}?)\\s*<\\/title>/i); if (t) title = t[1].replace(/\\s+/g, ' ').trim();\n  const md = html.match(/<meta[^>]+name=[\"']description[\"'][^>]*content=[\"']([^\"']{10,500})[\"']/i) || html.match(/<meta[^>]+content=[\"']([^\"']{10,500})[\"'][^>]*name=[\"']description[\"']/i); if (md) metaDesc = md[1].trim();\n  const od = html.match(/<meta[^>]+property=[\"']og:description[\"'][^>]*content=[\"']([^\"']{10,500})[\"']/i) || html.match(/<meta[^>]+content=[\"']([^\"']{10,500})[\"'][^>]*property=[\"']og:description[\"']/i); if (od) ogDesc = od[1].trim();\n}\nconst pref = (list) => list.find(e => /^(info|contact|admin|hello|enquiries|enquiry|office|sales|reception|bookings)@/.test(e)) || (domain ? list.find(e => e.endsWith('@' + domain)) : null) || list[0] || null;\nconst need_browser = (!!error || emails.length === 0);\nconst description = ogDesc || metaDesc || null;\nreturn { json: { candidate_id: cand.id, website: cand.website, email: pref(emails), emails, socials, contact_url: contactUrl, need_contact_page: (!!contactUrl && !error), need_browser, error, title, description, about_url: aboutUrl, need_about: (!!aboutUrl && !error), people: [], page_text: pageText } };"
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "bf724de5-e443-4085-8eb4-724a3d625b3b",
+      "name": "Save Enrichment",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1760,
+        400
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE leads.candidates SET email = COALESCE(NULLIF($2, ''), email), linkedin_url = COALESCE(NULLIF($4, ''), linkedin_url), enrichment = enrichment || $3::jsonb, enriched_at = now(), stage = CASE WHEN stage = 'discovered' THEN 'enriched' ELSE stage END, stage_updated_at = CASE WHEN stage = 'discovered' THEN now() ELSE stage_updated_at END WHERE id = $1::bigint",
+        "options": {
+          "queryReplacement": "={{ [$json.candidate_id, $json.email ?? \"\", JSON.stringify({ emails: $json.emails, socials: $json.socials, contact_url: $json.contact_url, error: $json.error, method: $json.method_note ?? \"site_crawl_v3\", profile: { title: $json.title ?? null, description: $json.description ?? null, about_url: $json.about_url ?? null, about_text: $json.about_text ?? null, page_text: $json.page_text ?? null, people: $json.people ?? [] } }), $json.socials?.linkedin ?? \"\"] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "b957eceb-3a27-4cbe-b0fd-84216978c482",
+      "name": "Enrichment Batch",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "batchSize": 1
+      }
+    },
+    {
+      "id": "fd37458c-787f-4a18-910c-8d2ade0871c8",
+      "name": "Sticky Note 09e0536a",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -50,
+        250
+      ],
+      "parameters": {
+        "content": "## Lead Intelligence Engine v1\n\nEvery 30 min: takes up to 60 candidates in stage=discovered with a website, fetches the homepage, extracts contact emails (regex + preference ranking), writes email + enrichment jsonb back, advances stage to enriched.\n\nFailed fetches still advance stage (with enrichment.error set) so the queue drains. Candidates without websites are marked enriched separately (phone-only leads).",
+        "color": 5,
+        "width": 520,
+        "height": 200
+      }
+    },
+    {
+      "id": "654d12c1-a72c-491f-ac20-47ae474a2d31",
+      "name": "Has Contact Page?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1100,
+        400
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.need_contact_page }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "ea8b1112-897c-4148-808b-672a49b3942a",
+      "name": "Fetch Contact Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1320,
+        500
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.contact_url }}",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 12000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "0d3b93f4-3bf7-4dd5-886c-b1d55a0ae7af",
+      "name": "Merge Contact Page Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        500
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const home = $('Extract Homepage Data').item.json;\nconst resp = $json;\nconst emailRe = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,10}/g;\nconst bad = /(\\.png|\\.jpg|\\.jpeg|\\.gif|\\.svg|\\.webp|\\.css|\\.js)$|example\\.com|sentry|wixpress|godaddy|schema\\.org|@2x|no-?reply|\\.wixsite\\.|placeholder/i;\nconst extract = (h) => [...new Set((h.match(emailRe) || []).map(e => e.toLowerCase()))].filter(e => !bad.test(e));\nconst domainMatch = String(home.website || '').match(/^https?:\\/\\/(?:www\\.)?([^\\/]+)/);\nconst domain = domainMatch ? domainMatch[1] : null;\nlet emails = [...(home.emails || [])];\nlet socials = { ...(home.socials || {}) };\nconst html = typeof resp.data === 'string' ? resp.data : null;\nif (html) {\n  emails = [...new Set([...emails, ...extract(html)])].slice(0, 15);\n  if (!socials.linkedin) { const lk = html.match(/https?:\\/\\/(?:[a-z]{2,3}\\.)?linkedin\\.com\\/(?:company|in)\\/[A-Za-z0-9._%\\-]+/i); if (lk) socials.linkedin = lk[0]; }\n  if (!socials.facebook) { const fb = html.match(/https?:\\/\\/(?:www\\.)?facebook\\.com\\/(?!sharer|share|plugins)[A-Za-z0-9.\\-_]{3,}/i); if (fb) socials.facebook = fb[0]; }\n  if (!socials.instagram) { const ig = html.match(/https?:\\/\\/(?:www\\.)?instagram\\.com\\/(?!p\\/)[A-Za-z0-9._\\-]{3,}/i); if (ig) socials.instagram = ig[0]; }\n}\nconst pref = (list) => list.find(e => /^(info|contact|admin|hello|enquiries|enquiry|office|sales|reception|bookings)@/.test(e)) || (domain ? list.find(e => e.endsWith('@' + domain)) : null) || list[0] || null;\nreturn { json: { candidate_id: home.candidate_id, website: home.website, email: pref(emails), emails, socials, contact_url: home.contact_url, error: home.error, title: home.title ?? null, description: home.description ?? null, about_url: home.about_url ?? null, need_about: home.need_about ?? false, people: [], page_text: home.page_text ?? null } };"
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "96f0b1c8-05b8-4035-bb72-bb4bfb4c4c2d",
+      "name": "Needs Browser Render?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1100,
+        250
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.need_browser }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "37807900-7d6f-41a2-a8be-52e1d37a2bc1",
+      "name": "Browserless Render",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1320,
+        150
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://browserless:3000/content",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"url\": $json.website, \"waitForTimeout\": 3500, \"bestAttempt\": true } }}",
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "C1YvQsBC8OIzgypB",
+          "name": "Query Auth account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "76ab99ab-26d3-4c43-ae2b-5f9f42da0b5e",
+      "name": "Extract Rendered Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        150
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const home = $('Extract Homepage Data').item.json;\nconst resp = $json;\nconst emailRe = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,10}/g;\nconst bad = /(\\.png|\\.jpg|\\.jpeg|\\.gif|\\.svg|\\.webp|\\.css|\\.js)$|example\\.com|sentry|wixpress|godaddy|schema\\.org|@2x|no-?reply|\\.wixsite\\.|placeholder/i;\nconst extract = (h) => [...new Set((h.match(emailRe) || []).map(e => e.toLowerCase()))].filter(e => !bad.test(e));\nconst domainMatch = String(home.website || '').match(/^https?:\\/\\/(?:www\\.)?([^\\/]+)/);\nconst domain = domainMatch ? domainMatch[1] : null;\nlet emails = [...(home.emails || [])];\nlet socials = { ...(home.socials || {}) };\nlet error = home.error;\nlet title = home.title ?? null;\nlet description = home.description ?? null;\nlet aboutUrl = home.about_url ?? null;\nlet pageText = home.page_text ?? null;\nconst toText = (h) => h.replace(/<script[\\s\\S]*?<\\/script>/gi, ' ').replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/\\s+/g, ' ').trim();\nconst html = typeof resp.data === 'string' ? resp.data : null;\nif (html) {\n  error = null;\n  pageText = toText(html).slice(0, 3000);\n  emails = [...new Set([...emails, ...extract(html)])].slice(0, 15);\n  if (!socials.linkedin) { const lk = html.match(/https?:\\/\\/(?:[a-z]{2,3}\\.)?linkedin\\.com\\/(?:company|in)\\/[A-Za-z0-9._%\\-]+/i); if (lk) socials.linkedin = lk[0]; }\n  if (!socials.facebook) { const fb = html.match(/https?:\\/\\/(?:www\\.)?facebook\\.com\\/(?!sharer|share|plugins)[A-Za-z0-9.\\-_]{3,}/i); if (fb) socials.facebook = fb[0]; }\n  if (!socials.instagram) { const ig = html.match(/https?:\\/\\/(?:www\\.)?instagram\\.com\\/(?!p\\/)[A-Za-z0-9._\\-]{3,}/i); if (ig) socials.instagram = ig[0]; }\n  if (!title) { const t = html.match(/<title[^>]*>\\s*([^<]{3,200}?)\\s*<\\/title>/i); if (t) title = t[1].replace(/\\s+/g, ' ').trim(); }\n  if (!description) { const od = html.match(/<meta[^>]+property=[\"']og:description[\"'][^>]*content=[\"']([^\"']{10,500})[\"']/i) || html.match(/<meta[^>]+name=[\"']description[\"'][^>]*content=[\"']([^\"']{10,500})[\"']/i); if (od) description = od[1].trim(); }\n  if (!aboutUrl) { const originMatch = String(home.website || '').match(/^https?:\\/\\/[^\\/]+/); const origin = originMatch ? originMatch[0] : null; const ab = [...html.matchAll(/href=[\"']([^\"']*(?:about|team|our-story|who-we-are|meet-the)[^\"']*)[\"']/gi)].map(m => m[1]).filter(l => !/mailto:|javascript:|\\.pdf$|#/i.test(l)); const href = ab[0]; if (href) { if (/^https?:\\/\\//i.test(href)) aboutUrl = href; else if (href.startsWith('//')) aboutUrl = 'https:' + href; else if (origin && href.startsWith('/')) aboutUrl = origin + href; else if (origin) aboutUrl = origin + '/' + href; } }\n} else if (resp.error) { error = 'browserless: ' + String(resp.error.message ?? resp.error); }\nconst pref = (list) => list.find(e => /^(info|contact|admin|hello|enquiries|enquiry|office|sales|reception|bookings)@/.test(e)) || (domain ? list.find(e => e.endsWith('@' + domain)) : null) || list[0] || null;\nreturn { json: { candidate_id: home.candidate_id, website: home.website, email: pref(emails), emails, socials, contact_url: home.contact_url, error, method_note: 'browserless_render', title, description, about_url: aboutUrl, need_about: (!!aboutUrl && !error), people: [], page_text: pageText } };"
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "3574e733-cae6-4160-a40c-785939829349",
+      "name": "Has About Page?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1100,
+        650
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.need_about }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "c9e6f264-a27d-45e1-9697-1b6311c059f5",
+      "name": "Fetch About Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1320,
+        750
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.about_url }}",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 12000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "disabled": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "df73b1ef-5ee2-4829-93e2-7bb58cf99189",
+      "name": "Extract Profile Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        750
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const base = $('Has About Page?').item.json;\nconst resp = $json;\nconst html = typeof resp.data === 'string' ? resp.data : null;\nlet people = [];\nlet description = base.description ?? null;\nlet aboutText = null;\nif (html) {\n  const text = html.replace(/<script[\\s\\S]*?<\\/script>/gi, ' ').replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/\\s+/g, ' ');\n  const ROLE = '(Owner|Co-?Owner|Director|Managing Director|General Manager|Office Manager|Property Manager|Practice Manager|Principal|Founder|Co-?Founder|CEO|Manager)';\n  const nameFirst = new RegExp('([A-Z][a-z]{1,15} [A-Z][a-z]{1,20}) ?[,\\\\-|:]? ?' + ROLE + '\\\\b', 'g');\n  const roleFirst = new RegExp(ROLE + ' ?[,\\\\-|:]? ?([A-Z][a-z]{1,15} [A-Z][a-z]{1,20})', 'g');\n  const seen = {};\n  let m;\n  while ((m = nameFirst.exec(text)) !== null && people.length < 6) { if (!seen[m[1]]) { seen[m[1]] = 1; people.push({ name: m[1], role: m[2] }); } }\n  while ((m = roleFirst.exec(text)) !== null && people.length < 6) { if (!seen[m[2]]) { seen[m[2]] = 1; people.push({ name: m[2], role: m[1] }); } }\n  if (!description) { const od = html.match(/<meta[^>]+property=[\"']og:description[\"'][^>]*content=[\"']([^\"']{10,500})[\"']/i) || html.match(/<meta[^>]+name=[\"']description[\"'][^>]*content=[\"']([^\"']{10,500})[\"']/i); if (od) description = od[1].trim(); }\n  aboutText = text.slice(0, 600).trim();\n}\nreturn { json: Object.assign({}, base, { description, people, about_text: aboutText }) };"
+      },
+      "disabled": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "64d2779f-2d29-4aec-be79-c7a956a298c2",
+      "name": "Trigger Qualification Engine",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        880,
+        100
+      ],
+      "parameters": {
+        "mode": "once",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "mwHCwOBO9RuyDNGs"
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      }
+    },
+    {
+      "id": "4bed5413-0a1e-4b69-b6e6-a4c0bc04d49a",
+      "name": "Chain Trigger (from Discovery)",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        460
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    }
+  ],
+  "connections": {
+    "Fetch Pending Candidates": {
+      "main": [
+        [
+          {
+            "node": "Enrichment Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Website Homepage": {
+      "main": [
+        [
+          {
+            "node": "Extract Homepage Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Enrichment": {
+      "main": [
+        [
+          {
+            "node": "Enrichment Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrichment Batch": {
+      "main": [
+        [
+          {
+            "node": "Batch Complete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Website Homepage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Contact Page?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Contact Page",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Has About Page?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Contact Page": {
+      "main": [
+        [
+          {
+            "node": "Merge Contact Page Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Homepage Data": {
+      "main": [
+        [
+          {
+            "node": "Needs Browser Render?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Browser Render?": {
+      "main": [
+        [
+          {
+            "node": "Browserless Render",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Has Contact Page?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Browserless Render": {
+      "main": [
+        [
+          {
+            "node": "Extract Rendered Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Contact Page Data": {
+      "main": [
+        [
+          {
+            "node": "Has About Page?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Rendered Data": {
+      "main": [
+        [
+          {
+            "node": "Has About Page?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has About Page?": {
+      "main": [
+        [
+          {
+            "node": "Fetch About Page",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save Enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch About Page": {
+      "main": [
+        [
+          {
+            "node": "Extract Profile Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Profile Data": {
+      "main": [
+        [
+          {
+            "node": "Save Enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Batch Complete": {
+      "main": [
+        [
+          {
+            "node": "Trigger Qualification Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chain Trigger (from Discovery)": {
+      "main": [
+        [
+          {
+            "node": "Fetch Pending Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 30 Minutes Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Pending Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

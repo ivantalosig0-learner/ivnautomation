@@ -1,0 +1,137 @@
+{
+  "id": "39Vcvm1lkmQZXFpS",
+  "name": "Lead Gen Error Handler",
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "nodes": [
+    {
+      "id": "c81d8470-8e7d-43c9-bdd2-6748f9e8ea0a",
+      "name": "On Workflow Error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "5ef365c7-93d2-4d8c-8f04-72a6c3eb1bc3",
+      "name": "Mark Stuck Runs Failed",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE leads.discovery_runs SET status = 'failed', finished_at = now(), error = $1 WHERE status = 'running' RETURNING id",
+        "options": {
+          "queryReplacement": "={{ [ ($json.execution?.error?.lastNodeExecuted ?? $json.execution?.error?.node?.name ?? ($json.trigger ? \"(trigger)\" : \"unknown node\")) + \": \" + ($json.execution?.error?.message ?? $json.trigger?.error?.message ?? \"unknown error\") + \" (execution \" + ($json.execution?.id ?? \"?\") + \")\" ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "efa823d0-b5d7-4f15-b541-7afe2d223648",
+      "name": "Email Error Alert",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "operation": "send",
+        "fromEmail": "KQuality Automations <kqualitycleaningservices@gmail.com>",
+        "toEmail": "kqualitycleaningservices@gmail.com",
+        "subject": "={{ 'AUTOMATION ERROR: ' + ($('On Workflow Error').item.json.workflow?.name ?? 'unknown workflow') }}",
+        "emailFormat": "text",
+        "text": "={{ 'A lead-gen automation failed and may need attention.\\n\\nWorkflow: ' + ($('On Workflow Error').item.json.workflow?.name ?? '?') + '\\nFailed node: ' + ($('On Workflow Error').item.json.execution?.error?.lastNodeExecuted ?? $('On Workflow Error').item.json.execution?.error?.node?.name ?? ($('On Workflow Error').item.json.trigger ? '(trigger activation)' : '?')) + '\\nError: ' + ($('On Workflow Error').item.json.execution?.error?.message ?? $('On Workflow Error').item.json.trigger?.error?.message ?? '?') + '\\nExecution: ' + ($('On Workflow Error').item.json.execution?.id ?? '?') + '\\nTime: ' + $now.toISO() + '\\n\\nOpen n8n executions to inspect: https://n8n.kqualitycleaningservices.com.au/executions' }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "credentials": {
+        "smtp": {
+          "id": "91G0HwEy1X4Eu1Qm",
+          "name": "SMTP account"
+        }
+      },
+      "disabled": false,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "webhookId": "04e5b800-8f61-4189-8af2-aff2fc5d67cc"
+    },
+    {
+      "id": "2a263720-5a56-4826-af01-dc4423d611b0",
+      "name": "Log Failure Notification",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        330,
+        460
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO leads.notifications (type, candidate_id, title, message, severity)\nSELECT 'workflow_failure', NULL, $1, $2, $3 WHERE $3 <> 'suppress'",
+        "options": {
+          "queryReplacement": "={{ [ ($('On Workflow Error').item.json.workflow?.name ?? 'unknown workflow'), ($('On Workflow Error').item.json.execution?.error?.lastNodeExecuted ?? $('On Workflow Error').item.json.execution?.error?.node?.name ?? ($('On Workflow Error').item.json.trigger ? '(trigger)' : 'unknown node')) + ': ' + ($('On Workflow Error').item.json.execution?.error?.message ?? $('On Workflow Error').item.json.trigger?.error?.message ?? 'unknown error') + ' (execution ' + ($('On Workflow Error').item.json.execution?.id ?? '?') + ')', (($('On Workflow Error').item.json.trigger && /IMAP|automatically retry reactivating/i.test(String($('On Workflow Error').item.json.trigger?.error?.message ?? '') + ' ' + String($('On Workflow Error').item.json.trigger?.error?.description ?? ''))) ? 'suppress' : 'error') ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "On Workflow Error": {
+      "main": [
+        [
+          {
+            "node": "Mark Stuck Runs Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Stuck Runs Failed": {
+      "main": [
+        [
+          {
+            "node": "Log Failure Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Failure Notification": {
+      "main": [
+        [
+          {
+            "node": "Email Error Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

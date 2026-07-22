@@ -1,0 +1,424 @@
+{
+  "id": "ysS4b8G4GJ5v9t9v",
+  "name": "Opportunity Conversion Engine",
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "qNBar1hj0obiccij",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "nodes": [
+    {
+      "id": "08cb4bba-a9a5-4d84-8fde-ddf6db7e8de7",
+      "name": "Mon+Wed 09:00 Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1,
+                3
+              ],
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "78cec58d-2c0a-431d-8c11-4ab99a342bd1",
+      "name": "Set Scheduled Run",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "fullRebuild",
+              "value": false,
+              "type": "boolean"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "63fa3c62-43b0-43c5-ade3-357085c995b9",
+      "name": "Check Discovery Health",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        96
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT status FROM leads.discovery_runs ORDER BY started_at DESC LIMIT 1"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "b4f20ac0-fb8a-4e8e-ac6f-400a03132d8f",
+      "name": "Manual Full Rebuild Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        192
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "3b8589db-8b38-4025-9e21-f54cb86204e0",
+      "name": "Set Manual Rebuild",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        192
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "fullRebuild",
+              "value": true,
+              "type": "boolean"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "bfb22746-62d9-4386-9ede-ca917ed2e912",
+      "name": "Discovery Healthy?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        96
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.status ?? 'succeeded' }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              },
+              "rightValue": "failed"
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "888661cd-7a9c-40b7-a228-9620a29d2462",
+      "name": "Fetch Scoring Dataset",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  c.id AS candidate_id, c.business_name, c.address, c.stage AS candidate_stage,\n  c.qualification_score, c.email AS candidate_email, c.website, c.linkedin_url, c.enrichment, c.raw,\n  GREATEST(c.stage_updated_at, COALESCE(c.qualified_at, c.stage_updated_at), COALESCE(c.enriched_at, c.stage_updated_at)) AS candidate_last_changed,\n  seg.priority_weight,\n  r.id AS crm_record_id, r.pipeline_stage, r.stage AS legacy_stage, r.last_contact_at, r.notes, r.owner, r.is_customer,\n  od.status AS draft_status, od.sent_at AS outreach_sent_at, od.followup_count,\n  (SELECT count(*) FROM leads.inbound_replies ir WHERE ir.candidate_id = c.id) AS reply_count,\n  p.status AS proposal_status, p.sent_at AS proposal_sent_at\nFROM leads.candidates c\nLEFT JOIN leads.segments seg ON seg.id = c.segment_id\nLEFT JOIN leads.crm_records r ON r.candidate_id = c.id\nLEFT JOIN leads.outreach_drafts od ON od.candidate_id = c.id\nLEFT JOIN LATERAL (\n  SELECT status, sent_at FROM leads.proposals pr WHERE pr.candidate_id = c.id ORDER BY created_at DESC LIMIT 1\n) p ON true\nLEFT JOIN leads.opportunity_scores os ON os.candidate_id = c.id\nWHERE c.duplicate_of IS NULL\n  AND c.stage IN ('qualified','proposal_ready','outreach_active','appointment','won','lost')\n  AND (\n    $1::boolean\n    OR os.candidate_id IS NULL\n    OR GREATEST(c.stage_updated_at, COALESCE(c.qualified_at, c.stage_updated_at), COALESCE(c.enriched_at, c.stage_updated_at)) > os.candidate_updated_at\n  )",
+        "options": {
+          "queryReplacement": "={{ [ $json.fullRebuild ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "bab39ec9-5972-4366-be00-1dde20d7c39a",
+      "name": "Compute Conversion Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "\nconst item = $input.item.json;\nconst now = new Date();\n\nfunction daysBetween(dateStr) {\n  if (!dateStr) return null;\n  const then = new Date(dateStr);\n  return Math.floor((now.getTime() - then.getTime()) / 86400000);\n}\n\nconst hasCrmRecord = item.crm_record_id !== null && item.crm_record_id !== undefined;\nconst daysSinceLastContact = daysBetween(item.last_contact_at);\nconst hasWebsite = !!item.website;\nconst enrichment = item.enrichment || {};\nconst raw = item.raw || {};\nconst emails = Array.isArray(enrichment.emails) ? enrichment.emails : [];\nconst hasEmail = !!item.candidate_email || emails.length > 0;\nconst hasLinkedin = !!item.linkedin_url;\nconst hasDescription = !!(enrichment.profile && enrichment.profile.description);\nconst googleRating = typeof raw.rating === 'number' ? raw.rating : null;\nconst followupCount = item.followup_count || 0;\nconst replyCount = item.reply_count || 0;\nconst priorityWeight = item.priority_weight || 5;\nconst hasManualActivity = !!(item.owner || (item.notes && item.notes.trim().length > 0));\nconst proposalStatus = item.proposal_status || null;\nconst draftStatus = item.draft_status || null;\nconst pipelineStage = hasCrmRecord ? item.pipeline_stage : null;\nconst legacyStage = hasCrmRecord ? item.legacy_stage : null;\nconst candidateStage = item.candidate_stage;\n\nconst factors = {};\nfactors.qualification = Math.round(((item.qualification_score || 0) / 100) * 25);\nfactors.segment_fit = Math.round((Math.min(priorityWeight, 10) / 10) * 7);\nfactors.website_quality = hasWebsite ? (hasDescription ? 6 : 4) : 0;\nfactors.email_availability = hasEmail ? 9 : 0;\nfactors.linkedin_availability = hasLinkedin ? 4 : 0;\nfactors.google_rating = googleRating !== null ? Math.round((googleRating / 5) * 4) : 0;\nfactors.followup_engagement = Math.min(followupCount * 2, 4);\nfactors.email_opens = 0;\nfactors.reply_history = replyCount > 0 ? 14 : 0;\nfactors.manual_crm_activity = hasManualActivity ? 4 : 0;\nfactors.business_potential = Math.round((Math.min(priorityWeight, 10) / 10) * 9);\n\nconst daysSinceChanged = daysBetween(item.candidate_last_changed);\nlet recency;\nif (daysSinceLastContact === null) {\n  recency = (daysSinceChanged !== null && daysSinceChanged <= 3) ? 6 : 3;\n} else if (daysSinceLastContact <= 3) { recency = 10; }\nelse if (daysSinceLastContact <= 7) { recency = 7; }\nelse if (daysSinceLastContact <= 14) { recency = 4; }\nelse if (daysSinceLastContact <= 30) { recency = 2; }\nelse { recency = 0; }\nfactors.recency = recency;\n\nconst conversionScore = Object.values(factors).reduce(function (a, b) { return a + b; }, 0);\nconst conversionProbability = Math.round((conversionScore / 100) * 100) / 100;\n\nlet opportunityHealth = null;\nif (!hasCrmRecord || ['Won', 'Lost', 'Repeat Customer'].indexOf(pipelineStage) === -1) {\n  const d = daysSinceLastContact === null ? daysSinceChanged : daysSinceLastContact;\n  if (d === null || d <= 7) { opportunityHealth = 'Healthy'; }\n  else if (d <= 21) { opportunityHealth = 'At Risk'; }\n  else { opportunityHealth = 'Stalled'; }\n}\n\nlet newPipelineStage = pipelineStage;\nlet pipelineStageChanged = false;\nlet becameWon = false;\nif (hasCrmRecord) {\n  newPipelineStage = pipelineStage;\n  if (candidateStage === 'disqualified' && ['Lost', 'Won'].indexOf(pipelineStage) === -1) {\n    newPipelineStage = 'Lost';\n  } else if (legacyStage === 'lost' && ['Lost', 'Won'].indexOf(pipelineStage) === -1) {\n    newPipelineStage = 'Lost';\n  } else if (proposalStatus === 'accepted' && pipelineStage !== 'Won') {\n    newPipelineStage = 'Won';\n  } else if (proposalStatus === 'sent' && ['New', 'Qualified', 'Contacted', 'Interested'].indexOf(pipelineStage) !== -1) {\n    newPipelineStage = 'Proposal Sent';\n  } else if (replyCount > 0 && ['New', 'Qualified', 'Contacted'].indexOf(pipelineStage) !== -1) {\n    newPipelineStage = 'Interested';\n  }\n  pipelineStageChanged = newPipelineStage !== pipelineStage;\n  becameWon = newPipelineStage === 'Won' && pipelineStage !== 'Won';\n}\n\nconst salesStage = hasCrmRecord ? newPipelineStage : 'Not in CRM';\n\nlet nextBestAction = null;\nlet nextBestActionReason = null;\nif (hasCrmRecord && ['Won', 'Lost', 'Repeat Customer'].indexOf(salesStage) !== -1) {\n  nextBestAction = null;\n  nextBestActionReason = 'Opportunity closed';\n} else if (!hasCrmRecord && !draftStatus) {\n  nextBestAction = 'Send first email';\n  nextBestActionReason = 'Qualified and not yet contacted';\n} else if (draftStatus === 'draft') {\n  nextBestAction = 'Send first email';\n  nextBestActionReason = 'Outreach drafted but not yet sent';\n} else if (replyCount > 0 && (!hasCrmRecord || ['New', 'Qualified', 'Contacted'].indexOf(salesStage) !== -1)) {\n  nextBestAction = 'Call today';\n  nextBestActionReason = 'Lead replied - call while interest is fresh';\n} else if (replyCount > 0) {\n  nextBestAction = 'Respond to reply';\n  nextBestActionReason = 'Unanswered inbound reply detected';\n} else if (proposalStatus === 'sent') {\n  const daysSinceProposal = daysBetween(item.proposal_sent_at);\n  if (daysSinceProposal !== null && daysSinceProposal > 7) {\n    nextBestAction = 'Follow up on proposal';\n    nextBestActionReason = 'Proposal sent over a week ago with no decision';\n  } else {\n    nextBestAction = 'Wait';\n    nextBestActionReason = 'Proposal recently sent - awaiting response';\n  }\n} else if (proposalStatus === 'accepted') {\n  nextBestAction = 'Convert to customer';\n  nextBestActionReason = 'Proposal accepted';\n} else if (draftStatus === 'sent' && daysSinceLastContact !== null && daysSinceLastContact < 3) {\n  nextBestAction = 'Wait';\n  nextBestActionReason = 'Recently contacted - give it time to land';\n} else if (salesStage === 'Interested' && !proposalStatus) {\n  nextBestAction = 'Schedule site inspection';\n  nextBestActionReason = 'Interested lead needs an on-site assessment before quoting';\n} else if (salesStage === 'Site Visit Scheduled') {\n  nextBestAction = 'Send proposal';\n  nextBestActionReason = 'Site visit complete - ready to quote';\n} else if (hasCrmRecord && followupCount < 3 && daysSinceLastContact !== null && daysSinceLastContact >= 3) {\n  nextBestAction = 'Follow up';\n  nextBestActionReason = 'No response - due for next follow-up';\n} else if (hasCrmRecord && daysSinceLastContact !== null && daysSinceLastContact > 30) {\n  nextBestAction = 'Mark lost';\n  nextBestActionReason = 'No activity for over 30 days';\n} else {\n  nextBestAction = 'Wait';\n  nextBestActionReason = 'On track - no action due yet';\n}\n\nconst proposalReadiness = (conversionScore >= 60 && !proposalStatus && (replyCount > 0 || salesStage === 'Interested' || salesStage === 'Site Visit Scheduled')) ? 'Ready' : 'Not Ready';\nconst customerReadiness = (proposalStatus === 'accepted') ? 'Ready' : 'Not Ready';\nconst estimatedValue = Math.round(Math.min(priorityWeight, 10) * 150 * 100) / 100;\n\nreturn {\n  json: {\n    candidateId: item.candidate_id,\n    crmRecordId: item.crm_record_id,\n    hasCrmRecord: hasCrmRecord,\n    businessName: item.business_name,\n    address: item.address,\n    conversionScore: conversionScore,\n    conversionFactors: { version: 'conv_v1', factors: factors, total: conversionScore },\n    conversionProbability: conversionProbability,\n    nextBestAction: nextBestAction,\n    nextBestActionReason: nextBestActionReason,\n    opportunityHealth: opportunityHealth,\n    proposalReadiness: proposalReadiness,\n    customerReadiness: customerReadiness,\n    estimatedValue: estimatedValue,\n    oldPipelineStage: pipelineStage,\n    newPipelineStage: newPipelineStage,\n    pipelineStageChanged: pipelineStageChanged,\n    becameWon: becameWon,\n    isCustomer: !!item.is_customer,\n    candidateUpdatedAt: item.candidate_last_changed\n  }\n};\n"
+      }
+    },
+    {
+      "id": "ffb0df86-606a-43ad-baba-32a65427471c",
+      "name": "Upsert Opportunity Score",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1344,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO leads.opportunity_scores\n  (candidate_id, conversion_score, conversion_factors, opportunity_health, next_best_action,\n   next_best_action_reason, proposal_readiness, customer_readiness, conversion_probability,\n   estimated_value, has_crm_record, is_customer, candidate_updated_at, scored_at, scoring_version)\nVALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now(), 'conv_v1')\nON CONFLICT (candidate_id) DO UPDATE SET\n  conversion_score = EXCLUDED.conversion_score,\n  conversion_factors = EXCLUDED.conversion_factors,\n  opportunity_health = EXCLUDED.opportunity_health,\n  next_best_action = EXCLUDED.next_best_action,\n  next_best_action_reason = EXCLUDED.next_best_action_reason,\n  proposal_readiness = EXCLUDED.proposal_readiness,\n  customer_readiness = EXCLUDED.customer_readiness,\n  conversion_probability = EXCLUDED.conversion_probability,\n  estimated_value = EXCLUDED.estimated_value,\n  has_crm_record = EXCLUDED.has_crm_record,\n  is_customer = EXCLUDED.is_customer,\n  candidate_updated_at = EXCLUDED.candidate_updated_at,\n  scored_at = now()",
+        "options": {
+          "queryBatching": "independently",
+          "queryReplacement": "={{ [ $json.candidateId, $json.conversionScore, JSON.stringify($json.conversionFactors), $json.opportunityHealth, $json.nextBestAction, $json.nextBestActionReason, $json.proposalReadiness, $json.customerReadiness, $json.conversionProbability, $json.estimatedValue, $json.hasCrmRecord, $json.isCustomer, $json.candidateUpdatedAt ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "8bfaab7e-754e-43a2-a5e0-1006f93e32fd",
+      "name": "Persist CRM Update",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1568,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE leads.crm_records SET\n  conversion_score = $1,\n  conversion_factors = $2::jsonb,\n  conversion_score_updated_at = now(),\n  next_best_action = $3,\n  next_best_action_reason = $4,\n  next_best_action_updated_at = now(),\n  opportunity_health = $5,\n  estimated_value = $6,\n  pipeline_stage = $7,\n  pipeline_stage_updated_at = CASE WHEN $8 THEN now() ELSE pipeline_stage_updated_at END,\n  is_customer = is_customer OR $9,\n  updated_at = now()\nWHERE id = $10 AND $11 = true",
+        "options": {
+          "queryBatching": "independently",
+          "queryReplacement": "={{ [ $('Compute Conversion Score').item.json.conversionScore, JSON.stringify($('Compute Conversion Score').item.json.conversionFactors), $('Compute Conversion Score').item.json.nextBestAction, $('Compute Conversion Score').item.json.nextBestActionReason, $('Compute Conversion Score').item.json.opportunityHealth, $('Compute Conversion Score').item.json.estimatedValue, $('Compute Conversion Score').item.json.newPipelineStage, $('Compute Conversion Score').item.json.pipelineStageChanged, $('Compute Conversion Score').item.json.becameWon, $('Compute Conversion Score').item.json.crmRecordId, $('Compute Conversion Score').item.json.hasCrmRecord ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "d99267a8-030e-4e18-b33c-694df57bed80",
+      "name": "Log Stage Change",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1792,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO leads.sales_timeline (candidate_id, event_type, event_at, summary, detail, created_by)\nSELECT $1, 'stage_change', now(), $2, $3::jsonb, 'opportunity_conversion_engine'\nWHERE $4 = true",
+        "options": {
+          "queryBatching": "independently",
+          "queryReplacement": "={{ [ $('Compute Conversion Score').item.json.candidateId, \"Pipeline stage changed to \" + $('Compute Conversion Score').item.json.newPipelineStage, JSON.stringify({ from: $('Compute Conversion Score').item.json.oldPipelineStage, to: $('Compute Conversion Score').item.json.newPipelineStage }), $('Compute Conversion Score').item.json.pipelineStageChanged ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "c77058e5-ad1b-4a5d-89e3-50be72989955",
+      "name": "Create Customer On Won",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2016,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO leads.customers (candidate_id, crm_record_id, company_name, address, status)\nSELECT $1, $2, $3, $4, 'active'\nWHERE $5 = true\nON CONFLICT (candidate_id) DO NOTHING",
+        "options": {
+          "queryBatching": "independently",
+          "queryReplacement": "={{ [ $('Compute Conversion Score').item.json.candidateId, $('Compute Conversion Score').item.json.crmRecordId, $('Compute Conversion Score').item.json.businessName, $('Compute Conversion Score').item.json.address, $('Compute Conversion Score').item.json.becameWon ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "aab1f2e8-b9fa-4834-926f-8031d311ff8b",
+      "name": "Abort - Discovery Unhealthy",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        896,
+        192
+      ],
+      "parameters": {
+        "errorType": "errorMessage",
+        "errorMessage": "Latest Opportunity Discovery Engine run failed. Opportunity Conversion Engine will not run until Discovery succeeds."
+      }
+    }
+  ],
+  "connections": {
+    "Mon+Wed 09:00 Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Scheduled Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Scheduled Run": {
+      "main": [
+        [
+          {
+            "node": "Check Discovery Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Discovery Health": {
+      "main": [
+        [
+          {
+            "node": "Discovery Healthy?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Full Rebuild Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Manual Rebuild",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Manual Rebuild": {
+      "main": [
+        [
+          {
+            "node": "Check Discovery Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discovery Healthy?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Scoring Dataset",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Abort - Discovery Unhealthy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Scoring Dataset": {
+      "main": [
+        [
+          {
+            "node": "Compute Conversion Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Conversion Score": {
+      "main": [
+        [
+          {
+            "node": "Upsert Opportunity Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Opportunity Score": {
+      "main": [
+        [
+          {
+            "node": "Persist CRM Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist CRM Update": {
+      "main": [
+        [
+          {
+            "node": "Log Stage Change",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Stage Change": {
+      "main": [
+        [
+          {
+            "node": "Create Customer On Won",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,242 @@
+{
+  "id": "qNBar1hj0obiccij",
+  "name": "Shared - Error Handler",
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate"
+  },
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "8c2d048a-3f50-403a-951a-922f488b8362",
+      "name": "On Workflow Error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e-engine",
+              "name": "engine",
+              "value": "={{ $json.workflow.name.split(\" - \")[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "e-workflowName",
+              "name": "workflowName",
+              "value": "={{ $json.workflow.name }}",
+              "type": "string"
+            },
+            {
+              "id": "e-workflowId",
+              "name": "workflowId",
+              "value": "={{ $json.workflow.id }}",
+              "type": "string"
+            },
+            {
+              "id": "e-executionId",
+              "name": "executionId",
+              "value": "={{ $json.execution.id }}",
+              "type": "string"
+            },
+            {
+              "id": "e-nodeName",
+              "name": "nodeName",
+              "value": "={{ $json.execution.lastNodeExecuted }}",
+              "type": "string"
+            },
+            {
+              "id": "e-status",
+              "name": "status",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "e-severity",
+              "name": "severity",
+              "value": "critical",
+              "type": "string"
+            },
+            {
+              "id": "e-message",
+              "name": "message",
+              "value": "={{ $json.execution.error.message }}",
+              "type": "string"
+            },
+            {
+              "id": "e-errorDetails",
+              "name": "errorDetails",
+              "value": "={{ $json.execution.error }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "703dbb24-8826-43ff-962b-1bcb7f384f2c",
+      "name": "Build Error Context",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "wWXvkXPQc5ZzC6iX"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "engine": "={{ $json.engine }}",
+            "workflowName": "={{ $json.workflowName }}",
+            "workflowId": "={{ $json.workflowId }}",
+            "executionId": "={{ $json.executionId }}",
+            "nodeName": "={{ $json.nodeName }}",
+            "status": "={{ $json.status }}",
+            "severity": "={{ $json.severity }}",
+            "message": "={{ $json.message }}",
+            "errorDetails": "={{ $json.errorDetails }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "b1b19b82-a678-4fb0-86aa-129531594731",
+      "name": "Log Error Event",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Build Error Context').item.json.severity }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "critical"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f4e23feb-0293-4032-90cb-dae87b3e612f",
+      "name": "Is Critical?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.NOTIFICATION_SERVICE_URL }}/alerts",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('Build Error Context').item.json }}",
+        "options": {}
+      },
+      "id": "3b88e641-c2e4-430e-af8f-74012f5751c2",
+      "name": "Notify On-Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        896,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "content": "## Shared - Error Handler\n\nSet as the \"Error Workflow\" (workflow settings) on every production workflow in this project.\nFires automatically on any failed execution.\n\nFlow: capture error context -> log via Shared - Log Execution Event -> notify on-call only for critical severity.\n\n**Requires env var:** NOTIFICATION_SERVICE_URL (backend/notification adapter, owned outside this project).\n\nNo business logic \u2014 this only reports and forwards. Severity is currently fixed at \"critical\" for all workflow-level failures; per-engine severity rules belong in a backend service if this ever needs to vary by business impact.",
+        "height": 504,
+        "width": 1228,
+        "color": 4
+      },
+      "id": "6177b723-6893-4589-a2d2-64bd4166965b",
+      "name": "Sticky Note abf5b511",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        -320
+      ]
+    }
+  ],
+  "connections": {
+    "On Workflow Error": {
+      "main": [
+        [
+          {
+            "node": "Build Error Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error Context": {
+      "main": [
+        [
+          {
+            "node": "Log Error Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Error Event": {
+      "main": [
+        [
+          {
+            "node": "Is Critical?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Critical?": {
+      "main": [
+        [
+          {
+            "node": "Notify On-Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

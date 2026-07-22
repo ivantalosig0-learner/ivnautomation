@@ -1,0 +1,243 @@
+{
+  "id": "HJB5HhkSbi1Qozrr",
+  "name": "Personalized Outreach Engine",
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "39Vcvm1lkmQZXFpS",
+    "timezone": "Australia/Adelaide",
+    "executionTimeout": 3600
+  },
+  "nodes": [
+    {
+      "id": "d73db73f-b2e7-4ce2-b565-7a31362bff55",
+      "name": "Every 30 Minutes Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "3128f17c-2841-44b7-b60a-d447104a3085",
+      "name": "Fetch Lead Pool",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT c.id, c.business_name, c.address, c.suburb, c.email, c.phone, c.stage, c.qualification_score, s.code AS segment_code, s.name AS segment_name, c.enrichment->'profile' AS profile FROM leads.candidates c LEFT JOIN leads.segments s ON s.id = c.segment_id LEFT JOIN leads.outreach_drafts d ON d.candidate_id = c.id WHERE c.duplicate_of IS NULL AND c.stage NOT IN ('lost','won') AND (d.candidate_id IS NULL OR (d.status = 'draft' AND d.method NOT LIKE 'ai\\_%')) ORDER BY (c.qualification_score >= 80) DESC, c.qualification_score DESC NULLS LAST, c.id LIMIT 15",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "ab286a00-8d9e-44ad-a849-1bc410eabe23",
+      "name": "Prepare AI Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const COMPANY = 'KQuality Cleaning Services';\nconst SEGMENT_PITCH = {\n  commercial_office: 'we help Adelaide offices keep their workspaces spotless so staff and clients always walk into a fresh, professional space',\n  real_estate_strata: 'we support property and strata managers with dependable common-area, end-of-lease and vacate cleans across their portfolios',\n  medical_childcare_gym: 'we provide compliance-grade cleaning and sanitisation for medical, childcare and fitness spaces where hygiene standards are non-negotiable',\n  builders_construction: 'we handle post-construction and handover cleans so your sites are presentation-ready on deadline',\n  hospitality_venues: 'we keep hospitality venues guest-ready with thorough after-service and overnight cleans',\n  education_training: 'we help schools and learning centres maintain clean, healthy spaces for students and staff',\n  retail_showrooms: 'we keep showrooms and retail floors presentation-perfect so your stock always looks its best'\n};\nconst DEFAULT_PITCH = 'we provide reliable commercial cleaning for Adelaide businesses';\nconst ROLE_OK = /^(Owner|Co-?Owner|Director|Managing Director|CEO|Founder|Co-?Founder|Principal)$/i;\nconst NAME_BLOCK = /(Care|Quality|Executive|Nurse|Registered|Enrolled|General|Office|Property|Practice|Team|Group|Services)/i;\nconst AU_TAIL_RE = /,\\s*Australia\\s*$/i;\nconst STATE_RE = /\\s+(SA|NSW|VIC|QLD|WA|NT|TAS|ACT)\\s+\\d{4}.*$/i;\nconst suburbOf = (r) => { if (r.suburb) return r.suburb; const a = (r.address || '').replace(AU_TAIL_RE, ''); const p = a.split(','); return p.length < 2 ? '' : p[p.length - 1].replace(STATE_RE, '').trim(); };\nconst bandOf = (s) => s == null ? 'cold' : (Number(s) >= 80 ? 'hot' : (Number(s) >= 55 ? 'warm' : 'cold'));\nconst clean = (t) => String(t || '').replace(/\\s+/g, ' ').trim();\nreturn $input.all().map(i => i.json).map(r => {\n  const profile = r.profile || {};\n  const band = bandOf(r.qualification_score);\n  const suburb = suburbOf(r);\n  const pitch = SEGMENT_PITCH[r.segment_code] || DEFAULT_PITCH;\n  const people = Array.isArray(profile.people) ? profile.people : [];\n  const person = people.find(p => p && ROLE_OK.test(String(p.role || '')) && /^[A-Z][a-z]{1,15} [A-Z][a-z]{1,20}$/.test(String(p.name || '')) && !NAME_BLOCK.test(String(p.name)));\n  const firstName = person ? person.name.split(' ')[0] : null;\n  const desc = clean(profile.description);\n  return { json: {\n    candidate_id: r.id,\n    request: {\n      business: {\n        name: clean(r.business_name),\n        industry: r.segment_name || null,\n        location: suburb || clean(r.address) || null,\n        description: desc || null\n      },\n      sender: { name: 'Michelle', company: COMPANY },\n      contact_name: firstName,\n      notes: 'qualification band: ' + band + '. segment pitch: ' + pitch + '. Local Adelaide team.'\n    }\n  } };\n});"
+      }
+    },
+    {
+      "id": "ed400fcd-9b5c-4bd8-a3f1-e7fa5b927541",
+      "name": "Upsert Draft Batch",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1100,
+        300
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO leads.outreach_drafts (candidate_id, subject, body, method) SELECT d.candidate_id, d.subject, d.body, d.method FROM jsonb_to_recordset($1::jsonb) AS d(candidate_id bigint, subject text, body text, method text) ON CONFLICT (candidate_id) DO UPDATE SET subject = EXCLUDED.subject, body = EXCLUDED.body, method = EXCLUDED.method, updated_at = now() WHERE leads.outreach_drafts.status = 'draft'",
+        "options": {
+          "queryReplacement": "={{ [$json.payload] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "88c465bd-6dc1-4e52-94b4-b6783c0b8d43",
+      "name": "Outreach Draft Summary",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1320,
+        300
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT count(*) AS total_drafts, count(*) FILTER (WHERE status = 'draft') AS pending_review, max(updated_at) AS last_generated FROM leads.outreach_drafts",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "6d5be37b-e344-4702-aee9-50185d3b2e22",
+      "name": "Sticky Note ca83321f",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -50,
+        250
+      ],
+      "parameters": {
+        "content": "## Personalized Outreach Engine v1.1 (draft-only, AI Gateway)\n\nWeekly Mon 08:00: generates personalized first-contact email drafts via the IVNautomation AI Gateway (generate_outreach_v2 / Qwen 3 8B). Top 50 leads by qualification score without a reviewed draft per run. Deterministic context prep (band, segment pitch, suburb, verified owner name) stays in code; language generation is delegated to POST /v1/ai/outreach/initial. Failed AI calls are skipped, retried next run. Reviewed drafts (status != draft) are never overwritten.\n\nNO EMAIL IS SENT by this workflow - it only writes drafts for review in the dashboard.",
+        "color": 2,
+        "width": 1620,
+        "height": 200
+      }
+    },
+    {
+      "id": "a1ce0fd8-0d7d-4160-ab9d-bf0988ad306a",
+      "name": "AI Generate Outreach",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        660,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://ivnautomation-ai-gateway:8000/v1/ai/outreach/initial",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "9710dde5-ea7e-4d60-9d0b-d3ec6a8aa01d",
+      "name": "Assemble Draft Batch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const BATCH_SIZE = 200;\nconst prev = $('Prepare AI Request').all();\nconst items = $input.all();\nconst drafts = [];\nfor (let i = 0; i < items.length; i++) {\n  const res = items[i].json;\n  if (!res || res.success !== true || !res.data || !res.data.email_body) continue;\n  const src = prev[i] && prev[i].json;\n  if (!src || !src.candidate_id) continue;\n  drafts.push({\n    candidate_id: src.candidate_id,\n    subject: String(res.data.subject || ('Cleaning support for ' + src.request.business.name)).slice(0, 150),\n    body: String(res.data.email_body),\n    method: 'ai_' + res.capability + '_' + res.prompt_version\n  });\n}\nconst out = [];\nfor (let i = 0; i < drafts.length; i += BATCH_SIZE) { const chunk = drafts.slice(i, i + BATCH_SIZE); out.push({ json: { payload: JSON.stringify(chunk), batch_index: out.length, batch_count: chunk.length } }); }\nif (!out.length) { out.push({ json: { payload: '[]', batch_index: 0, batch_count: 0 } }); }\nreturn out;"
+      }
+    }
+  ],
+  "connections": {
+    "Fetch Lead Pool": {
+      "main": [
+        [
+          {
+            "node": "Prepare AI Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Draft Batch": {
+      "main": [
+        [
+          {
+            "node": "Outreach Draft Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare AI Request": {
+      "main": [
+        [
+          {
+            "node": "AI Generate Outreach",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Generate Outreach": {
+      "main": [
+        [
+          {
+            "node": "Assemble Draft Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble Draft Batch": {
+      "main": [
+        [
+          {
+            "node": "Upsert Draft Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 30 Minutes Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Lead Pool",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

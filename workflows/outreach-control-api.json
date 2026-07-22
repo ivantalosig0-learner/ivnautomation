@@ -1,0 +1,587 @@
+{
+  "id": "KkrBNoYYy98VGKID",
+  "name": "Outreach Control API",
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "nodes": [
+    {
+      "id": "ba207984-7020-4871-87f4-70038cf302ca",
+      "name": "Control API Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        304
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "outreach-control-k3n8p",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "f9deaf81-f155-4f90-b17a-4c0bb300591c"
+    },
+    {
+      "id": "966ebef8-0bc8-45ba-9e42-745f55fd6064",
+      "name": "Parse Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        304
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const b = $json.body || {};\nconst allowedKeys = ['automatic_outreach_enabled', 'qualification_threshold', 'daily_send_cap'];\nreturn { json: { token: String(b.token || ''), action: String(b.action || ''), setting_key: b.key != null ? String(b.key) : null, setting_value: b.value != null ? String(b.value) : null, key_allowed: b.key != null ? allowedKeys.includes(String(b.key)) : false, updated_by: String(b.updated_by || b.user || 'dashboard') } };"
+      }
+    },
+    {
+      "id": "afbb1bd2-accc-4a14-8789-0e6caae25cfc",
+      "name": "Validate Session",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        304
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COALESCE((SELECT user_name FROM leads.dashboard_sessions WHERE token = $1 AND expires_at > now() LIMIT 1), '') AS user_name",
+        "options": {
+          "queryReplacement": "={{ [$json.token] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "c10bb706-f420-44ad-8643-170efd762ea4",
+      "name": "Session Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        304
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.user_name }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "f8d70ed7-ef13-4b5f-a2ce-4c788e270dee",
+      "name": "Route Control Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        896,
+        176
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputKey": "today_queue",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Request').item.json.action }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "today_queue"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "settings_get",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Request').item.json.action }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "settings_get"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "settings_set",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Request').item.json.action }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "settings_set"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      }
+    },
+    {
+      "id": "4f0d6b9b-b42c-41b2-a175-48d5ab6ba8ba",
+      "name": "Today Queue Query",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT json_build_object('run_date', current_date, 'counts', (SELECT json_build_object('scheduled', count(*) FILTER (WHERE status='scheduled'), 'validated', count(*) FILTER (WHERE status='validated'), 'sent', count(*) FILTER (WHERE status='sent'), 'failed', count(*) FILTER (WHERE status='failed'), 'skipped', count(*) FILTER (WHERE status='skipped')) FROM leads.outreach_queue WHERE run_date = current_date), 'run', (SELECT row_to_json(r) FROM (SELECT status AS run_status, started_at, finished_at, abort_reason, sent_count, skipped_count, failed_count, threshold_used, cap_used FROM leads.outreach_runs WHERE run_date = current_date) r), 'items', (SELECT COALESCE(json_agg(q ORDER BY q.updated_at DESC), '[]'::json) FROM (SELECT candidate_id, business_name, qualification_score, status, reason, sent_at, email_generated, crm_updated, notification_created, updated_at FROM leads.outreach_queue WHERE run_date = current_date) q)) AS result",
+        "options": {}
+      },
+      "executeOnce": true,
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "074f25c7-f482-4e30-a87c-6e63701228a6",
+      "name": "Wrap Today Queue JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const row = $input.first().json;\nreturn [{ json: row.result || { run_date: null, counts: {}, run: null, items: [] } }];"
+      }
+    },
+    {
+      "id": "e4edcb51-7437-4c13-9dfc-8267a2e20b62",
+      "name": "Respond Today Queue",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1568,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "b7c00ce1-5ab4-4803-adfb-7da4e9ac2661",
+      "name": "Settings Get Query",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1120,
+        192
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT json_object_agg(key, json_build_object('value', value, 'updated_at', updated_at, 'updated_by', updated_by)) AS settings FROM leads.system_settings",
+        "options": {}
+      },
+      "executeOnce": true,
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "6e8cd01b-dd1e-4c7a-b099-e586f44f1d5e",
+      "name": "Wrap Settings Get JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        192
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const row = $input.first().json;\nreturn [{ json: { settings: row.settings || {} } }];"
+      }
+    },
+    {
+      "id": "ea7caebb-e7f0-40d7-9a3f-e16426498db3",
+      "name": "Respond Settings Get",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1568,
+        192
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "9e5641cc-a0ca-4ea2-8567-682bf96cb710",
+      "name": "Key Allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        384
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Parse Request').item.json.key_allowed }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "d11b94aa-1764-4cd7-8959-88b5c746b058",
+      "name": "Settings Set Query",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1344,
+        384
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE leads.system_settings SET value = $2, updated_at = now(), updated_by = $3 WHERE key = $1 RETURNING key, value, updated_at, updated_by",
+        "options": {
+          "queryReplacement": "={{ [$('Parse Request').item.json.setting_key, $('Parse Request').item.json.setting_value, $('Parse Request').item.json.updated_by] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "150b081a-584f-44ac-b4b5-594cb6ccfb5c",
+      "name": "Wrap Settings Set JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        384
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const row = $input.first().json || {};\nreturn [{ json: { updated: !!row.key, key: row.key || null, value: row.value != null ? row.value : null } }];"
+      }
+    },
+    {
+      "id": "0f618b90-60b2-491c-b718-5cf598d75de3",
+      "name": "Respond Settings Set",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1792,
+        384
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "62d325a3-42f0-4063-923d-456feb56475e",
+      "name": "Respond Bad Key",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1344,
+        576
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": false, \"error\": \"Unknown or disallowed setting key\" } }}",
+        "options": {
+          "responseCode": 400
+        }
+      }
+    },
+    {
+      "id": "f1e99745-5b7e-4da2-9ffc-224deb35200d",
+      "name": "Respond Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        896,
+        400
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": false, \"error\": \"Unauthorized\" } }}",
+        "options": {
+          "responseCode": 401
+        }
+      }
+    },
+    {
+      "id": "c6132522-98ed-48e4-b5a9-80f4be255094",
+      "name": "Respond Invalid Action",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1120,
+        576
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": false, \"error\": \"Unknown action\" } }}",
+        "options": {
+          "responseCode": 400
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Control API Request": {
+      "main": [
+        [
+          {
+            "node": "Parse Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Request": {
+      "main": [
+        [
+          {
+            "node": "Validate Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Session": {
+      "main": [
+        [
+          {
+            "node": "Session Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Session Valid?": {
+      "main": [
+        [
+          {
+            "node": "Route Control Action",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Control Action": {
+      "main": [
+        [
+          {
+            "node": "Today Queue Query",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Settings Get Query",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Key Allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Invalid Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Today Queue Query": {
+      "main": [
+        [
+          {
+            "node": "Wrap Today Queue JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap Today Queue JSON": {
+      "main": [
+        [
+          {
+            "node": "Respond Today Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings Get Query": {
+      "main": [
+        [
+          {
+            "node": "Wrap Settings Get JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap Settings Get JSON": {
+      "main": [
+        [
+          {
+            "node": "Respond Settings Get",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Key Allowed?": {
+      "main": [
+        [
+          {
+            "node": "Settings Set Query",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Bad Key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings Set Query": {
+      "main": [
+        [
+          {
+            "node": "Wrap Settings Set JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap Settings Set JSON": {
+      "main": [
+        [
+          {
+            "node": "Respond Settings Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

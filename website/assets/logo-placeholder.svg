@@ -1,0 +1,31 @@
+<svg width="220" height="120" viewBox="0 0 220 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="KQuality Cleaning Services logo">
+  <defs>
+    <linearGradient id="kqBlueGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1976D2"/>
+      <stop offset="100%" stop-color="#58B947"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Heart-shaped mark built from two overlapping droplets -->
+  <g transform="translate(8,10)">
+    <path d="M35 8
+             C20 -6, -4 10, 2 32
+             C7 50, 24 62, 35 70
+             C46 62, 63 50, 68 32
+             C74 10, 50 -6, 35 8 Z"
+          fill="url(#kqBlueGreen)" opacity="0.95"/>
+    <circle cx="24" cy="30" r="8" fill="#FFFFFF" opacity="0.85"/>
+    <text x="35" y="42" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700"
+          fill="#FFFFFF" text-anchor="middle">KQ</text>
+  </g>
+
+  <!-- Wordmark -->
+  <g transform="translate(92,38)">
+    <text x="0" y="0" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="700" fill="#16324F">
+      KQuality
+    </text>
+    <text x="0" y="20" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="400" fill="#1976D2">
+      Cleaning Services
+    </text>
+  </g>
+</svg>

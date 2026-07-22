@@ -1,0 +1,311 @@
+{
+  "id": "TgMGAgTDGeD7gWxc",
+  "name": "Reply Detection Engine",
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "39Vcvm1lkmQZXFpS",
+    "timezone": "Australia/Adelaide",
+    "executionTimeout": 600
+  },
+  "nodes": [
+    {
+      "id": "74ddaa73-35cb-457f-8745-eb2acd5840a8",
+      "name": "Normalize Reply Fields",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const j = $json;\nconst SELF = 'kqualitycleaningservices@gmail.com';\nconst EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/;\nfunction normId(s) { return s ? String(s).trim().replace(/^<|>$/g, '') : ''; }\nfunction getHeader(name) {\n  const h = j.headers;\n  if (!h) return undefined;\n  if (typeof h.get === 'function') return h.get(name);\n  if (Array.isArray(h)) { const f = h.find(x => Array.isArray(x) && String(x[0]).toLowerCase() === name); return f ? f[1] : undefined; }\n  if (typeof h === 'object') { const k = Object.keys(h).find(k => k.toLowerCase() === name); return k ? h[k] : undefined; }\n  return undefined;\n}\nfunction headerVal(name) {\n  const v = getHeader(name);\n  if (v === undefined || v === null) return '';\n  if (typeof v === 'object') return '';\n  return String(v).replace(new RegExp('^' + name + '\\\\s*:\\\\s*', 'i'), '').trim();\n}\nfunction emailOf(x) {\n  if (!x) return '';\n  if (typeof x === 'string') { const m = x.match(EMAIL_RE); return m ? m[0] : ''; }\n  if (x.value && x.value[0] && x.value[0].address) return String(x.value[0].address);\n  if (x.text) { const m = String(x.text).match(EMAIL_RE); return m ? m[0] : ''; }\n  return '';\n}\nfunction hash64(s) {\n  let h1 = 0x811c9dc5, h2 = 0x01000193;\n  for (let i = 0; i < s.length; i++) {\n    const c = s.charCodeAt(i);\n    h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0;\n    h2 = Math.imul(h2 ^ c, 0x85ebca6b) >>> 0;\n  }\n  return h1.toString(36) + h2.toString(36);\n}\nconst rawMessageId = j.messageId || headerVal('message-id');\nconst rawInReplyTo = j.inReplyTo || headerVal('in-reply-to');\nconst rawReferences = j.references || headerVal('references') || '';\nlet referencesArr = [];\nif (Array.isArray(rawReferences)) referencesArr = rawReferences.map(normId);\nelse if (typeof rawReferences === 'string' && rawReferences) referencesArr = rawReferences.split(/\\s+/).map(normId);\nif (rawInReplyTo) referencesArr.push(normId(rawInReplyTo));\nreferencesArr = [...new Set(referencesArr.filter(Boolean))];\nconst subject = String(j.subject || headerVal('subject') || '').slice(0, 300);\nconst fromEmail = (emailOf(j.from) || emailOf(headerVal('from'))).toLowerCase().trim();\nconst bodyText = String(j.text || j.textPlain || '').slice(0, 8000);\nconst receivedAt = j.date ? new Date(j.date).toISOString() : new Date().toISOString();\nconst seed = receivedAt + '|' + fromEmail + '|' + subject + '|' + bodyText.slice(0, 2000);\nconst messageId = normId(rawMessageId) || ('generated-' + receivedAt + '-' + hash64(seed));\nconst baseSubject = subject.replace(/^((RE|FW|FWD)\\s*:\\s*)+/i, '').trim();\nconst isSelf = !!fromEmail && fromEmail === SELF;\nreturn { json: { message_id: messageId, in_reply_to: normId(rawInReplyTo), references: referencesArr, from_email: fromEmail, subject, base_subject: baseSubject, is_self: isSelf, body_text: bodyText, received_at: receivedAt } };"
+      }
+    },
+    {
+      "id": "47f252d1-a165-4473-8c34-ef3cc8248263",
+      "name": "Match And Record Reply",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH matched AS (\n  SELECT candidate_id, pri FROM (\n    SELECT candidate_id, 1 AS pri FROM leads.outreach_drafts WHERE message_id = $2\n    UNION ALL SELECT candidate_id, 1 FROM leads.outreach_followups WHERE message_id = $2\n    UNION ALL SELECT candidate_id, 2 FROM leads.outreach_drafts WHERE message_id = ANY($3::text[])\n    UNION ALL SELECT candidate_id, 2 FROM leads.outreach_followups WHERE message_id = ANY($3::text[])\n    UNION ALL SELECT d.candidate_id, 3 FROM leads.outreach_drafts d JOIN leads.candidates c ON c.id = d.candidate_id WHERE lower(c.email) = lower($1) AND d.status = 'sent'\n    UNION ALL SELECT d.candidate_id, 4 FROM leads.outreach_drafts d WHERE d.status = 'sent' AND $9 <> '' AND d.subject = $9\n  ) x ORDER BY pri LIMIT 1\n),\nins AS (\n  INSERT INTO leads.inbound_replies (candidate_id, message_id, in_reply_to, \"references\", subject, sender, body_text, received_at, matched_by)\n  SELECT (SELECT candidate_id FROM matched), $2, $4, $3, $5, $1, $6, $7,\n         COALESCE((SELECT CASE pri WHEN 1 THEN 'message_id' WHEN 2 THEN 'references' WHEN 3 THEN 'email_fallback' WHEN 4 THEN 'subject' END FROM matched), 'unmatched')\n  WHERE NOT $8::boolean\n  ON CONFLICT (message_id) DO NOTHING\n  RETURNING id, candidate_id\n),\ncrm AS (\n  UPDATE leads.crm_records SET stage = 'replied', last_contact_at = now(), updated_at = now()\n  WHERE candidate_id IN (SELECT candidate_id FROM ins WHERE candidate_id IS NOT NULL) AND stage NOT IN ('won','lost')\n  RETURNING candidate_id\n),\nnotif AS (\n  INSERT INTO leads.notifications (type, candidate_id, title, message, severity)\n  SELECT 'reply_received', ins.candidate_id,\n         CASE WHEN ins.candidate_id IS NULL THEN 'Reply received (unmatched)' ELSE 'Reply received' END,\n         'Reply from ' || COALESCE(c.business_name, NULLIF($1, ''), 'unknown sender') || ': \"' || COALESCE(NULLIF($5, ''), '(no subject)') || '\"',\n         CASE WHEN ins.candidate_id IS NULL THEN 'warning' ELSE 'info' END\n  FROM ins LEFT JOIN leads.candidates c ON c.id = ins.candidate_id\n  RETURNING id\n)\nSELECT ins.id AS reply_id, ins.candidate_id, (crm.candidate_id IS NOT NULL) AS crm_updated, c.business_name, c.email AS candidate_email, c.phone\nFROM ins\nLEFT JOIN crm ON crm.candidate_id = ins.candidate_id\nLEFT JOIN leads.candidates c ON c.id = ins.candidate_id;",
+        "options": {
+          "queryReplacement": "={{ [$json.from_email, $json.message_id, $json.references, $json.in_reply_to, $json.subject, $json.body_text, $json.received_at, $json.is_self === true, $json.base_subject] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "3c5ef76e-ee6b-4de7-9f4b-d50793709711",
+      "name": "CRM Updated?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.crm_updated }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "de6883a6-d406-4d80-a0c1-29f20d1c3056",
+      "name": "Notify Michelle Of Reply",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1696,
+        0
+      ],
+      "parameters": {
+        "operation": "send",
+        "fromEmail": "KQuality Cleaning Services <kqualitycleaningservices@gmail.com>",
+        "toEmail": "kqualitycleaningservices@gmail.com",
+        "subject": "=Reply received: {{ $('Match And Record Reply').item.json.business_name }}",
+        "emailFormat": "text",
+        "text": "=A reply came in from {{ $('Match And Record Reply').item.json.business_name }} ({{ $('Match And Record Reply').item.json.candidate_email }}).\n\nSubject: {{ $('Normalize Reply Fields').item.json.subject }}\n\n{{ $('Normalize Reply Fields').item.json.body_text }}\n\n{{ $('Compose CRM Note').item.json.ai_line }}\n\nStage set to Replied in the CRM. Follow-ups for this lead have stopped automatically.",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "credentials": {
+        "smtp": {
+          "id": "91G0HwEy1X4Eu1Qm",
+          "name": "SMTP account"
+        }
+      },
+      "webhookId": "24c7bf3d-2d8d-410f-875e-06909293531a"
+    },
+    {
+      "id": "c5c2cfa3-8906-4f75-bb56-e83003d28630",
+      "name": "Inbox Watcher (IMAP)",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "mailbox": "INBOX",
+        "postProcessAction": "read",
+        "format": "resolved",
+        "options": {
+          "customEmailConfig": "[\"UNSEEN\"]",
+          "forceReconnect": 5,
+          "trackLastMessageId": true
+        }
+      },
+      "credentials": {
+        "imap": {
+          "id": "02fJOib7pcIJljyU",
+          "name": "IMAP account"
+        }
+      }
+    },
+    {
+      "id": "7e6c2bed-7836-48cd-80b8-856216fe059d",
+      "name": "Prepare CRM Note Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const m = $json;\nconst n = $('Normalize Reply Fields').item.json;\nreturn { json: {\n  request: {\n    business_name: m.business_name || 'Unknown business',\n    interaction_type: 'inbound_email_reply',\n    interaction_details: ('Subject: ' + (n.subject || '') + '\\n' + (n.body_text || '')).slice(0, 3000),\n    outcome: 'CRM stage set to replied; follow-ups stopped automatically'\n  }\n} };"
+      }
+    },
+    {
+      "id": "2efba8c0-3d18-4f36-a3fb-293b30dd55a1",
+      "name": "AI CRM Note",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1096,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://ivnautomation-ai-gateway:8000/v1/ai/crm/note",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "4d1c7c38-8430-45a3-b005-524ea23e3a32",
+      "name": "Compose CRM Note",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const m = $('Match And Record Reply').item.json;\nconst n = $('Normalize Reply Fields').item.json;\nconst res = $json;\nconst ok = res && res.success === true && res.data && res.data.note;\nconst stamp = new Date().toISOString().slice(0, 10);\nconst note = ok\n  ? ('[AI ' + stamp + '] ' + res.data.note + (res.data.next_action ? (' Next action: ' + res.data.next_action) : '') + ' (sentiment: ' + (res.data.sentiment || 'n/a') + ')')\n  : ('[' + stamp + '] Reply received: \"' + (n.subject || '') + '\"');\nconst ai_line = ok\n  ? ('AI summary: ' + res.data.note + '\\nSentiment: ' + (res.data.sentiment || 'n/a') + (res.data.next_action ? ('\\nSuggested next action: ' + res.data.next_action) : ''))\n  : '';\nreturn { json: { candidate_id: m.candidate_id, note, ai_line, business_name: m.business_name, candidate_email: m.candidate_email, method: ok ? ('ai_crm_note_' + res.prompt_version) : 'fallback' } };"
+      }
+    },
+    {
+      "id": "258d19e9-6ddb-4e1e-8694-b81c65b14dfe",
+      "name": "Save AI CRM Note",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1496,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE leads.crm_records SET notes = CASE WHEN notes = '' THEN $2 ELSE notes || E'\\n\\n' || $2 END, notes_updated_at = now(), updated_at = now() WHERE candidate_id = $1::bigint",
+        "options": {
+          "queryReplacement": "={{ [$json.candidate_id, $json.note] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000
+    }
+  ],
+  "connections": {
+    "Normalize Reply Fields": {
+      "main": [
+        [
+          {
+            "node": "Match And Record Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match And Record Reply": {
+      "main": [
+        [
+          {
+            "node": "CRM Updated?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inbox Watcher (IMAP)": {
+      "main": [
+        [
+          {
+            "node": "Normalize Reply Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM Updated?": {
+      "main": [
+        [
+          {
+            "node": "Prepare CRM Note Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare CRM Note Request": {
+      "main": [
+        [
+          {
+            "node": "AI CRM Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI CRM Note": {
+      "main": [
+        [
+          {
+            "node": "Compose CRM Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose CRM Note": {
+      "main": [
+        [
+          {
+            "node": "Save AI CRM Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save AI CRM Note": {
+      "main": [
+        [
+          {
+            "node": "Notify Michelle Of Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,481 @@
+{
+  "id": "YLP4NPutkGPwlhkA",
+  "name": "Opportunity Discovery Engine",
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate",
+    "timezone": "Asia/Manila",
+    "executionTimeout": 1800,
+    "errorWorkflow": "39Vcvm1lkmQZXFpS"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 7 * * *"
+            }
+          ]
+        }
+      },
+      "id": "94045a29-eb88-40cf-8b8e-ec6b90e7cc83",
+      "name": "Daily 07:30 Trigger (Asia/Manila)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO leads.discovery_runs (source_id, status) SELECT id, 'running' FROM leads.sources WHERE code = 'google_places' RETURNING id AS run_id",
+        "options": {}
+      },
+      "id": "17c894e9-9051-4ead-bef6-999d29f7ab7a",
+      "name": "Create Discovery Run",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        304
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT s.id AS segment_id, s.code AS segment_code, t.term FROM leads.segments s, jsonb_array_elements_text(s.search_terms) AS t(term) WHERE s.enabled ORDER BY s.id",
+        "options": {}
+      },
+      "id": "1011d022-19c4-4746-b175-223423457d72",
+      "name": "Fetch Segment Search Terms",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        304
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE leads.discovery_runs SET finished_at = now(), status = 'succeeded', candidates_new = (SELECT count(*) FROM leads.candidates c WHERE c.discovery_run_id = $1::bigint), candidates_found = (SELECT count(*) FROM leads.candidates c WHERE c.discovery_run_id = $1::bigint) WHERE id = $1::bigint RETURNING id, status, candidates_new",
+        "options": {
+          "queryReplacement": "={{ [$('Create Discovery Run').first().json.run_id] }}"
+        }
+      },
+      "id": "57afd3bc-8d6b-4aa5-a812-de7d76b2368f",
+      "name": "Finalize Discovery Run",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        880,
+        144
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://places.googleapis.com/v1/places:searchText",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Goog-FieldMask",
+              "value": "places.id,places.displayName,places.formattedAddress,places.location,places.nationalPhoneNumber,places.websiteUri,places.types,places.rating,places.userRatingCount,places.businessStatus"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (function(){ var zones = [[-34.9285,138.6007],[-34.7350,138.6600],[-35.0750,138.5350],[-34.9200,138.7000],[-34.8550,138.5050]]; var z = zones[$now.weekNumber % zones.length]; return { textQuery: $json.term, pageSize: 20, locationBias: { circle: { center: { latitude: z[0], longitude: z[1] }, radius: 20000.0 } } }; })() }}",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "type": "body",
+                    "name": "pageToken",
+                    "value": "={{ $response.body.nextPageToken }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ !$response.body.nextPageToken }}",
+              "limitPagesFetched": true,
+              "maxRequests": 3,
+              "requestInterval": 800
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "50a8428b-b55a-4586-836b-d6e1cb1f0fb7",
+      "name": "Places Text Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        880,
+        400
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "LAE529N46Omr25fM",
+          "name": "Header Auth account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "places",
+        "options": {}
+      },
+      "id": "c7944e18-2a7b-408d-a780-84f3fb51d3de",
+      "name": "Split Out Places",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "external_ref",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "business_name",
+              "value": "={{ $json.displayName?.text ?? \"Unknown\" }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "address",
+              "value": "={{ $json.formattedAddress ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "phone",
+              "value": "={{ $json.nationalPhoneNumber ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "a5",
+              "name": "website",
+              "value": "={{ $json.websiteUri ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "a6",
+              "name": "latitude",
+              "value": "={{ $json.location?.latitude ?? null }}",
+              "type": "number"
+            },
+            {
+              "id": "a7",
+              "name": "longitude",
+              "value": "={{ $json.location?.longitude ?? null }}",
+              "type": "number"
+            },
+            {
+              "id": "a8",
+              "name": "raw",
+              "value": "={{ JSON.stringify($json) }}",
+              "type": "string"
+            },
+            {
+              "id": "a9",
+              "name": "segment_id",
+              "value": "={{ $('Loop Terms').item.json.segment_id }}",
+              "type": "number"
+            },
+            {
+              "id": "a10",
+              "name": "run_id",
+              "value": "={{ $('Create Discovery Run').first().json.run_id }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "34aa501d-c2c7-4d8d-857b-0da7da87fc96",
+      "name": "Normalize Candidate",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1328,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO leads.candidates (source_id, segment_id, external_ref, business_name, address, phone, website, latitude, longitude, raw, discovery_run_id) SELECT src.id, $1::smallint, $2, $3, $4, NULLIF($5,''), NULLIF($6,''), $7::numeric, $8::numeric, $9::jsonb, $10::bigint FROM leads.sources src WHERE src.code = 'google_places' ON CONFLICT (source_id, external_ref) DO NOTHING",
+        "options": {
+          "queryReplacement": "={{ [$json.segment_id, $json.external_ref, $json.business_name, $json.address, $json.phone, $json.website, $json.latitude, $json.longitude, $json.raw, $json.run_id] }}"
+        }
+      },
+      "id": "c8ac1f39-45cd-4295-85e4-b43eaaefcbde",
+      "name": "Upsert Candidate",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1552,
+        400
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "8980f90c-610d-4e7f-afc0-59b55d045bb8",
+      "name": "Loop Terms",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        672,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Opportunity Discovery Engine v1\n\nDaily Google Places text search per enabled segment term (leads.segments.search_terms), deduped upsert into leads.candidates. Run tracking in leads.discovery_runs.\n\n**Credentials required:**\n1. IVNautomation Postgres \u2014 host: ivnautomation-postgres, db: ivnautomation, user: ivan\n2. Google Places API Key \u2014 httpHeaderAuth, header name: X-Goog-Api-Key",
+        "height": 664,
+        "width": 1876,
+        "color": 4
+      },
+      "id": "bf3ff5ef-7819-4b41-81bd-7cf954c701a7",
+      "name": "Sticky Note e88c5ed3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        -16
+      ]
+    },
+    {
+      "id": "98601739-a45c-418b-b159-c8d21138f38c",
+      "name": "Mark Duplicate Candidates",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1104,
+        144
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH matches AS (SELECT DISTINCT ON (d.id) d.id, o.id AS keep_id FROM leads.candidates d JOIN leads.candidates o ON o.id < d.id AND o.duplicate_of IS NULL AND lower(trim(d.business_name)) = lower(trim(o.business_name)) AND ((NULLIF(regexp_replace(COALESCE(d.phone, ''), '\\D', '', 'g'), '') IS NOT NULL AND regexp_replace(COALESCE(d.phone, ''), '\\D', '', 'g') = regexp_replace(COALESCE(o.phone, ''), '\\D', '', 'g')) OR (d.website IS NOT NULL AND lower(d.website) = lower(o.website))) WHERE d.duplicate_of IS NULL ORDER BY d.id, o.id), marked AS (UPDATE leads.candidates c SET duplicate_of = m.keep_id FROM matches m WHERE c.id = m.id RETURNING c.id) SELECT count(*) AS duplicates_marked FROM marked",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "disabled": false,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "executeOnce": true
+    },
+    {
+      "id": "a2ff49c0-9452-41ae-9410-bd6d8a89a0b2",
+      "name": "Trigger Intelligence Engine",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1328,
+        144
+      ],
+      "parameters": {
+        "mode": "once",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "xAQVVw5pVJE2uLR3"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Create Discovery Run": {
+      "main": [
+        [
+          {
+            "node": "Fetch Segment Search Terms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Segment Search Terms": {
+      "main": [
+        [
+          {
+            "node": "Loop Terms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Places Text Search": {
+      "main": [
+        [
+          {
+            "node": "Split Out Places",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out Places": {
+      "main": [
+        [
+          {
+            "node": "Normalize Candidate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Candidate": {
+      "main": [
+        [
+          {
+            "node": "Upsert Candidate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Candidate": {
+      "main": [
+        [
+          {
+            "node": "Loop Terms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Terms": {
+      "main": [
+        [
+          {
+            "node": "Finalize Discovery Run",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Places Text Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize Discovery Run": {
+      "main": [
+        [
+          {
+            "node": "Mark Duplicate Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Duplicate Candidates": {
+      "main": [
+        [
+          {
+            "node": "Trigger Intelligence Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 07:30 Trigger (Asia/Manila)": {
+      "main": [
+        [
+          {
+            "node": "Create Discovery Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,170 @@
+{
+  "id": "Bl1eRZWfQMCRN50r",
+  "name": "CRM - Lead Intake",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "qNBar1hj0obiccij"
+  },
+  "nodes": [
+    {
+      "id": "abef8a9c-791a-473c-9246-cb3e6fae794a",
+      "name": "On Lead Qualified Event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "crm/lead-qualified",
+        "options": {}
+      },
+      "webhookId": "b3142f36-307b-4537-9f16-58c0599a86eb"
+    },
+    {
+      "id": "a827b22a-d2cd-458b-b5b0-ea8550bc08a1",
+      "name": "Extract Event Envelope",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "env-eventName",
+              "name": "eventName",
+              "value": "={{ $json.body.eventName }}",
+              "type": "string"
+            },
+            {
+              "id": "env-timestamp",
+              "name": "timestamp",
+              "value": "={{ $json.body.timestamp }}",
+              "type": "string"
+            },
+            {
+              "id": "env-leadId",
+              "name": "leadId",
+              "value": "={{ $json.body.leadId }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2a234a39-fb0b-4856-b73b-95b015e3ad17",
+      "name": "Call CRM Backend Service [TODO: CRM_BACKEND_URL pending Database Architect spec]",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "<__PLACEHOLDER_VALUE__CRM_BACKEND_URL \u2014 pending endpoint + field-mapping spec from Database Architect / CRM Engine. Do not fill in without that spec.__>",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "a03e3eff-ebf5-4afa-ab1f-087d0b1ee514",
+      "name": "Log Execution Event",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "wWXvkXPQc5ZzC6iX"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "engine": "CRM",
+            "workflowName": "={{ $workflow.name }}",
+            "workflowId": "={{ $workflow.id }}",
+            "executionId": "={{ $execution.id }}",
+            "nodeName": "Call CRM Backend Service",
+            "status": "success",
+            "severity": "info",
+            "message": "={{ 'Lead qualified event ' + $('Extract Event Envelope').item.json.leadId + ' forwarded to CRM backend (placeholder endpoint \u2014 CRM_BACKEND_URL pending)' }}",
+            "errorDetails": {}
+          }
+        }
+      }
+    },
+    {
+      "id": "3a7f695b-857a-4e2a-a0d3-b8ba5ec19295",
+      "name": "Sticky Note 45703828",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -50,
+        -50
+      ],
+      "parameters": {
+        "content": "## CRM - Lead Intake (SKELETON \u2014 NOT PRODUCTION READY)\n\n**Status: orchestration skeleton only. Do not activate.**\n\nTrigger contract expected from Lead Intelligence Engine: eventName (\"lead.qualified\"), timestamp, leadId. No business/CRM fields are read, asserted, or hardcoded here \u2014 the full incoming payload is passed through as opaque JSON.\n\n**Blocking TODOs before this can go live:**\n1. CRM_BACKEND_URL \u2014 endpoint + request contract, owned by Database Architect / CRM Engine. Currently a placeholder; do not fill in without their spec.\n2. Field mapping / data model for the CRM backend call \u2014 not defined by this project. This workflow forwards the raw event opaquely until that spec exists.\n3. Error Workflow setting on this workflow should point to \"Shared - Error Handler\" (qNBar1hj0obiccij) once activated.\n4. Depends transitively on LOG_SERVICE_URL being live (see Shared - Log Execution Event) \u2014 Phase 2 gate per IVN Core Architect.\n\nNo business logic, no field names, no schema decisions are made in this workflow. Automation coordinates only.",
+        "color": 3,
+        "width": 300,
+        "height": 200
+      }
+    }
+  ],
+  "connections": {
+    "On Lead Qualified Event": {
+      "main": [
+        [
+          {
+            "node": "Extract Event Envelope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Event Envelope": {
+      "main": [
+        [
+          {
+            "node": "Call CRM Backend Service [TODO: CRM_BACKEND_URL pending Database Architect spec]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call CRM Backend Service [TODO: CRM_BACKEND_URL pending Database Architect spec]": {
+      "main": [
+        [
+          {
+            "node": "Log Execution Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

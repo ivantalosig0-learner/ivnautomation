@@ -1,0 +1,204 @@
+{
+  "id": "wWXvkXPQc5ZzC6iX",
+  "name": "Shared - Log Execution Event",
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "nodes": [
+    {
+      "id": "49818d7b-5f21-4f99-858f-6827a8bd78fc",
+      "name": "On Log Event Received",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "engine",
+              "type": "string"
+            },
+            {
+              "name": "workflowName",
+              "type": "string"
+            },
+            {
+              "name": "workflowId",
+              "type": "string"
+            },
+            {
+              "name": "executionId",
+              "type": "string"
+            },
+            {
+              "name": "nodeName",
+              "type": "string"
+            },
+            {
+              "name": "status",
+              "type": "string"
+            },
+            {
+              "name": "severity",
+              "type": "string"
+            },
+            {
+              "name": "message",
+              "type": "string"
+            },
+            {
+              "name": "errorDetails",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "4198bb7e-d8ae-48d5-8e34-adc7e2dd00b2",
+      "name": "Normalize Log Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f-engine",
+              "name": "engine",
+              "value": "={{ $json.engine || \"Unknown\" }}",
+              "type": "string"
+            },
+            {
+              "id": "f-workflowName",
+              "name": "workflowName",
+              "value": "={{ $json.workflowName || $workflow.name }}",
+              "type": "string"
+            },
+            {
+              "id": "f-workflowId",
+              "name": "workflowId",
+              "value": "={{ $json.workflowId || $workflow.id }}",
+              "type": "string"
+            },
+            {
+              "id": "f-executionId",
+              "name": "executionId",
+              "value": "={{ $json.executionId || $execution.id }}",
+              "type": "string"
+            },
+            {
+              "id": "f-nodeName",
+              "name": "nodeName",
+              "value": "={{ $json.nodeName || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "f-status",
+              "name": "status",
+              "value": "={{ $json.status || \"unknown\" }}",
+              "type": "string"
+            },
+            {
+              "id": "f-severity",
+              "name": "severity",
+              "value": "={{ $json.severity || \"info\" }}",
+              "type": "string"
+            },
+            {
+              "id": "f-message",
+              "name": "message",
+              "value": "={{ $json.message || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "f-errorDetails",
+              "name": "errorDetails",
+              "value": "={{ $json.errorDetails || {} }}",
+              "type": "object"
+            },
+            {
+              "id": "f-timestamp",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "c07461d8-a192-4e3a-9d36-f66f1b74c89e",
+      "name": "Send Log Event to Logging Service",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.LOG_SERVICE_URL }}/events",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "1eb09d11-e248-4179-8899-a9dd31e68f59",
+      "name": "Sticky Note ce247a9f",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -50,
+        -50
+      ],
+      "parameters": {
+        "content": "## Shared - Log Execution Event\n\nCalled by every workflow (via Execute Sub-workflow) to record execution status or errors.\n\n**Contract (input JSON):**\n- engine: CRM | Automation | Outreach | Reporting | Analytics | Shared\n- workflowName, workflowId, executionId\n- nodeName (optional, for errors)\n- status: started | success | error | retrying\n- severity: info | warning | error | critical\n- message: human-readable summary\n- errorDetails: object (optional)\n\n**Requires env var:** LOG_SERVICE_URL \u2014 base URL of the backend logging endpoint (owned by Backend/DevOps, not this project).\n\nThis workflow does not decide anything \u2014 it only forwards a structured event. No business logic.",
+        "color": 5,
+        "width": 300,
+        "height": 200
+      }
+    }
+  ],
+  "connections": {
+    "On Log Event Received": {
+      "main": [
+        [
+          {
+            "node": "Normalize Log Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Log Payload": {
+      "main": [
+        [
+          {
+            "node": "Send Log Event to Logging Service",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

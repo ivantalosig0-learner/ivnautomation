@@ -1,0 +1,70 @@
+name: ivnautomation
+
+networks:
+  ivnautomation:
+    name: ivnautomation
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: ivnautomation-postgres
+    restart: unless-stopped
+    networks:
+      ivnautomation:
+        aliases: [postgres]
+    ports:
+      - "127.0.0.1:5432:5432"   # loopback only — for SSH-tunneled MCP access
+    environment:
+      TZ: Australia/Sydney
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_DB: ivnautomation
+      POSTGRES_USER: ivan
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - /opt/ivnautomation/volumes/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ivan -d ivnautomation"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: ivnautomation-n8n
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      ivnautomation:
+        aliases: [n8n]
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      N8N_HOST: n8n.kqualitycleaningservices.com.au
+      N8N_PORT: 5678
+      N8N_PROTOCOL: https
+      N8N_SECURE_COOKIE: "true"
+      WEBHOOK_URL: https://n8n.kqualitycleaningservices.com.au/
+      GENERIC_TIMEZONE: Australia/Sydney
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: ivnautomation-postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ivnautomation
+      DB_POSTGRESDB_USER: ivan
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - /opt/ivnautomation/volumes/n8n:/home/node/.n8n
+
+  browserless:
+    image: ghcr.io/browserless/chromium:latest
+    container_name: ivnautomation-browserless
+    restart: unless-stopped
+    networks:
+      ivnautomation:
+        aliases: [browserless]
+    environment:
+      TOKEN: ${BROWSERLESS_TOKEN}
+      CONCURRENT: "2"
+      TIMEOUT: "30000"

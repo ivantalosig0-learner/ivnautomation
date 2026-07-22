@@ -1,0 +1,252 @@
+{
+  "id": "EU1qUQFqRODUBJCk",
+  "name": "Website Chat Assistant",
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "nodes": [
+    {
+      "id": "c4089bd5-4304-4d93-af7b-f1ec66e750f4",
+      "name": "Website Chat Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        96
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "website-chat-h7q3m2",
+        "authentication": "none",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "d8b9d5a4-2438-4e84-8f2f-a0f0b94c432f"
+    },
+    {
+      "id": "94e7dbfb-84d3-4b96-afb1-c66cded647d9",
+      "name": "Build Chat Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        96
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const body = $input.first().json.body || {};\nconst rawMessage = String(body.message || '').trim().slice(0, 600);\nconst rawHistory = Array.isArray(body.history) ? body.history : [];\n\nconst history = rawHistory\n  .filter((m) => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant'))\n  .slice(-6)\n  .map((m) => ({ role: m.role, content: String(m.content).slice(0, 600) }));\n\nconst systemPrompt = \"You are the friendly virtual assistant for KQuality Cleaning Services, a commercial cleaning company based in Adelaide, South Australia. Services: office, commercial, medical, gym, school, retail, deep cleaning, end-of-lease, and Airbnb turnover cleaning. Hours: Mon-Fri 7am-6pm, Sat 8am-2pm, Sun emergency only (call 0439 489 630 for urgent jobs). Answer the visitor's question directly and specifically -- never repeat a generic greeting if they've already said something. Keep replies to 2-4 short sentences, warm, professional, Australian English. For firm pricing always point them to the 'Request a Quote' button so the team can tailor it -- never invent a specific dollar figure. Do not use <think> tags or show any reasoning -- respond with only the final answer.\";\n\nconst messages = [\n  { role: 'system', content: systemPrompt },\n  ...history,\n  { role: 'user', content: rawMessage || 'Hello' },\n];\n\nreturn [{ json: { messages, sessionId: String(body.sessionId || '') } }];"
+      }
+    },
+    {
+      "id": "b3621fba-ff20-418b-9887-0c5f3ebf1cd5",
+      "name": "Call Qwen Model",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        448,
+        96
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.18.0.1:8080/v1/chat/completions",
+        "authentication": "none",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"messages\": $json.messages, \"temperature\": 0.6, \"max_tokens\": 180, \"stream\": false } }}",
+        "options": {
+          "timeout": 13000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": false
+    },
+    {
+      "id": "cd197a23-7e86-4852-8885-b0e749589180",
+      "name": "Model Responded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        96
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.choices ? $json.choices.length : 0 }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              },
+              "rightValue": 0
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "38bc7fdb-d5f3-401f-adaa-f586e62640ac",
+      "name": "Extract Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const item = $input.first().json;\nlet text = String((item.choices && item.choices[0] && item.choices[0].message && item.choices[0].message.content) || '').trim();\ntext = text.replace(/<think>[\\s\\S]*?<\\/think>/gi, '').trim();\nif (!text) {\n  text = \"Thanks for your question -- could you tell me a bit more, or use the Request a Quote button and our team will follow up directly?\";\n}\nreturn [{ json: { reply: text, mode: 'ai' } }];"
+      }
+    },
+    {
+      "id": "73c543b8-bec9-4ca5-b346-4864164f145a",
+      "name": "Respond AI",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "05c15ad4-58ab-4f70-9ae4-57cacb3c452b",
+      "name": "Fallback Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        192
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "return [{ json: { reply: \"Our assistant is handling a few requests right now. Leave your name and best contact (phone or email) here and our team will follow up shortly, or tap 'Request a Quote' above for the fastest response.\", mode: 'fallback' } }];"
+      }
+    },
+    {
+      "id": "e7e2e640-e70f-4411-97a4-78474559e6dd",
+      "name": "Respond Fallback",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1120,
+        192
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Website Chat Request": {
+      "main": [
+        [
+          {
+            "node": "Build Chat Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Chat Prompt": {
+      "main": [
+        [
+          {
+            "node": "Call Qwen Model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Qwen Model": {
+      "main": [
+        [
+          {
+            "node": "Model Responded?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Model Responded?": {
+      "main": [
+        [
+          {
+            "node": "Extract Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallback Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Reply": {
+      "main": [
+        [
+          {
+            "node": "Respond AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fallback Reply": {
+      "main": [
+        [
+          {
+            "node": "Respond Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

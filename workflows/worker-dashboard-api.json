@@ -1,0 +1,2416 @@
+{
+  "id": "1pYwAsuAzLw36IKK",
+  "name": "Worker Dashboard API",
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "39Vcvm1lkmQZXFpS",
+    "timezone": "Australia/Adelaide",
+    "executionTimeout": 60,
+    "saveDataSuccessExecution": "none"
+  },
+  "nodes": [
+    {
+      "id": "07ab5708-c29a-4b4b-be03-dc658177bcdc",
+      "name": "Worker API Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        400
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "worker-api-x9q2k4m7",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "c63dbee5-09b0-4d67-9770-17d91dae5ede"
+    },
+    {
+      "id": "3540e1d6-0239-4b98-a398-e19be7046e62",
+      "name": "Parse Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        400
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const b = $json.body || {};\nconst action = String(b.action || '');\nreturn { json: { action, name: String(b.name || '').slice(0, 100), password: String(b.password || '').slice(0, 200), token: String(b.token || '').slice(0, 128), candidate_id: Math.floor(Number(b.candidate_id) || 0), subject: String(b.subject || '').slice(0, 300), body_text: String(b.body || '').slice(0, 6000), stage: String(b.stage || '').slice(0, 30), notes: String(b.notes || '').slice(0, 4000), next_action: String(b.next_action || '').slice(0, 300), notification_id: Math.floor(Number(b.notification_id) || 0), reply_to_id: Math.floor(Number(b.reply_to_id) || 0) } };"
+      }
+    },
+    {
+      "id": "5591f7fc-1931-4053-acb4-ac80b59465b5",
+      "name": "Route Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        440,
+        400
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputKey": "auth",
+              "conditions": {
+                "options": {
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "auth"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "leads",
+              "conditions": {
+                "options": {
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "leads"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "draft",
+              "conditions": {
+                "options": {
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "draft"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "save",
+              "conditions": {
+                "options": {
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "save"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "send",
+              "conditions": {
+                "options": {
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "send"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "crm_add",
+              "conditions": {
+                "options": {
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "crm_add"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "crm_list",
+              "conditions": {
+                "options": {
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "crm_list"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "crm_stage",
+              "conditions": {
+                "options": {
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "crm_stage"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "crm_timeline",
+              "conditions": {
+                "options": {
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "crm_timeline"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "crm_notes",
+              "conditions": {
+                "options": {
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "crm_notes"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "crm_next_action",
+              "conditions": {
+                "options": {
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "crm_next_action"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "system_status",
+              "conditions": {
+                "options": {
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "system_status"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "notifications_list",
+              "conditions": {
+                "options": {
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "notifications_list"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "notifications_mark_read",
+              "conditions": {
+                "options": {
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "notifications_mark_read"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "stats",
+              "conditions": {
+                "options": {
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "stats"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "crm_replies",
+              "conditions": {
+                "options": {
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "crm_replies"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "crm_reply_send",
+              "conditions": {
+                "options": {
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "crm_reply_send"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "website_quotes_list",
+              "conditions": {
+                "options": {
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "website_quotes_list"
+                  }
+                ]
+              }
+            }
+          ],
+          "options": {
+            "fallbackOutput": "extra",
+            "renameFallbackOutput": "fail"
+          }
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "fail"
+        }
+      }
+    },
+    {
+      "id": "f317577e-a9e8-421f-b49c-ab823df42963",
+      "name": "Respond Auth",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        100
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify($json.response) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "db1bb335-ddc4-4671-bd0c-d7e9ae288f49",
+      "name": "Fetch Leads For App",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        260
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT c.id, c.business_name, c.address, c.suburb, c.phone, c.email, c.website, c.stage, c.qualification_score, c.shortlist_rank, s.name AS segment, left(c.enrichment->'profile'->>'description', 300) AS description, c.enrichment->'profile'->'people' AS people, c.raw->>'rating' AS rating, c.raw->>'userRatingCount' AS rating_count, d.status AS draft_status FROM leads.candidates c LEFT JOIN leads.segments s ON s.id = c.segment_id LEFT JOIN leads.outreach_drafts d ON d.candidate_id = c.id WHERE c.duplicate_of IS NULL AND NOT EXISTS (SELECT 1 FROM leads.crm_records r WHERE r.candidate_id = c.id) ORDER BY c.shortlist_rank NULLS LAST, c.id",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "0fc513db-bb64-4a77-b240-86530b72e1dd",
+      "name": "Wrap Leads JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        260
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const AU = /,\\s*Australia\\s*$/i;\nconst ST = /\\s+(SA|NSW|VIC|QLD|WA|NT|TAS|ACT)\\s+\\d{4}.*$/i;\nconst rows = $input.all().map(i => i.json);\nrows.forEach(r => { if (!r.suburb) { const a = (r.address || '').replace(AU, ''); const p = a.split(','); r.suburb = p.length < 2 ? '' : p[p.length - 1].replace(ST, '').trim(); } });\nreturn [{ json: { out: JSON.stringify({ ok: true, leads: rows }) } }];"
+      }
+    },
+    {
+      "id": "346c91f8-ba28-421a-b718-3520342e7cdf",
+      "name": "Respond Leads",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1140,
+        260
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.out }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "c02d6736-fb4f-4ca5-8a5f-a54595e3ea9c",
+      "name": "Fetch Draft",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        420
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COALESCE(json_agg(t), '[]'::json)::text AS j FROM (SELECT candidate_id, subject, body, status, sent_at, sent_to, approved_by, sent_by FROM leads.outreach_drafts WHERE candidate_id = $1::bigint) t",
+        "options": {
+          "queryReplacement": "={{ [$json.candidate_id] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "f2ec2a6b-53a2-4eca-8965-145c9e4a5c3b",
+      "name": "Wrap Draft JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        420
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const arr = JSON.parse($json.j || '[]');\nreturn { json: { out: JSON.stringify({ ok: true, draft: arr[0] || null }) } };"
+      }
+    },
+    {
+      "id": "b2137bc4-5136-4b33-9d07-f3506f9c5b63",
+      "name": "Respond Draft",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1140,
+        420
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.out }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "0aed7433-eb29-419c-b275-7f1007219503",
+      "name": "Save Draft Edit",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        580
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH u AS (UPDATE leads.outreach_drafts SET subject = $2, body = $3, updated_at = now(), approved_by = $4, status = CASE WHEN status = 'sent' THEN 'sent' ELSE 'approved' END WHERE candidate_id = $1::bigint AND length($2) > 0 AND length($3) > 0 RETURNING status) SELECT COALESCE((SELECT status FROM u), 'missing') AS status",
+        "options": {
+          "queryReplacement": "={{ [$json.candidate_id, $json.subject, $json.body_text, $json.auth_user] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "64fe9c96-44f0-45d4-a9a6-4a1610a094ae",
+      "name": "Wrap Save JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        580
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "return { json: { out: JSON.stringify({ ok: $json.status !== 'missing', status: $json.status }) } };"
+      }
+    },
+    {
+      "id": "7f73d1ca-c70b-4d0e-8bdd-b4c57b35777d",
+      "name": "Respond Save",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1140,
+        580
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.out }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "89f30a2f-e3cc-49c5-8eb8-4ac638f9c5ff",
+      "name": "Save And Load Send Target",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        760
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH u AS (UPDATE leads.outreach_drafts SET subject = $2, body = $3, updated_at = now() WHERE candidate_id = $1::bigint AND status <> 'sent' AND length($2) > 0 AND length($3) > 0 RETURNING candidate_id, subject, body) SELECT u.subject, u.body AS body_text, c.email, c.business_name FROM u JOIN leads.candidates c ON c.id = u.candidate_id",
+        "options": {
+          "queryReplacement": "={{ [$json.candidate_id, $json.subject, $json.body_text] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "d9d92c0b-c7e6-422e-a91b-a72998c15780",
+      "name": "Can Send?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        920,
+        760
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.email }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "04d71edd-32fd-4d3a-9ece-62020f0ea319",
+      "name": "Send Outreach Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1140,
+        700
+      ],
+      "parameters": {
+        "operation": "send",
+        "fromEmail": "KQuality Cleaning Services <kqualitycleaningservices@gmail.com>",
+        "toEmail": "={{ $json.email }}",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "text",
+        "text": "={{ $json.body_text }}",
+        "options": {
+          "appendAttribution": false,
+          "bccEmail": "kqualitycleaningservices+outreach@gmail.com"
+        }
+      },
+      "credentials": {
+        "smtp": {
+          "id": "91G0HwEy1X4Eu1Qm",
+          "name": "SMTP account"
+        }
+      },
+      "webhookId": "a90d1cd8-b420-47e3-a8da-caeec4508a02",
+      "disabled": false
+    },
+    {
+      "id": "7b0cebed-51b2-4043-a4de-8dc79e2d58fc",
+      "name": "Mark Sent",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1360,
+        700
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH d AS (UPDATE leads.outreach_drafts SET status = 'sent', sent_at = now(), sent_to = $2, sent_by = $3, message_id = $4 WHERE candidate_id = $1::bigint RETURNING candidate_id) INSERT INTO leads.crm_records (candidate_id, owner, added_by, source, stage, last_contact_at) SELECT candidate_id, $3, $3, 'sent', 'contacted', now() FROM d ON CONFLICT (candidate_id) DO UPDATE SET last_contact_at = now(), stage = CASE WHEN leads.crm_records.stage = 'new' THEN 'contacted' ELSE leads.crm_records.stage END, updated_at = now()",
+        "options": {
+          "queryReplacement": "={{ [$('Build Route').item.json.candidate_id, $('Save And Load Send Target').item.json.email, $('Build Route').item.json.auth_user, $('Send Outreach Email').item.json.messageId || null] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "8722621f-e8cc-4d99-b947-d69aa758d827",
+      "name": "Respond Sent",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1580,
+        700
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify({ ok: true, sent: true, to: $(\"Save And Load Send Target\").item.json.email }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "39661c29-7d5c-4826-9eca-21755aaa3c83",
+      "name": "Respond Cannot Send",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1140,
+        860
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "{\"ok\":false,\"error\":\"lead has no email, draft is empty, or it was already sent\"}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "4fb8f6e3-31ac-42de-a5bf-b920a1bb0276",
+      "name": "Respond Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        960
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify($json.response) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "19733f45-db3f-4aa9-81a0-84eaac408e81",
+      "name": "Sticky Note e81df737",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -50,
+        350
+      ],
+      "parameters": {
+        "content": "## Worker Dashboard API v1\n\nPOST-only JSON API for the worker dashboard. Actions: login (Michelle), leads (list w/ profile + draft status), draft (fetch one), save (edit subject/body, marks approved), send (SMTP send + mark sent).\n\nAuth: session token issued on login, required on every other action. Send requires the KQuality Gmail SMTP credential to be configured in n8n (Gmail app password). If SMTP fails, the draft is NOT marked sent.\n\nRead/write scope: leads.outreach_drafts only (plus read of candidates/segments).",
+        "color": 5,
+        "width": 520,
+        "height": 200
+      }
+    },
+    {
+      "id": "5f2dfa9f-f4a8-4fa6-9888-34f863d91461",
+      "name": "Authenticate",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        300,
+        620
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH login_attempt AS (SELECT u.name FROM leads.dashboard_users u WHERE $1 = 'login' AND u.name = $2 AND u.password_hash = encode(digest($3 || u.salt, 'sha256'), 'hex')), new_session AS (INSERT INTO leads.dashboard_sessions (token, user_name, expires_at) SELECT encode(digest(gen_random_uuid()::text || clock_timestamp()::text, 'sha256'), 'hex'), name, now() + interval '7 days' FROM login_attempt RETURNING token, user_name), valid_session AS (SELECT s.user_name FROM leads.dashboard_sessions s WHERE $1 <> 'login' AND s.token = $4 AND s.expires_at > now()) SELECT COALESCE((SELECT user_name FROM new_session), (SELECT user_name FROM valid_session)) AS auth_user, (SELECT token FROM new_session) AS new_token",
+        "options": {
+          "queryReplacement": "={{ [$json.action, $json.name, $json.password, $json.token] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "ca12d8b5-b637-4a21-a374-97cbea46f363",
+      "name": "Build Route",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        620
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const p = $('Parse Request').item.json;\nconst a = $json;\nlet route = 'fail';\nlet response = { ok: false, error: 'unauthorized' };\nif (p.action === 'login') {\n  route = 'auth';\n  response = a.new_token ? { ok: true, token: a.new_token } : { ok: false, error: 'invalid name or password' };\n} else if (a.auth_user) {\n  if (['leads', 'draft', 'save', 'send', 'crm_add', 'crm_list', 'crm_stage', 'crm_timeline', 'crm_notes', 'crm_next_action', 'system_status', 'notifications_list', 'notifications_mark_read', 'stats', 'crm_replies', 'crm_reply_send', 'website_quotes_list'].indexOf(p.action) >= 0) { route = p.action; } else { response = { ok: false, error: 'unknown action' }; }\n}\nreturn { json: { route, response, auth_user: a.auth_user || null, candidate_id: p.candidate_id, subject: p.subject, body_text: p.body_text, stage: p.stage, notes: p.notes, next_action: p.next_action, notification_id: p.notification_id, reply_to_id: p.reply_to_id } };"
+      }
+    },
+    {
+      "id": "6b7d5b4a-6bd2-4187-8b63-d83da4fa5a08",
+      "name": "CRM Add",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        1100
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO leads.crm_records (candidate_id, owner, added_by, source) VALUES ($1::bigint, $2, $2, 'manual') ON CONFLICT (candidate_id) DO NOTHING RETURNING id",
+        "options": {
+          "queryReplacement": "={{ [$json.candidate_id, $json.auth_user] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "disabled": false,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "d55e594d-7351-45af-a4f3-aee55dd89bc9",
+      "name": "Wrap CRM Add",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        1100
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const added = !!($json && $json.id);\nreturn { json: { out: JSON.stringify({ ok: true, added, message: added ? 'Added to CRM' : 'Already in CRM' }) } };"
+      }
+    },
+    {
+      "id": "720edee0-fa63-47c5-ab42-f6e89ff3bc23",
+      "name": "Respond CRM Add",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1140,
+        1100
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.out }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "26172564-9c6a-49b8-aca0-fad9deda69d1",
+      "name": "CRM List",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        1260
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT r.candidate_id, r.status, r.stage, r.owner, r.last_contact_at, r.next_action, r.next_action_due, r.notes, r.notes_updated_at, r.source, r.added_by, r.added_at,\n  c.business_name, c.address, c.suburb, c.phone, c.email, c.website, c.linkedin_url, c.qualification_score, s.name AS segment,\n  d.sent_at, d.followup_count, d.last_followup_at,\n  (CASE WHEN d.status = 'sent' AND r.stage = 'contacted' AND r.status = 'active' AND d.followup_count < 3 THEN (CASE d.followup_count WHEN 0 THEN d.sent_at + interval '3 days' WHEN 1 THEN d.last_followup_at + interval '5 days' WHEN 2 THEN d.last_followup_at + interval '7 days' END) END) AS next_followup_at,\n  lr.received_at AS last_reply_at, lr.subject AS last_reply_subject, lr.snippet AS last_reply_snippet\nFROM leads.crm_records r\nJOIN leads.candidates c ON c.id = r.candidate_id\nLEFT JOIN leads.segments s ON s.id = c.segment_id\nLEFT JOIN leads.outreach_drafts d ON d.candidate_id = r.candidate_id\nLEFT JOIN LATERAL (\n  SELECT received_at, subject, left(body_text,240) AS snippet FROM leads.inbound_replies ir WHERE ir.candidate_id = r.candidate_id ORDER BY received_at DESC LIMIT 1\n) lr ON true\nORDER BY r.updated_at DESC",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "disabled": false,
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "id": "3591efb9-3d38-4b05-beb3-47160e6e3ee0",
+      "name": "Wrap CRM List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        1260
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const AU = /,\\s*Australia\\s*$/i;\nconst ST = /\\s+(SA|NSW|VIC|QLD|WA|NT|TAS|ACT)\\s+\\d{4}.*$/i;\nconst rows = $input.all().map(i => i.json).filter(r => r && r.candidate_id != null);\nrows.forEach(r => { if (!r.suburb) { const a = (r.address || '').replace(AU, ''); const p = a.split(','); r.suburb = p.length < 2 ? '' : p[p.length - 1].replace(ST, '').trim(); } });\nreturn [{ json: { out: JSON.stringify({ ok: true, records: rows }) } }];"
+      }
+    },
+    {
+      "id": "b7a1efbb-0d17-4932-802f-dfe49dd2c2b5",
+      "name": "Respond CRM List",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1140,
+        1260
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.out }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "3f61bf5c-34b5-48a8-9fc9-9e58f601f376",
+      "name": "CRM Set Stage",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        1420
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH old AS (\n  SELECT stage AS old_stage FROM leads.crm_records WHERE candidate_id = $1::bigint\n),\nu AS (\n  UPDATE leads.crm_records SET stage = $2, status = CASE WHEN $2 = 'won' THEN 'won' WHEN $2 = 'lost' THEN 'lost' ELSE status END, last_contact_at = CASE WHEN $2 IN ('replied','meeting') THEN now() ELSE last_contact_at END, updated_at = now()\n  WHERE candidate_id = $1::bigint AND $2 IN ('new','contacted','replied','meeting','quote_sent','negotiation','won','lost')\n  RETURNING stage\n),\nh AS (\n  INSERT INTO leads.crm_stage_history (candidate_id, stage, changed_by)\n  SELECT $1::bigint, u.stage, $3 FROM u, old WHERE old.old_stage IS DISTINCT FROM u.stage\n  RETURNING id\n)\nSELECT COALESCE((SELECT stage FROM u), 'invalid') AS stage",
+        "options": {
+          "queryReplacement": "={{ [$json.candidate_id, $json.stage, $json.auth_user] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "disabled": false
+    },
+    {
+      "id": "40bf9a4e-e096-430c-8956-cda36445b7e0",
+      "name": "Wrap CRM Stage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        1420
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "return { json: { out: JSON.stringify({ ok: $json.stage !== 'invalid', stage: $json.stage }) } };"
+      }
+    },
+    {
+      "id": "2c57c3a4-3da1-4915-9a2b-e15e5aa053d5",
+      "name": "Respond CRM Stage",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1140,
+        1420
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.out }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "bb081029-07dd-48ae-beaf-c5e6ace33dd2",
+      "name": "CRM Timeline",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        1580
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT candidate_id, kind, subject, snippet, ts, counterparty FROM (\n  SELECT c.id AS candidate_id, 'discovered' AS kind, NULL::text AS subject, NULL::text AS snippet, c.discovered_at AS ts, NULL::text AS counterparty FROM leads.candidates c WHERE c.id = $1::bigint\n  UNION ALL\n  SELECT c.id, 'qualified', NULL, ('Score ' || c.qualification_score::text), c.qualified_at, NULL FROM leads.candidates c WHERE c.id = $1::bigint AND c.qualified_at IS NOT NULL\n  UNION ALL\n  SELECT candidate_id, 'sent', subject, left(body,300), sent_at, sent_to FROM leads.outreach_drafts WHERE candidate_id = $1::bigint AND status = 'sent'\n  UNION ALL\n  SELECT candidate_id, 'followup', subject, left(body,300), sent_at, sent_to FROM leads.outreach_followups WHERE candidate_id = $1::bigint\n  UNION ALL\n  SELECT candidate_id, 'reply', subject, left(body_text,300), received_at, sender FROM leads.inbound_replies WHERE candidate_id = $1::bigint\n  UNION ALL\n  SELECT candidate_id, 'stage_change', NULL, stage, changed_at, changed_by FROM leads.crm_stage_history WHERE candidate_id = $1::bigint\n  UNION ALL\n  SELECT r.candidate_id, 'notes', NULL, left(r.notes,300), r.notes_updated_at, r.added_by FROM leads.crm_records r WHERE r.candidate_id = $1::bigint AND r.notes_updated_at IS NOT NULL AND length(r.notes) > 0\n) t ORDER BY ts ASC",
+        "options": {
+          "queryReplacement": "={{ [$json.candidate_id] }}"
+        }
+      },
+      "disabled": false,
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "77a4c3a6-ece3-445a-ba6d-45818ac3ac17",
+      "name": "Wrap CRM Timeline JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        1580
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const rows = $input.all().map(i => i.json).filter(r => r && r.candidate_id != null);\nreturn [{ json: { out: JSON.stringify({ ok: true, timeline: rows }) } }];"
+      }
+    },
+    {
+      "id": "e4444a82-f800-467c-8f3c-646ab76341ae",
+      "name": "Respond CRM Timeline",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1140,
+        1580
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.out }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "3e68160e-99ec-4c45-909e-0c47e55f027e",
+      "name": "CRM Notes",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        1740
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH u AS (\n  UPDATE leads.crm_records SET notes = $2, notes_updated_at = now(), updated_at = now()\n  WHERE candidate_id = $1::bigint\n  RETURNING notes_updated_at\n)\nSELECT (SELECT notes_updated_at FROM u) AS notes_updated_at, (EXISTS(SELECT 1 FROM u)) AS updated",
+        "options": {
+          "queryReplacement": "={{ [$json.candidate_id, $json.notes] }}"
+        }
+      },
+      "disabled": false,
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "ee982979-160a-4532-b8ec-66ea37aa68d8",
+      "name": "Wrap CRM Notes JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        1740
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "return { json: { out: JSON.stringify({ ok: !!$json.updated, notes_updated_at: $json.notes_updated_at }) } };"
+      }
+    },
+    {
+      "id": "8093fac5-b529-48dc-b949-6d23a0251549",
+      "name": "Respond CRM Notes",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1140,
+        1740
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.out }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "daaa0916-f281-49f3-bf6d-79aad383087a",
+      "name": "CRM Next Action",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        1900
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH u AS (\n  UPDATE leads.crm_records SET next_action = $2, updated_at = now()\n  WHERE candidate_id = $1::bigint\n  RETURNING next_action\n)\nSELECT (SELECT next_action FROM u) AS next_action, (EXISTS(SELECT 1 FROM u)) AS updated",
+        "options": {
+          "queryReplacement": "={{ [$json.candidate_id, $json.next_action] }}"
+        }
+      },
+      "disabled": false,
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "09ac629a-0c6c-4088-8217-68f9c9d6e4f7",
+      "name": "Wrap CRM Next Action JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        1900
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "return { json: { out: JSON.stringify({ ok: !!$json.updated, next_action: $json.next_action }) } };"
+      }
+    },
+    {
+      "id": "5ec3a601-ef85-4829-af1d-1d46e62ded3c",
+      "name": "Respond CRM Next Action",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1140,
+        1900
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.out }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "b32cb746-70a2-43d7-9558-e7196a97826c",
+      "name": "System Status Query",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        2060
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  (SELECT COALESCE(json_agg(x), '[]'::json) FROM (\n    SELECT w.name, w.active,\n      le.status AS last_status, le.\"startedAt\" AS last_started_at, le.\"stoppedAt\" AS last_stopped_at,\n      ls.\"stoppedAt\" AS last_success_at,\n      lf.\"stoppedAt\" AS last_failed_at\n    FROM workflow_entity w\n    LEFT JOIN LATERAL (SELECT status, \"startedAt\", \"stoppedAt\" FROM execution_entity e WHERE e.\"workflowId\" = w.id AND e.\"deletedAt\" IS NULL ORDER BY e.id DESC LIMIT 1) le ON true\n    LEFT JOIN LATERAL (SELECT \"stoppedAt\" FROM execution_entity e WHERE e.\"workflowId\" = w.id AND e.status = 'success' AND e.\"deletedAt\" IS NULL ORDER BY e.id DESC LIMIT 1) ls ON true\n    LEFT JOIN LATERAL (SELECT \"stoppedAt\" FROM execution_entity e WHERE e.\"workflowId\" = w.id AND e.status IN ('error','crashed') AND e.\"deletedAt\" IS NULL ORDER BY e.id DESC LIMIT 1) lf ON true\n    WHERE w.name = ANY($1::text[]) AND w.\"isArchived\" = false\n    ORDER BY w.name\n  ) x) AS workflows,\n  (SELECT count(*) FROM leads.inbound_replies) AS replies_total,\n  (SELECT count(*) FROM leads.inbound_replies WHERE received_at::date = now()::date) AS replies_today,\n  (SELECT count(*) FROM leads.inbound_replies WHERE candidate_id IS NULL) AS replies_unmatched,\n  (SELECT max(received_at) FROM leads.inbound_replies) AS last_reply_at,\n  (SELECT max(x) FROM (SELECT max(sent_at) AS x FROM leads.outreach_drafts WHERE status='sent' UNION ALL SELECT max(sent_at) FROM leads.outreach_followups) s) AS last_smtp_send_at",
+        "options": {
+          "queryReplacement": "={{ [['Opportunity Discovery Engine','Lead Intelligence Engine','Lead Qualification Engine','Personalized Outreach Engine','Daily Automated Outreach Engine','Outreach Follow-up Engine','Reply Detection Engine','Worker Dashboard API','Worker Lead Dashboard','Lead Gen Error Handler']] }}"
+        }
+      },
+      "disabled": false,
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "a1415875-8ddc-485c-b9e0-a17504de3ba7",
+      "name": "Wrap System Status JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        2060
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const j = $json;\nconst FIVE_MIN_MS = 5 * 60 * 1000;\nconst now = Date.now();\nfunction colorFor(row) {\n  if (!row || !row.active) return 'red';\n  if (row.last_failed_at && (!row.last_success_at || new Date(row.last_failed_at) > new Date(row.last_success_at))) return 'red';\n  if (row.last_status === 'error' || row.last_status === 'crashed') return 'yellow';\n  return 'green';\n}\nconst workflows = (j.workflows || []).map(w => ({ ...w, health: colorFor(w) }));\nconst byName = {};\nworkflows.forEach(w => { byName[w.name] = w; });\nconst imapRow = byName['Reply Detection Engine'];\nconst imapHealth = imapRow ? colorFor(imapRow) : 'red';\nconst smtpLastSend = j.last_smtp_send_at;\nconst smtpHealth = smtpLastSend ? 'green' : 'yellow';\nconst emailOps = {\n  imap: { status: imapRow && imapRow.active ? 'connected' : 'disconnected', mailbox: 'kqualitycleaningservices@gmail.com', last_check: imapRow ? imapRow.last_stopped_at : null, health: imapHealth },\n  smtp: { status: 'connected', sender_name: 'KQuality Cleaning Services', sender_email: 'kqualitycleaningservices@gmail.com', last_successful_send: smtpLastSend, health: smtpHealth },\n  reply_detection: { total: Number(j.replies_total || 0), today: Number(j.replies_today || 0), unmatched: Number(j.replies_unmatched || 0), last_reply_at: j.last_reply_at }\n};\nconst health = {\n  infrastructure: { vps: 'green', postgresql: 'green', docker: 'green', browserless: 'green', n8n: 'green', caddy: 'green' },\n  email: { smtp: smtpHealth, imap: imapHealth, gmail_filters: 'green' },\n  automation: {}\n};\nconst engineMap = { 'Opportunity Discovery Engine': 'discovery', 'Lead Intelligence Engine': 'intelligence', 'Lead Qualification Engine': 'qualification', 'Personalized Outreach Engine': 'outreach', 'Daily Automated Outreach Engine': 'daily_outreach', 'Outreach Follow-up Engine': 'followup', 'Reply Detection Engine': 'reply_detection' };\nObject.keys(engineMap).forEach(name => { const row = byName[name]; health.automation[engineMap[name]] = row ? colorFor(row) : 'red'; });\nreturn { json: { out: JSON.stringify({ ok: true, workflows, email_ops: emailOps, health }) } };"
+      }
+    },
+    {
+      "id": "254504b0-1d05-4876-9bbf-df857e43b6e4",
+      "name": "Respond System Status",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1140,
+        2060
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.out }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "5b0b2dc2-3492-4f35-a943-0e10ce97371c",
+      "name": "Notifications List Query",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        2220
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COALESCE(json_agg(row_to_json(n)), '[]'::json) AS rows FROM (\n  SELECT n.id, n.type, n.candidate_id, c.business_name, n.title, n.message, n.severity, n.created_at, n.read_at\n  FROM leads.notifications n LEFT JOIN leads.candidates c ON c.id = n.candidate_id\n  ORDER BY n.created_at DESC LIMIT 100\n) n",
+        "options": {}
+      },
+      "disabled": false,
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "b1ee6e83-b047-4093-b39f-b50e470f480b",
+      "name": "Wrap Notifications JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        2220
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const rows = $json.rows || [];\nreturn { json: { out: JSON.stringify({ ok: true, notifications: rows, unread_count: rows.filter(r => !r.read_at).length }) } };"
+      }
+    },
+    {
+      "id": "01f39c6e-37b2-4404-89ae-50dadf21c864",
+      "name": "Respond Notifications",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1140,
+        2220
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.out }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "4fef23ff-cf5d-4821-bf7f-49f3b46b8e23",
+      "name": "Mark Notifications Read",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        2380
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH u AS (\n  UPDATE leads.notifications SET read_at = now()\n  WHERE read_at IS NULL AND ($1::bigint = 0 OR id = $1::bigint)\n  RETURNING id\n) SELECT count(*) AS marked FROM u",
+        "options": {
+          "queryReplacement": "={{ [$json.notification_id] }}"
+        }
+      },
+      "disabled": false,
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "a21b5c17-a8cb-4578-8482-1779add0f8f4",
+      "name": "Wrap Mark Read JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        2380
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "return { json: { out: JSON.stringify({ ok: true, marked: Number($json.marked || 0) }) } };"
+      }
+    },
+    {
+      "id": "1194c15d-b783-4702-88f3-e7395c389875",
+      "name": "Respond Mark Read",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1140,
+        2380
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.out }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "01535d54-0545-47f0-a372-06e0d57fcf54",
+      "name": "Stats Query",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        2540
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  (SELECT count(*) FROM leads.candidates WHERE duplicate_of IS NULL) AS leads_discovered,\n  (SELECT count(*) FROM leads.candidates WHERE duplicate_of IS NULL AND enriched_at IS NOT NULL) AS leads_enriched,\n  (SELECT count(*) FROM leads.candidates WHERE duplicate_of IS NULL AND stage='qualified' AND qualification_score>=80) AS qualified_hot,\n  (SELECT count(*) FROM leads.candidates WHERE duplicate_of IS NULL AND stage='qualified' AND qualification_score>=55 AND qualification_score<80) AS qualified_warm,\n  (SELECT count(*) FROM leads.candidates WHERE duplicate_of IS NULL AND stage='qualified' AND (qualification_score<55 OR qualification_score IS NULL)) AS qualified_cold,\n  (SELECT count(*) FROM leads.outreach_drafts) AS drafts_generated,\n  ((SELECT count(*) FROM leads.outreach_drafts WHERE status='sent') + (SELECT count(*) FROM leads.outreach_followups)) AS emails_sent,\n  (SELECT count(*) FROM leads.inbound_replies WHERE candidate_id IS NOT NULL) AS replies_received,\n  (SELECT count(*) FROM leads.crm_records WHERE stage='contacted' AND status='active') AS active_followups,\n  (SELECT count(*) FROM leads.crm_records WHERE stage='meeting') AS meetings_booked,\n  (SELECT count(*) FROM leads.crm_records WHERE stage='won') AS won,\n  (SELECT count(*) FROM leads.crm_records) AS crm_total,\n  (SELECT count(*) FROM leads.outreach_drafts WHERE sent_by='daily_auto_engine' AND sent_at::date = now()::date) AS daily_auto_sent_today,\n  (SELECT count(*) FROM leads.outreach_drafts WHERE sent_by='daily_auto_engine') AS daily_auto_sent_total",
+        "options": {}
+      },
+      "disabled": false,
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "633dd2fb-1f85-48c0-b6c1-6d92acef5e04",
+      "name": "Wrap Stats JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        2540
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const j = $json;\nconst won = Number(j.won || 0);\nconst total = Number(j.crm_total || 0);\nconst conversion = total > 0 ? ((won / total) * 100).toFixed(1) + '%' : 'N/A';\nreturn { json: { out: JSON.stringify({ ok: true, stats: { leads_discovered: Number(j.leads_discovered||0), leads_enriched: Number(j.leads_enriched||0), qualified_hot: Number(j.qualified_hot||0), qualified_warm: Number(j.qualified_warm||0), qualified_cold: Number(j.qualified_cold||0), drafts_generated: Number(j.drafts_generated||0), emails_sent: Number(j.emails_sent||0), replies_received: Number(j.replies_received||0), active_followups: Number(j.active_followups||0), meetings_booked: Number(j.meetings_booked||0), won, conversion_rate: conversion, daily_auto_sent_today: Number(j.daily_auto_sent_today||0), daily_auto_sent_total: Number(j.daily_auto_sent_total||0) } }) } };"
+      }
+    },
+    {
+      "id": "38074d11-3908-4e5b-b539-b6326a3a58e0",
+      "name": "Respond Stats",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1140,
+        2540
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.out }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "d77438ee-0d74-451c-8173-dc5139ac9d6f",
+      "name": "CRM Replies",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        900,
+        2600
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COALESCE(json_agg(row_to_json(t) ORDER BY t.ts ASC), '[]'::json) AS rows FROM (\n  SELECT r.id, 'inbound'::text AS direction, r.subject, r.body_text, r.sender AS counterparty, r.received_at AS ts, r.message_id\n  FROM leads.inbound_replies r WHERE r.candidate_id = $1::bigint\n  UNION ALL\n  SELECT d.id, 'outbound', d.subject, d.body, d.sent_to, d.sent_at, d.message_id\n  FROM leads.outreach_drafts d WHERE d.candidate_id = $1::bigint AND d.status = 'sent'\n  UNION ALL\n  SELECT f.id, 'outbound', f.subject, f.body, f.sent_to, f.sent_at, f.message_id\n  FROM leads.outreach_followups f WHERE f.candidate_id = $1::bigint\n) t",
+        "options": {
+          "queryReplacement": "={{ [$json.candidate_id] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "57881671-127f-4747-8dfc-ce2c0471911c",
+      "name": "Wrap CRM Replies JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        2600
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const rows = $json.rows || [];\nconst inbound = rows.filter(r => r.direction === 'inbound');\nreturn { json: { out: JSON.stringify({ ok: true, messages: rows, reply_count: inbound.length, last_reply_at: inbound.length ? inbound[inbound.length - 1].ts : null }) } };"
+      }
+    },
+    {
+      "id": "77d3249c-bdd0-47b3-a189-bf547bc6dee1",
+      "name": "Respond CRM Replies",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1340,
+        2600
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.out }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "5fbc363c-5a3a-4ed2-a8ef-24bbd688d091",
+      "name": "Load Reply Target",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        900,
+        2800
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT c.id AS candidate_id, c.business_name,\n  COALESCE(NULLIF(r.sender, ''), c.email) AS to_email,\n  r.message_id AS in_reply_to,\n  r.subject AS reply_subject\nFROM leads.candidates c\nLEFT JOIN LATERAL (\n  SELECT sender, message_id, subject FROM leads.inbound_replies\n  WHERE candidate_id = c.id AND ($2::bigint = 0 OR id = $2::bigint)\n  ORDER BY received_at DESC LIMIT 1\n) r ON true\nWHERE c.id = $1::bigint",
+        "options": {
+          "queryReplacement": "={{ [$json.candidate_id, $json.reply_to_id] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "947564a8-31d4-4d98-8021-8d334a5c8545",
+      "name": "Can Reply?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        2800
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.to_email }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "leftValue": "={{ $('Build Route').item.json.body_text }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "d8e16d08-1167-4a28-b348-44b0c03021b5",
+      "name": "Send CRM Reply",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1340,
+        2760
+      ],
+      "parameters": {
+        "operation": "send",
+        "fromEmail": "KQuality Cleaning Services <kqualitycleaningservices@gmail.com>",
+        "toEmail": "={{ $json.to_email }}",
+        "subject": "={{ $('Build Route').item.json.subject || ('Re: ' + ($json.reply_subject || $json.business_name)) }}",
+        "emailFormat": "text",
+        "text": "={{ $('Build Route').item.json.body_text }}",
+        "options": {
+          "appendAttribution": false,
+          "bccEmail": "kqualitycleaningservices+outreach@gmail.com"
+        }
+      },
+      "credentials": {
+        "smtp": {
+          "id": "91G0HwEy1X4Eu1Qm",
+          "name": "SMTP account"
+        }
+      },
+      "webhookId": "97982024-2497-4351-ab42-609831596b50"
+    },
+    {
+      "id": "3ea67fd5-51f8-4fae-99c0-5ac219135319",
+      "name": "Record CRM Reply",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1560,
+        2760
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH f AS (\n  INSERT INTO leads.outreach_followups (candidate_id, followup_no, subject, body, sent_to, message_id)\n  SELECT $1::bigint, COALESCE((SELECT max(followup_no) FROM leads.outreach_followups WHERE candidate_id = $1::bigint), 0) + 1, $2, $3, $4, $5\n  RETURNING candidate_id\n)\nUPDATE leads.crm_records SET last_contact_at = now(), updated_at = now(),\n  stage = CASE WHEN stage IN ('new','contacted') THEN 'replied' ELSE stage END\nWHERE candidate_id IN (SELECT candidate_id FROM f)",
+        "options": {
+          "queryReplacement": "={{ [$('Build Route').item.json.candidate_id, $('Send CRM Reply').item.json.subject || $('Build Route').item.json.subject, $('Build Route').item.json.body_text, $('Load Reply Target').item.json.to_email, $('Send CRM Reply').item.json.messageId || null] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "006094af-2f36-4721-bb14-2b4256439160",
+      "name": "Respond CRM Reply",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1780,
+        2760
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify({ ok: true, sent: true, to: $('Load Reply Target').item.json.to_email }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "1e05f3fa-a360-43e6-9d13-9d69ee61749e",
+      "name": "Respond Cannot Reply",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1340,
+        2900
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify({ ok: false, error: 'No destination email on record, or the reply message was empty.' }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "e3a2ddc8-78ea-41d9-bdca-2c23fb00c9e8",
+      "name": "Website Quotes List Query",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        2340
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COALESCE(json_agg(row_to_json(q)), '[]'::json) AS rows FROM (\n  SELECT id, name, email, phone, company, service_type, property_type, bedrooms, bathrooms, message, estimated_quote, preferred_date, status, source, created_at\n  FROM leads.website_quotes\n  ORDER BY created_at DESC LIMIT 100\n) q",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "3677ae86-1654-4fb6-972e-f672563df768",
+      "name": "Wrap Website Quotes JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        2340
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const rows = $json.rows || [];\nreturn { json: { out: JSON.stringify({ ok: true, quotes: rows, pending_count: rows.filter(r => r.status === 'pending_review').length }) } };"
+      }
+    },
+    {
+      "id": "eb268d30-68c9-43b3-b6be-9ed074486c7c",
+      "name": "Respond Website Quotes",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1140,
+        2340
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.out }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Worker API Request": {
+      "main": [
+        [
+          {
+            "node": "Parse Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Action": {
+      "main": [
+        [
+          {
+            "node": "Respond Auth",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Leads For App",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Draft",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save Draft Edit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save And Load Send Target",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "CRM Add",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "CRM List",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "CRM Set Stage",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "CRM Timeline",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "CRM Notes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "CRM Next Action",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "System Status Query",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notifications List Query",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Notifications Read",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stats Query",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "CRM Replies",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Load Reply Target",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Website Quotes List Query",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads For App": {
+      "main": [
+        [
+          {
+            "node": "Wrap Leads JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap Leads JSON": {
+      "main": [
+        [
+          {
+            "node": "Respond Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Draft": {
+      "main": [
+        [
+          {
+            "node": "Wrap Draft JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap Draft JSON": {
+      "main": [
+        [
+          {
+            "node": "Respond Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Draft Edit": {
+      "main": [
+        [
+          {
+            "node": "Wrap Save JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap Save JSON": {
+      "main": [
+        [
+          {
+            "node": "Respond Save",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save And Load Send Target": {
+      "main": [
+        [
+          {
+            "node": "Can Send?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Can Send?": {
+      "main": [
+        [
+          {
+            "node": "Send Outreach Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Cannot Send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Outreach Email": {
+      "main": [
+        [
+          {
+            "node": "Mark Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Sent": {
+      "main": [
+        [
+          {
+            "node": "Respond Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Request": {
+      "main": [
+        [
+          {
+            "node": "Authenticate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Authenticate": {
+      "main": [
+        [
+          {
+            "node": "Build Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Route": {
+      "main": [
+        [
+          {
+            "node": "Route Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM Add": {
+      "main": [
+        [
+          {
+            "node": "Wrap CRM Add",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap CRM Add": {
+      "main": [
+        [
+          {
+            "node": "Respond CRM Add",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM List": {
+      "main": [
+        [
+          {
+            "node": "Wrap CRM List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap CRM List": {
+      "main": [
+        [
+          {
+            "node": "Respond CRM List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM Set Stage": {
+      "main": [
+        [
+          {
+            "node": "Wrap CRM Stage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap CRM Stage": {
+      "main": [
+        [
+          {
+            "node": "Respond CRM Stage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM Timeline": {
+      "main": [
+        [
+          {
+            "node": "Wrap CRM Timeline JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap CRM Timeline JSON": {
+      "main": [
+        [
+          {
+            "node": "Respond CRM Timeline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM Notes": {
+      "main": [
+        [
+          {
+            "node": "Wrap CRM Notes JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap CRM Notes JSON": {
+      "main": [
+        [
+          {
+            "node": "Respond CRM Notes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM Next Action": {
+      "main": [
+        [
+          {
+            "node": "Wrap CRM Next Action JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap CRM Next Action JSON": {
+      "main": [
+        [
+          {
+            "node": "Respond CRM Next Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "System Status Query": {
+      "main": [
+        [
+          {
+            "node": "Wrap System Status JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap System Status JSON": {
+      "main": [
+        [
+          {
+            "node": "Respond System Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notifications List Query": {
+      "main": [
+        [
+          {
+            "node": "Wrap Notifications JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap Notifications JSON": {
+      "main": [
+        [
+          {
+            "node": "Respond Notifications",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Notifications Read": {
+      "main": [
+        [
+          {
+            "node": "Wrap Mark Read JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap Mark Read JSON": {
+      "main": [
+        [
+          {
+            "node": "Respond Mark Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stats Query": {
+      "main": [
+        [
+          {
+            "node": "Wrap Stats JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap Stats JSON": {
+      "main": [
+        [
+          {
+            "node": "Respond Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM Replies": {
+      "main": [
+        [
+          {
+            "node": "Wrap CRM Replies JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap CRM Replies JSON": {
+      "main": [
+        [
+          {
+            "node": "Respond CRM Replies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Reply Target": {
+      "main": [
+        [
+          {
+            "node": "Can Reply?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Can Reply?": {
+      "main": [
+        [
+          {
+            "node": "Send CRM Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Cannot Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send CRM Reply": {
+      "main": [
+        [
+          {
+            "node": "Record CRM Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record CRM Reply": {
+      "main": [
+        [
+          {
+            "node": "Respond CRM Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Website Quotes List Query": {
+      "main": [
+        [
+          {
+            "node": "Wrap Website Quotes JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wrap Website Quotes JSON": {
+      "main": [
+        [
+          {
+            "node": "Respond Website Quotes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

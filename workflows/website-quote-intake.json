@@ -1,0 +1,263 @@
+{
+  "id": "nbC6TJNH2kogzvav",
+  "name": "Website Quote Intake",
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "39Vcvm1lkmQZXFpS"
+  },
+  "nodes": [
+    {
+      "id": "755da380-41bd-4ffd-ba50-42659082ecaa",
+      "name": "Website Quote Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        96
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "website-quote-intake",
+        "authentication": "none",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "df1551c6-6e6d-4409-b5e2-2b09550b69f4"
+    },
+    {
+      "id": "c6deac2e-5894-4ecb-a439-263905a27a70",
+      "name": "Validate & Sanitize Quote",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        96
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const item = $input.first().json;\nconst body = item.body || item;\nconst lead = body.lead || body;\n\nfunction s(v, max) {\n  if (v === undefined || v === null) return null;\n  let str = String(v).trim();\n  if (max) str = str.slice(0, max);\n  return str.length ? str : null;\n}\n\nfunction cyrb53Hash(str) {\n  let h1 = 0xdeadbeef ^ str.length, h2 = 0x41c6ce57 ^ str.length;\n  for (let i = 0; i < str.length; i++) {\n    const ch = str.charCodeAt(i);\n    h1 = Math.imul(h1 ^ ch, 2654435761);\n    h2 = Math.imul(h2 ^ ch, 1597334677);\n  }\n  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);\n  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);\n  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);\n}\n\nconst name = s(lead.name, 200);\nconst email = s(lead.email, 320);\nconst phone = s(lead.phone, 40);\n\nconst errors = [];\nif (!name) errors.push('name is required');\nif (!email && !phone) errors.push('email or phone is required');\nif (!lead.cleaningType && !lead.serviceType) errors.push('service type is required');\n\nconst toInt = (v, lo, hi) => {\n  const n = Number(v);\n  if (!Number.isFinite(n)) return null;\n  return Math.max(lo, Math.min(hi, Math.round(n)));\n};\nconst toNum = (v, lo, hi) => {\n  const n = Number(v);\n  if (!Number.isFinite(n)) return null;\n  return Math.max(lo, Math.min(hi, n));\n};\n\nconst bedrooms = toInt(lead.bedrooms, 0, 20);\nconst bathrooms = toInt(lead.bathrooms, 0, 20);\nconst propertySize = toNum(lead.propertySizeSqm, 0, 100000);\nconst estimatedQuote = toNum(body.estimatedQuoteAud, 0, 1000000);\n\nlet extras = [];\nif (Array.isArray(lead.extras)) {\n  extras = lead.extras.map((e) => s(e, 100)).filter(Boolean).slice(0, 20);\n}\n\nlet preferredDate = null;\nif (lead.preferredDate) {\n  const d = new Date(lead.preferredDate);\n  if (!isNaN(d.getTime())) preferredDate = d.toISOString().slice(0, 10);\n}\n\nconst utm = body.utm || {};\nconst headers = item.headers || {};\nconst ipRaw = headers['cf-connecting-ip'] || headers['x-forwarded-for'] || '';\nconst ip = String(ipRaw).split(',')[0].trim();\nconst ipHash = ip ? cyrb53Hash(ip + '|kquality-website-quote-salt') : null;\nconst userAgent = s(headers['user-agent'], 500);\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errors,\n    name,\n    email,\n    phone,\n    company: s(lead.company, 200),\n    propertyType: s(lead.propertyType, 100),\n    bedrooms,\n    bathrooms,\n    propertySize,\n    serviceType: s(lead.cleaningType || lead.serviceType, 100),\n    extras,\n    preferredDate,\n    message: s(lead.notes || lead.message, 2000),\n    estimatedQuote,\n    source: s(body.source, 100) || 'website',\n    utmSource: s(utm.source, 200),\n    utmMedium: s(utm.medium, 200),\n    utmCampaign: s(utm.campaign, 200),\n    utmTerm: s(utm.term, 200),\n    utmContent: s(utm.content, 200),\n    ipHash,\n    userAgent,\n    raw: body\n  }\n}];"
+      }
+    },
+    {
+      "id": "13534ebd-6a1d-4513-8ffa-2c42aa5da5fb",
+      "name": "Is Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        96
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.valid }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              },
+              "rightValue": true
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "50c59ac6-562d-4ac0-8e86-03a095169b0f",
+      "name": "Store Quote Request",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "mode": "name",
+          "value": "leads"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "name",
+          "value": "website_quotes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "name": "={{ $json.name }}",
+            "email": "={{ $json.email }}",
+            "phone": "={{ $json.phone }}",
+            "company": "={{ $json.company }}",
+            "property_type": "={{ $json.propertyType }}",
+            "bedrooms": "={{ $json.bedrooms }}",
+            "bathrooms": "={{ $json.bathrooms }}",
+            "property_size": "={{ $json.propertySize }}",
+            "service_type": "={{ $json.serviceType }}",
+            "extras": "={{ JSON.stringify($json.extras) }}",
+            "preferred_date": "={{ $json.preferredDate }}",
+            "message": "={{ $json.message }}",
+            "estimated_quote": "={{ $json.estimatedQuote }}",
+            "source": "={{ $json.source }}",
+            "utm_source": "={{ $json.utmSource }}",
+            "utm_medium": "={{ $json.utmMedium }}",
+            "utm_campaign": "={{ $json.utmCampaign }}",
+            "utm_term": "={{ $json.utmTerm }}",
+            "utm_content": "={{ $json.utmContent }}",
+            "ip_hash": "={{ $json.ipHash }}",
+            "user_agent": "={{ $json.userAgent }}",
+            "raw": "={{ JSON.stringify($json.raw) }}"
+          }
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "87ac5e13-3666-46ed-9e92-4e6d02afbef7",
+      "name": "Notify Michelle",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "operation": "send",
+        "fromEmail": "KQuality Automations <kqualitycleaningservices@gmail.com>",
+        "toEmail": "kqualitycleaningservices@gmail.com",
+        "subject": "=New Website Quote Request \u2014 {{ $(\"Validate & Sanitize Quote\").item.json.name }}",
+        "emailFormat": "text",
+        "text": "=A new website quote request needs review.\\n\\nName: {{ $(\"Validate & Sanitize Quote\").item.json.name }}\\nContact: {{ $(\"Validate & Sanitize Quote\").item.json.phone }} / {{ $(\"Validate & Sanitize Quote\").item.json.email }}\\nService: {{ $(\"Validate & Sanitize Quote\").item.json.serviceType }}\\nProperty: {{ $(\"Validate & Sanitize Quote\").item.json.propertyType }}, {{ $(\"Validate & Sanitize Quote\").item.json.bedrooms }} bed / {{ $(\"Validate & Sanitize Quote\").item.json.bathrooms }} bath, {{ $(\"Validate & Sanitize Quote\").item.json.propertySize }} m2\\nPreferred date: {{ $(\"Validate & Sanitize Quote\").item.json.preferredDate }}\\nEstimated quote: ${{ $(\"Validate & Sanitize Quote\").item.json.estimatedQuote }} AUD\\nMessage: {{ $(\"Validate & Sanitize Quote\").item.json.message }}\\n\\nStatus: Pending Review \u2014 this has NOT been added to the CRM. Review it in leads.website_quotes and promote manually to start outreach.",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "credentials": {
+        "smtp": {
+          "id": "91G0HwEy1X4Eu1Qm",
+          "name": "SMTP account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput",
+      "webhookId": "ebf17c59-d9df-41b8-86da-31f8cfa45d04"
+    },
+    {
+      "id": "ffe9e383-7e22-4bac-a28c-f8a29b27a617",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"received\", \"message\": \"Thanks! Your quote request has been received and is pending review.\" } }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "2729d7bc-25e8-4479-a6b8-b76622ff7e47",
+      "name": "Respond Invalid",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        192
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"error\", \"errors\": $json.errors } }}",
+        "options": {
+          "responseCode": 400
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Website Quote Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate & Sanitize Quote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Sanitize Quote": {
+      "main": [
+        [
+          {
+            "node": "Is Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Valid?": {
+      "main": [
+        [
+          {
+            "node": "Store Quote Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Invalid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Quote Request": {
+      "main": [
+        [
+          {
+            "node": "Notify Michelle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Michelle": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

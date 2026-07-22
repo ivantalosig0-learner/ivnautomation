@@ -1,0 +1,18 @@
+services:
+  ai-gateway:
+    build: .
+    container_name: ivnautomation-ai-gateway
+    restart: unless-stopped
+    networks:
+      - ivnautomation-network
+      - ivnautomation
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+
+networks:
+  ivnautomation-network:
+    external: true
+  ivnautomation:
+    external: true

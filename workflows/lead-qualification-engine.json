@@ -1,0 +1,313 @@
+{
+  "id": "mwHCwOBO9RuyDNGs",
+  "name": "Lead Qualification Engine",
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "39Vcvm1lkmQZXFpS",
+    "timezone": "Australia/Adelaide",
+    "executionTimeout": 900,
+    "saveDataSuccessExecution": "all"
+  },
+  "nodes": [
+    {
+      "id": "1f606880-2598-45f8-86d8-eedbe98b36db",
+      "name": "Hourly Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "disabled": false
+    },
+    {
+      "id": "1e45f072-47a2-4baa-a301-608645e11737",
+      "name": "Fetch Scorable Candidates",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT c.id, c.email, c.phone, c.website, c.linkedin_url, c.stage, c.enrichment, COALESCE(s.priority_weight, 5) AS priority_weight FROM leads.candidates c LEFT JOIN leads.segments s ON s.id = c.segment_id WHERE c.duplicate_of IS NULL AND c.stage IN ('enriched','qualified','disqualified') ORDER BY c.id",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "a7c98730-a048-4bd4-8567-797dec7febbd",
+      "name": "Score Candidates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const SCORING_VERSION = 'qual_v1';\nconst W_EMAIL = 40;\nconst W_PREFERRED_EMAIL = 5;\nconst W_PHONE = 15;\nconst W_WEBSITE = 10;\nconst W_LINKEDIN = 10;\nconst W_SOCIAL = 5;\nconst W_CLEAN_ENRICHMENT = 5;\nconst QUALIFY_MIN_SCORE = 55;\nconst PREFERRED_EMAIL_RE = /^(info|contact|admin|hello|enquiries|enquiry|office|sales|reception|bookings)@/;\nconst rows = $input.all().map(i => i.json);\nconst scored = rows.map(r => {\n  const enrichment = r.enrichment ?? {};\n  const socials = enrichment.socials ?? {};\n  const factors = {\n    email: r.email ? W_EMAIL : 0,\n    preferred_email: (r.email && PREFERRED_EMAIL_RE.test(r.email)) ? W_PREFERRED_EMAIL : 0,\n    phone: r.phone ? W_PHONE : 0,\n    website: r.website ? W_WEBSITE : 0,\n    linkedin: (r.linkedin_url || socials.linkedin) ? W_LINKEDIN : 0,\n    social: (socials.facebook || socials.instagram) ? W_SOCIAL : 0,\n    clean_enrichment: enrichment.error ? 0 : W_CLEAN_ENRICHMENT,\n    segment_priority: Number(r.priority_weight ?? 0)\n  };\n  const score = Object.values(factors).reduce((a, b) => a + b, 0);\n  let new_stage;\n  if (r.email && score >= QUALIFY_MIN_SCORE) { new_stage = 'qualified'; }\n  else if (!r.email && !r.phone) { new_stage = 'disqualified'; }\n  else { new_stage = 'enriched'; }\n  return { id: r.id, score, new_stage, qual: { version: SCORING_VERSION, threshold: QUALIFY_MIN_SCORE, factors, decision: new_stage } };\n});\nreturn [{ json: { payload: JSON.stringify(scored), scored_count: scored.length } }];"
+      }
+    },
+    {
+      "id": "026fb96f-6380-4ebd-98cf-3ca5c56189f9",
+      "name": "Persist Scores",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        660,
+        300
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE leads.candidates c SET qualification_score = s.score, qualification = s.qual, qualified_at = CASE WHEN s.new_stage = 'qualified' THEN COALESCE(c.qualified_at, now()) ELSE NULL END, stage = s.new_stage, stage_updated_at = CASE WHEN c.stage IS DISTINCT FROM s.new_stage THEN now() ELSE c.stage_updated_at END FROM jsonb_to_recordset($1::jsonb) AS s(id bigint, score integer, new_stage text, qual jsonb) WHERE c.id = s.id",
+        "options": {
+          "queryReplacement": "={{ [$json.payload] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "3d1b8697-f73d-4c82-aadb-f379adf63bce",
+      "name": "Recompute Shortlist Rank",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        880,
+        300
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH cleared AS (UPDATE leads.candidates SET shortlist_rank = NULL WHERE (stage <> 'qualified' OR duplicate_of IS NOT NULL) AND shortlist_rank IS NOT NULL RETURNING id), ranked AS (SELECT id, row_number() OVER (ORDER BY qualification_score DESC, id ASC) AS rn FROM leads.candidates WHERE stage = 'qualified' AND duplicate_of IS NULL) UPDATE leads.candidates c SET shortlist_rank = r.rn FROM ranked r WHERE c.id = r.id AND c.shortlist_rank IS DISTINCT FROM r.rn",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "e3db7990-c185-4564-a154-b48654a1cd69",
+      "name": "Qualification Summary",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1100,
+        300
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT count(*) FILTER (WHERE stage = 'qualified') AS qualified, count(*) FILTER (WHERE stage = 'disqualified') AS disqualified, count(*) FILTER (WHERE stage = 'enriched') AS still_enriched, max(shortlist_rank) AS shortlist_size FROM leads.candidates",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "2dfcbca3-5fea-4dc7-9fcf-7b2a4cfd4d19",
+      "name": "Sticky Note 4160506e",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -50,
+        250
+      ],
+      "parameters": {
+        "content": "## Lead Qualification Engine v1\n\nHourly: deterministically scores every candidate in stage enriched/qualified/disqualified using qual_v1 weights (contactability + segment priority), persists score + factor breakdown to leads.candidates.qualification_score / qualification, transitions stage (qualified >= 55 with email; disqualified if no email and no phone), and recomputes leads.candidates.shortlist_rank (score DESC, id ASC) for the outreach shortlist.\n\nScoring is pure and reproducible: same inputs always produce the same scores and shortlist order. Segment weights live in leads.segments.priority_weight.",
+        "color": 6,
+        "width": 1400,
+        "height": 200
+      }
+    },
+    {
+      "id": "82571763-60c2-4b45-a1a8-cfe1158c2371",
+      "name": "Purge Expired Sessions",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1320,
+        300
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM leads.dashboard_sessions WHERE expires_at < now() - interval '1 day'",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jqlh240FlAgCW2po",
+          "name": "Postgres account"
+        }
+      },
+      "disabled": false,
+      "onError": "continueRegularOutput",
+      "executeOnce": true
+    },
+    {
+      "id": "3ab8c262-aba2-4e5f-9d2e-92221653647e",
+      "name": "Trigger Outreach Engine",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1540,
+        300
+      ],
+      "parameters": {
+        "mode": "once",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "3bNNqQehDJdK8onH"
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "disabled": false
+    },
+    {
+      "id": "e91eb3e4-c72d-4fcb-a0fe-67f542ef6c2a",
+      "name": "Chain Trigger (from Intelligence)",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        460
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    }
+  ],
+  "connections": {
+    "Fetch Scorable Candidates": {
+      "main": [
+        [
+          {
+            "node": "Score Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score Candidates": {
+      "main": [
+        [
+          {
+            "node": "Persist Scores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Scores": {
+      "main": [
+        [
+          {
+            "node": "Recompute Shortlist Rank",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recompute Shortlist Rank": {
+      "main": [
+        [
+          {
+            "node": "Qualification Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qualification Summary": {
+      "main": [
+        [
+          {
+            "node": "Purge Expired Sessions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Purge Expired Sessions": {
+      "main": [
+        [
+          {
+            "node": "Trigger Outreach Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chain Trigger (from Intelligence)": {
+      "main": [
+        [
+          {
+            "node": "Fetch Scorable Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hourly Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Scorable Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
