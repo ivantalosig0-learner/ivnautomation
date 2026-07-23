@@ -12,7 +12,7 @@
   "nodes": [
     {
       "id": "0ba29f8f-281d-47bf-ad41-7a07b8c305a5",
-      "name": "Daily 09:00 Trigger (Asia/Manila)",
+      "name": "Weekday 07:00 Trigger (Asia/Manila)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.3,
       "position": [
@@ -24,7 +24,7 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 9 * * *"
+              "expression": "0 7 * * 1-5"
             }
           ]
         }
@@ -64,7 +64,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const j = $input.first().json;\nconst reasons = [];\nlet quiet = false;\nif (String(j.kill_switch).toLowerCase() !== 'true') reasons.push('Automatic outreach disabled by administrator.');\nconst phtHour = Number(new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Manila' }));\nif (reasons.length === 0 && phtHour < 9) { reasons.push('Before daily 9:00 AM PHT send window - skipping quietly.'); quiet = true; }\nif (reasons.length === 0 && j.run_done === true) { reasons.push('Daily outreach run already completed today - skipping quietly.'); quiet = true; }\nconst proceed = reasons.length === 0;\nreturn [{ json: { proceed, abort_reason: reasons.join(' '), quiet, threshold: Number(j.threshold), cap: Number(j.cap) } }];"
+        "jsCode": "const j = $input.first().json;\nconst reasons = [];\nlet quiet = false;\nif (String(j.kill_switch).toLowerCase() !== 'true') reasons.push('Automatic outreach disabled by administrator.');\nconst phtHour = Number(new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Manila' }));\nif (reasons.length === 0 && phtHour < 7) { reasons.push('Before daily 7:00 AM PHT send window - skipping quietly.'); quiet = true; }\nif (reasons.length === 0 && j.run_done === true) { reasons.push('Daily outreach run already completed today - skipping quietly.'); quiet = true; }\nconst proceed = reasons.length === 0;\nreturn [{ json: { proceed, abort_reason: reasons.join(' '), quiet, threshold: Number(j.threshold), cap: Number(j.cap) } }];"
       }
     },
     {
@@ -910,7 +910,7 @@
         ]
       ]
     },
-    "Daily 09:00 Trigger (Asia/Manila)": {
+    "Weekday 07:00 Trigger (Asia/Manila)": {
       "main": [
         [
           {
