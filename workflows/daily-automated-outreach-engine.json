@@ -64,7 +64,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const j = $input.first().json;\nconst reasons = [];\nlet quiet = false;\nif (String(j.kill_switch).toLowerCase() !== 'true') reasons.push('Automatic outreach disabled by administrator.');\nconst phtHour = Number(new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Manila' }));\nif (reasons.length === 0 && phtHour < 7) { reasons.push('Before daily 7:00 AM PHT send window - skipping quietly.'); quiet = true; }\nif (reasons.length === 0 && j.run_done === true) { reasons.push('Daily outreach run already completed today - skipping quietly.'); quiet = true; }\nconst proceed = reasons.length === 0;\nreturn [{ json: { proceed, abort_reason: reasons.join(' '), quiet, threshold: Number(j.threshold), cap: Number(j.cap) } }];"
+        "jsCode": "const j = $input.first().json;\nconst reasons = [];\nlet quiet = false;\nlet disabled = false;\nif (String(j.kill_switch).toLowerCase() !== 'true') { reasons.push('Automatic outreach disabled by administrator.'); disabled = true; }\nconst phtHour = Number(new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Manila' }));\nif (reasons.length === 0 && phtHour < 7) { reasons.push('Before daily 7:00 AM PHT send window - skipping quietly.'); quiet = true; }\nif (reasons.length === 0 && j.run_done === true) { reasons.push('Daily outreach run already completed today - skipping quietly.'); quiet = true; }\nconst proceed = reasons.length === 0;\nconst notify = !proceed && !quiet && !disabled;\nreturn [{ json: { proceed, abort_reason: reasons.join(' '), quiet, disabled, notify, threshold: Number(j.threshold), cap: Number(j.cap) } }];"
       }
     },
     {
@@ -414,9 +414,9 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH r AS (INSERT INTO leads.outreach_runs (run_date, status, abort_reason, threshold_used, cap_used) SELECT current_date, 'aborted', $1, $2::int, $3::int WHERE NOT $4::boolean ON CONFLICT (run_date) DO UPDATE SET status='aborted', abort_reason=EXCLUDED.abort_reason, finished_at=now(), threshold_used=EXCLUDED.threshold_used, cap_used=EXCLUDED.cap_used RETURNING run_date) INSERT INTO leads.notifications (type, title, message, severity) SELECT 'outreach_aborted', 'Daily outreach aborted', $1, 'error' FROM r",
+        "query": "WITH r AS (INSERT INTO leads.outreach_runs (run_date, status, abort_reason, threshold_used, cap_used) SELECT current_date, 'aborted', $1, $2::int, $3::int WHERE NOT $4::boolean ON CONFLICT (run_date) DO UPDATE SET status='aborted', abort_reason=EXCLUDED.abort_reason, finished_at=now(), threshold_used=EXCLUDED.threshold_used, cap_used=EXCLUDED.cap_used RETURNING run_date) INSERT INTO leads.notifications (type, title, message, severity) SELECT 'outreach_aborted', 'Daily outreach aborted', $1, 'error' FROM r WHERE $5::boolean",
         "options": {
-          "queryReplacement": "={{ [$json.abort_reason, $json.threshold, $json.cap, $json.quiet === true] }}"
+          "queryReplacement": "={{ [$json.abort_reason, $json.threshold, $json.cap, $json.quiet === true, $json.notify === true] }}"
         }
       },
       "credentials": {
