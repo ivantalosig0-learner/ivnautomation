@@ -1,53 +1,76 @@
-# Hermes — Sandboxed Code Intelligence for IVNautomation
+# Hermes — Sandboxed Code & Systems Intelligence
 
-Hermes Agent (Nous Research) runs on the VPS as a **read-only** code-intelligence
-assistant that indexes this repository so the team can search and reason about the
-whole system. It is deliberately walled off from production.
+Hermes runs on the VPS as a **read-only** intelligence layer over the whole
+engineering estate. It indexes; it does not reason and it does not touch
+production. Reasoning happens in Claude, which talks to Hermes over MCP and pulls
+only the files it needs.
+
+## What it indexes — three collections
+
+| Collection | Source | What it covers |
+|---|---|---|
+| `repo` | `/home/ivan/ivnautomation-repo` | IVNautomation lead-gen: n8n workflow exports, AI Gateway, `leads` schema, marketing website, worker dashboard |
+| `workforce` | `/home/ivan/kquality-workforce-repo` | KQuality Workforce: FastAPI backend, Treasury Core, manager console, Expo mobile app, ops runbooks |
+| `infra` | `/home/ivan/hermes/infra` (generated hourly) | What is actually deployed: containers + ports, Caddy hostnames, compose files, host cron |
+
+`infra` is a **secret-redacted snapshot of the live VPS**, not source code. Ask it
+"what is deployed / what URL serves what / what runs on a schedule" instead of
+inferring from a repo that may have drifted from production.
 
 ## What it can and cannot do
-- ✅ Read + search the repo (workflows, dashboard, gateway, schema, docs, website)
-- ✅ Answer "where is X / how does Y work" using the local Qwen3-8B model
-- ❌ Cannot reach the production database, n8n, or mail (network-isolated)
-- ❌ Cannot modify the repo (mounted read-only) or the live system
+- ✅ Search and read all three collections, and answer "where is X / how does Y work"
+- ❌ Cannot reach the production database, n8n, mail, or the payment rails (network-isolated)
+- ❌ Cannot modify anything — every mount is read-only
 - ❌ Cannot exhaust the host — hard-capped at 1.5 GB RAM / 1.5 CPU
 
+### Deliberately NOT indexed
+Masked with empty read-only mounts so Hermes physically cannot read them:
+the treasury root key (`backend/secrets/`), the WORM audit sink (`backend/worm/`),
+worker photo and signature uploads (`backend/media/`), and all `.env` files.
+
 ## Where it lives
-- Compose + Dockerfile + guardrail context: `/home/ivan/hermes/`
+- Compose, Dockerfile, guardrails, maintenance scripts: `/home/ivan/hermes/`
 - Container: `hermes-agent` (image `hermes-agent-local`)
-- Goal + hard rules the agent must follow: `/home/ivan/hermes/HERMES_CONTEXT.md`
-- Search index (qmd): persistent Docker volume `hermes_hermes_state`
+- Operating context and hard rules the agent follows: `/home/ivan/hermes/HERMES_CONTEXT.md`
+- Index (qmd): persistent Docker volume `hermes_hermes_state`
+- Maintenance log: `/home/ivan/hermes/maintain.log`
 
-## How to use it (keyword search — always available)
+## Using it from the shell
 ```bash
-docker exec hermes-agent qmd search "reply detection imap matching"
-docker exec hermes-agent qmd search "daily outreach cron"
-docker exec hermes-agent qmd ls repo            # list indexed files
-docker exec hermes-agent qmd get qmd://repo/CLAUDE.md   # read a file
+docker exec hermes-agent qmd query "how are leads scored"      # hybrid, best quality
+docker exec hermes-agent qmd search "dual control payout" -c workforce
+docker exec hermes-agent qmd ls infra
+docker exec hermes-agent qmd get qmd://repo/CLAUDE.md
+docker exec hermes-agent qmd status
 ```
 
-## Chat with the agent about the codebase
-```bash
-docker exec -it hermes-agent hermes
-```
-It uses the local LLM at http://host.docker.internal:8080/v1 (shared with
-production inference, so responses are slower while outreach is running).
+## Staying current — automatic
+Cron keeps the index true to the VPS; there is nothing to run by hand:
+- **hourly** (`:17`) — regenerate the `infra` snapshot, reassert the collection
+  registry, re-index changed files
+- **nightly** (`03:40`) — the above plus refresh vector embeddings (CPU-heavy)
 
-## Re-index after repo changes
+Force a run now:
 ```bash
-cd /home/ivan/ivnautomation-repo && git pull      # if pulling from GitHub
-docker exec hermes-agent qmd update               # re-index (keyword, instant)
+/home/ivan/hermes/bin/hermes-maintain.sh          # fast
+/home/ivan/hermes/bin/hermes-maintain.sh --embed  # slow, includes embeddings
 ```
 
-## Semantic (vector) search — optional, run in a quiet window
-Vector embeddings use extra CPU. Because the host's 4 cores are usually saturated
-by the production Qwen model, run the embed only when outreach is paused:
-```bash
-docker exec -d hermes-agent bash -lc 'nice -n 19 qmd embed --max-docs-per-batch 4 --max-batch-mb 2'
-docker exec hermes-agent qmd vsearch "how are leads scored"   # once embedded
-```
-Keyword search (`qmd search`) needs no models and works at all times.
+## Known qmd quirk — why the registry is reasserted
+qmd's long-lived `qmd mcp` server holds an in-memory snapshot of the collection
+registry and writes it back on exit. A collection added or edited by a *different*
+qmd process therefore gets silently deleted — this is how Hermes previously lost
+its connection to the repo, with no error anywhere. Two mitigations are in place:
+
+1. `bin/reassert_collections.py` is the source of truth for which collections must
+   exist, and the hourly job re-applies it — so a drop self-heals within the hour.
+2. After changing collections by hand, **restart the MCP session** (kill the
+   `qmd mcp` process in the container; the connector reconnects) so it reloads the
+   registry instead of overwriting it.
+
+Symptom to watch for: `qmd status` showing fewer than three collections.
 
 ## Safety model
-Even if the agent misbehaves, it is confined to its container: read-only repo,
+Even if the agent misbehaves it is confined to its container: read-only mounts,
 no production network, no docker socket, dropped Linux capabilities,
 no-new-privileges, and hard RAM/CPU limits. It cannot break the live system.
