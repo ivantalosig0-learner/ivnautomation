@@ -54,6 +54,16 @@ Reasoning model selection lives in Claude Desktop, not on the VPS:
   that session. Hermes/qmd are model-agnostic — they just return context.
 
 ## What Claude can retrieve
-qmd tools exposed over MCP: `query`, `search` (BM25), `get`, `multi-get`, `status`,
-`ls`, over collection `repo` (56 files: workflows, dashboard, gateway, schema,
-website, docs). Read-only. No writes, no production access.
+qmd tools exposed over MCP: `query`, `search` (BM25), `vsearch` (semantic), `get`,
+`multi-get`, `status`, `ls` — over **three** collections:
+
+- `repo` — IVNautomation lead-gen (workflows, gateway, schema, website, dashboard)
+- `workforce` — KQuality Workforce (backend, Treasury Core, manager console, mobile)
+- `infra` — a secret-redacted hourly snapshot of what is actually deployed on the VPS
+
+Read-only. No writes, no production access. Each collection and its major
+subdirectories carry a human-written `context` blurb that qmd returns alongside
+results, so Claude can tell which platform a hit belongs to without opening it.
+
+Scope a search when you already know the area — `qmd search "payout" -c workforce`
+— it is both faster and more precise than searching all three.

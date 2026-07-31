@@ -56,17 +56,30 @@ Force a run now:
 /home/ivan/hermes/bin/hermes-maintain.sh --embed  # slow, includes embeddings
 ```
 
-## Known qmd quirk — why the registry is reasserted
-qmd's long-lived `qmd mcp` server holds an in-memory snapshot of the collection
-registry and writes it back on exit. A collection added or edited by a *different*
-qmd process therefore gets silently deleted — this is how Hermes previously lost
-its connection to the repo, with no error anywhere. Two mitigations are in place:
+## Why Hermes lost the repo before — and what now prevents it
 
-1. `bin/reassert_collections.py` is the source of truth for which collections must
-   exist, and the hourly job re-applies it — so a drop self-heals within the hour.
-2. After changing collections by hand, **restart the MCP session** (kill the
-   `qmd mcp` process in the container; the connector reconnects) so it reloads the
-   registry instead of overwriting it.
+Two separate qmd behaviours combined into a silent failure:
+
+1. **The collection registry lived in the container's writable layer.**
+   `~/.config/qmd/index.yml` is qmd's source of truth for which collections exist,
+   but `~/.config` was **not** part of the `hermes_state` volume — only `~/.hermes`
+   was. Every `docker compose up --force-recreate` therefore destroyed the
+   registry. The indexed *documents* survived in sqlite, so nothing looked broken;
+   Hermes simply no longer knew the repo existed.
+2. **`qmd collection add` rewrites that whole file**, keeping only the collections
+   that invocation knows about and deleting the rest — with no warning.
+
+Fixes now in place:
+
+- `index.yml` is a **host** bind mount (`/home/ivan/hermes/qmd-config/`), so it
+  survives container recreates and can be backed up and edited directly.
+- `bin/index.yml.canonical` is the known-good copy. The hourly job runs
+  `bin/verify_qmd_config.sh`, which restores it and restarts the container if any
+  of the three collections goes missing — so a drop self-heals within the hour.
+
+**When adding a collection, edit `qmd-config/index.yml` by hand and run
+`qmd update`.** Avoid `qmd collection add`; it will delete the others. Update
+`bin/index.yml.canonical` to match afterwards.
 
 Symptom to watch for: `qmd status` showing fewer than three collections.
 
