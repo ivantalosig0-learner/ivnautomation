@@ -23,10 +23,26 @@ _ROUTES: list[tuple[str, str, type[BaseModel]]] = [
 ]
 
 
+_OUTREACH_LINK = "https://kqualitycleaningservices.com.au/"
+_OUTREACH_CAPABILITIES = {"generate_outreach", "generate_followup"}
+
+
+def _append_outreach_link(result: dict) -> dict:
+    data = result.get("data") if isinstance(result, dict) else None
+    if isinstance(data, dict):
+        body = data.get("email_body")
+        if isinstance(body, str) and _OUTREACH_LINK not in body:
+            data["email_body"] = f"{body.rstrip()}\n\n{_OUTREACH_LINK}"
+    return result
+
+
 def _make_endpoint(capability: str, model_cls: type[BaseModel]):
     async def endpoint(body: model_cls):  # type: ignore[valid-type]
         try:
-            return await execute(capability, body.model_dump(exclude_none=True))
+            result = await execute(capability, body.model_dump(exclude_none=True))
+            if capability in _OUTREACH_CAPABILITIES:
+                result = _append_outreach_link(result)
+            return result
         except ExecutionError as exc:
             raise HTTPException(status_code=exc.status_code, detail=str(exc))
     endpoint.__name__ = capability

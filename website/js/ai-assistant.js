@@ -14,7 +14,7 @@
 
 (function () {
   const GREETING =
-    "Hi there 👋 I'm the KQuality assistant. Ask me anything about our cleaning services, coverage area, or how a quote works — I'll do my best to help.";
+    "Hi there 👋 I'm the KQuality assistant. Ask me about our cleaning services, the areas we cover, or how quoting works — and if you're after a job or already a client, I'll point you to the right person.";
 
   const FETCH_TIMEOUT_MS = 16000; // gives the backend's own 13s budget some headroom
   const MAX_HISTORY = 8;
@@ -24,6 +24,7 @@
 
   let history = []; // [{role:'user'|'assistant', content:string}]
   let leadSent = false;
+  let lastIntent = ""; // intent of the most recent backend reply, drives lead routing
 
   function el(tag, className, text) {
     const e = document.createElement(tag);
@@ -40,6 +41,14 @@
     const input = document.querySelector("[data-ai-input]");
     const closeBtn = document.querySelector("[data-ai-close]");
     if (!toggle || !panel) return;
+
+    // Master switch (window.CONFIG.CHAT_ENABLED in config.js). When off, the
+    // widget is hidden and no webhook calls are made — wiring is left intact.
+    if (window.CONFIG && window.CONFIG.CHAT_ENABLED === false) {
+      toggle.style.display = "none";
+      panel.style.display = "none";
+      return;
+    }
 
     let opened = false;
     let sessionId =
@@ -118,7 +127,7 @@
             el(
               "div",
               "ai-msg bot",
-              "Sorry, I'm having trouble replying right now. Please try again, call us on 0439 489 630, or use the Request a Quote button above."
+              "Sorry, I'm having trouble replying right now. Please try again, or call us on 0439 489 630 and someone will help you directly."
             )
           );
           scroll();
@@ -151,9 +160,10 @@
         });
         if (!res.ok) throw new Error("Chat backend returned " + res.status);
         const data = await res.json();
+        if (data.intent) lastIntent = String(data.intent);
         return (
           data.reply ||
-          "Thanks for your message — could you tell me a bit more, or use the Request a Quote button above?"
+          "Thanks for your message — could you tell me a bit more, or call 0439 489 630 and the team will help you directly?"
         );
       } finally {
         clearTimeout(timer);
@@ -165,6 +175,13 @@
       const hasEmail = EMAIL_RE.test(latestMessage);
       const hasPhone = PHONE_RE.test(latestMessage);
       if (!hasEmail && !hasPhone) return;
+
+      // A job applicant, a complaint or a sales pitch is not a quote lead.
+      // Filing them here is what made the chat "ask about a quotation" — the
+      // intake pipeline emails them about pricing. Those go to the team by
+      // email instead, which is what the assistant tells them to do.
+      const NON_SALES = /^(careers|subcontractor|complaint|cancel|reschedule|existing_client|spam_pitch|abuse|media|how_found_me|privacy|contact_shared_careers)/;
+      if (NON_SALES.test(lastIntent)) return;
 
       leadSent = true;
       const webhookUrl = window.CONFIG?.WEBHOOK_URL;
@@ -178,7 +195,7 @@
           name: null,
           email: hasEmail ? latestMessage.match(EMAIL_RE)[0] : null,
           phone: hasPhone ? latestMessage.match(PHONE_RE)[0] : null,
-          rawAnswers: { transcript, sessionId },
+          rawAnswers: { transcript, sessionId, chatIntent: lastIntent || "unknown" },
         },
       };
 

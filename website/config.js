@@ -19,6 +19,10 @@ export const CONFIG = {
   WEBHOOK_URL: "https://n8n.kqualitycleaningservices.com.au/webhook/website-quote-intake",
   CHAT_WEBHOOK_URL: "https://n8n.kqualitycleaningservices.com.au/webhook/website-chat-h7q3m2",
 
+  // Chat widget master switch. false = widget hidden, no chat requests sent.
+  // The webhook + n8n workflow above stay wired; set back to true to re-enable.
+  CHAT_ENABLED: false,
+
   // --- Business info --------------------------------------------------------
   BUSINESS_NAME: "KQuality Cleaning Services",
   ADDRESS: "86A Tolley Rd, St Agnes SA 5096, Australia",
