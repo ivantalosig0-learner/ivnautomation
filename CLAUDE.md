@@ -33,12 +33,12 @@ Hard-won lessons below before changing that.
 
 | Workflow | Schedule | Purpose |
 |---|---|---|
-| Opportunity Discovery Engine | daily 07:30 PHT | Finds candidate businesses, writes `leads.candidates` (stage `discovered`) |
+| Opportunity Discovery Engine | daily 07:30 PHT | Finds candidate businesses, writes `leads.candidates` (stage `discovered`). **40 km** radius over 8 zone centres. Rations a rotating **65 search terms/day** (full 196-term cycle every 3 days) — repeating a term just re-finds known places. Rejects cleaning competitors at INSERT. Has a manual Execute-Workflow trigger for on-demand runs |
 | Lead Intelligence Engine | every 30 min | Crawls websites (homepage/contact/about + Browserless fallback), extracts emails/socials/profile, advances stage to `enriched`. Timeout 3000s |
-| Lead Qualification Engine | hourly | Deterministic qual_v1 scoring (email 40, phone 15, website 10, linkedin 10, social 5, clean 5, preferred-email 5, + segment weight). `qualified` >= 55 with email. Hot >= 80, warm >= 55. Recomputes `shortlist_rank`. Timeout 900s |
-| Personalized Outreach Engine | every 30 min | Qwen renews 15 template drafts/run into AI drafts, hot leads first. Draft-only, never sends |
+| Lead Qualification Engine | hourly | Deterministic **qual_v2** scoring, split into reach (email 22-28, phone 7, website 5, linkedin 5), fit (segment weight x2, multi-site 8, premises 5, size 0-8) and intent (AI fit 0-10, professionalism 4), minus penalties (free mailbox -10, thin site -5, **suppressed -200**). `qualified` >= 50 with email. Hot >= 85, warm >= 65. Threshold is an eligibility floor only — `shortlist_rank` (score, then segment weight) decides send order. Persists with `qualification || s.qual` so exclusion markers survive. Timeout 900s |
+| Personalized Outreach Engine | every 30 min | Renews **4** drafts/run (gateway has 2 inference slots; 15 guaranteed 13 were shed), hot leads first. Writes the deterministic composer draft when AI is unavailable. Draft-only, never sends |
 | Daily Automated Outreach Engine | 9:00am PHT (guarded) | Sends up to cap/day from shortlist. Kill switch + quiet-skip guard: chain invocations before 9am or after a completed daily run no-op silently |
-| Outreach Follow-up Engine | scheduled | Follow-ups for non-repliers; stops automatically when CRM stage = `replied` |
+| Outreach Follow-up Engine | scheduled | Follow-ups for non-repliers on a **3/7/14 day** cadence (was 2/3/5 — three emails inside a working week reads as pressure). Each touch carries a different angle. Stops automatically when CRM stage = `replied`, and skips anything suppressed |
 | Reply Detection Engine | IMAP trigger | Matches inbound replies (message-id > references > email > subject), sets CRM `replied`, notifies. IMAP node MUST stay `format: resolved` |
 | Lead Gen Error Handler | error trigger | Notifications + email alerts. Suppresses IMAP reconnect noise entirely |
 | Worker Dashboard API | webhook `worker-api-x9q2k4m7` | POST JSON `{action, token, ...}`. Actions: login, leads, draft, save, send, crm_add/list/stage/timeline/notes/next_action, crm_replies, crm_reply_send, system_status, notifications_list/mark_read, stats |
@@ -82,6 +82,33 @@ replied/won/lost + notes/next_action), `crm_stage_history`, `notifications`
 9. **After significant workflow edits, `docker restart ivnautomation-n8n`** — triggers have gone quiet after in-place edits until restart.
 10. **The dashboard page builder is one 74KB Code node.** Do not hand-edit; extend via the `Inject Reply UI` pattern (anchor-string patch between builder and respond node) and syntax-check the served page's inline JS (`node --check`) after any change — a single unescaped quote once took the whole dashboard down.
 
+## Lead-gen refresh — 2026-08-05
+
+Outreach replies had decayed from 5.1% to 2.4%. Three compounding causes, all fixed:
+
+1. **Discovery had been dead for days.** The Places key was capped at 100
+   searches/day; the engine fired ~196 terms x 3 pages, exhausted quota in the
+   first ~30 terms and 429'd the rest. It reported `success` in n8n while
+   `leads.discovery_runs` recorded `failed / 0`. Quota has since been raised;
+   term rotation stays because re-running a term only re-finds known places
+   (measured: fresh slice 132 new candidates, same slice again 5).
+2. **The AI has effectively never written the outreach.** The gateway sheds
+   ~89% of `generate_outreach` calls, so every recipient got one hardcoded
+   template. The deterministic composer in `ops/leadgen/composer.js` is now the
+   primary path; AI must pass a quality gate to be used instead.
+3. **18 competitor-hunting segments** added 2026-07-27 (`commercial cleaning
+   Adelaide`, `carpet cleaning`, ...) filled the funnel with other cleaners.
+   Retired; `leads.is_cleaning_competitor()` now blocks them at discovery
+   insert, at qualification and again at send.
+
+Also: 500 duplicates collapsed (4-pass on email/domain/phone/name+suburb — one
+email domain had 20 separate cold emails going out), 34 junk addresses purged
+(`user@domain.com` appeared 26 times and was being mailed), `leads.suppression`
+added and enforced, CRM reduced to the 22 records with real commercial history.
+
+**Tooling and the copy source of truth live in `ops/leadgen/` — read its README
+before editing any outreach wording or workflow node.**
+
 ## Conventions
 
 - Timestamps in PHT for business logic; workflow tz is Australia/Adelaide — do not assume they match.
@@ -98,3 +125,25 @@ gateway/ AI Gateway FastAPI source (no .env)
 database/ schema.sql — full `leads` schema DDL
 website/ public marketing site (kqualitycleaningservices.com.au)
 docs/ infra docker-compose (env-var references only)
+
+---
+
+## Laptop working files were moved here — 2026-08-02
+
+Everything Claude had been building on the Windows laptop now lives on this VPS at
+`~/claude-workspace/`. Read `~/claude-workspace/README.md` for the full map.
+
+Relevant to *this* repo: `~/claude-workspace/website/ivn-workflows/` and
+`~/claude-workspace/website/ivn-site/` **overlap** with `workflows/` and `website/`
+here. They were deliberately **not** merged — the transferred copy is a faithful
+snapshot of laptop state and the two trees may have diverged. **Diff before
+promoting anything.** This repo stays the deployable source of truth.
+
+Also preserved there: the original 1.73 GB laptop n8n `database.sqlite`
+(`~/claude-workspace/laptop-n8n-db/n8n_data/database.sqlite`) — the only copy of the
+retired laptop n8n's workflows and execution history.
+
+`~/claude-workspace` is `0700`, files `0600`, credentials isolated in `secrets/` and
+gitignored. It is **not** mounted into Hermes, so none of it reaches the search index.
+Given the Treasury module on this stack, do not add such a mount without masking
+`secrets/` via the `hermes/empty` bind, the same way the workforce repo masks its own.

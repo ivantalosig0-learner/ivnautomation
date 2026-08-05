@@ -1,243 +1,245 @@
 {
-  "id": "HJB5HhkSbi1Qozrr",
-  "name": "Personalized Outreach Engine",
-  "active": true,
-  "settings": {
-    "executionOrder": "v1",
-    "availableInMCP": true,
-    "errorWorkflow": "39Vcvm1lkmQZXFpS",
-    "timezone": "Australia/Adelaide",
-    "executionTimeout": 3600
-  },
-  "nodes": [
-    {
-      "id": "d73db73f-b2e7-4ce2-b565-7a31362bff55",
-      "name": "Every 30 Minutes Trigger",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.3,
-      "position": [
-        0,
-        300
-      ],
-      "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "minutes",
-              "minutesInterval": 30
-            }
-          ]
+    "id": "HJB5HhkSbi1Qozrr",
+    "name": "Personalized Outreach Engine",
+    "nodes": [
+        {
+            "id": "d73db73f-b2e7-4ce2-b565-7a31362bff55",
+            "name": "Every 30 Minutes Trigger",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "position": [
+                0,
+                300
+            ],
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "minutesInterval": 30
+                        }
+                    ]
+                }
+            },
+            "typeVersion": 1.3
+        },
+        {
+            "id": "3128f17c-2841-44b7-b60a-d447104a3085",
+            "name": "Fetch Lead Pool",
+            "type": "n8n-nodes-base.postgres",
+            "position": [
+                220,
+                300
+            ],
+            "parameters": {
+                "query": "SELECT c.id, c.business_name, c.address, c.suburb, c.email, c.phone, c.stage,\n       c.qualification_score, s.code AS segment_code, s.name AS segment_name,\n       c.enrichment->'profile' AS profile\nFROM leads.candidates c\nLEFT JOIN leads.segments s ON s.id = c.segment_id\nLEFT JOIN leads.outreach_drafts d ON d.candidate_id = c.id\nWHERE c.duplicate_of IS NULL\n  AND c.do_not_contact = false\n  AND c.excluded_from_outreach = false\n  AND c.stage NOT IN ('lost','won','disqualified')\n  AND NOT leads.is_cleaning_competitor(c.business_name, c.website, c.email)\n  AND NOT EXISTS (SELECT 1 FROM leads.suppression sp\n                  WHERE (sp.email_norm IS NOT NULL\n                         AND sp.email_norm = leads.norm_email(c.email))\n                     OR (sp.domain_norm IS NOT NULL\n                         AND sp.domain_norm = leads.norm_domain(c.website)))\n  AND (d.candidate_id IS NULL\n       OR (d.status = 'draft' AND d.method NOT LIKE 'ai\\_%'\n           AND d.method NOT LIKE 'composer\\_v3%'))\nORDER BY (c.qualification_score >= 85) DESC,\n         c.qualification_score DESC NULLS LAST, c.id\nLIMIT 4",
+                "options": {
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "executeOnce": true,
+            "typeVersion": 2.6
+        },
+        {
+            "id": "ab286a00-8d9e-44ad-a849-1bc410eabe23",
+            "name": "Prepare AI Request",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                440,
+                300
+            ],
+            "parameters": {
+                "mode": "runOnceForAllItems",
+                "jsCode": "\n// ---------- KQuality outreach composer v3 (deterministic) ----------\nvar KQ = {\n  company: 'KQuality Cleaning Services',\n  sender: 'Michelle',\n  phone: '0439 489 630',\n  email: 'info@kqualitycleaningservices.com.au'\n};\n\n// Segment playbook: the specific job we want, the pain it removes, and the\n// noun we ask to price. Written for the buyer, never about us.\nvar PLAYBOOK = {\n  real_estate_strata: {\n    job: 'vacate and bond cleans',\n    pain: 'getting a property re-listed without waiting on a cleaner',\n    line: 'We turn vacate cleans around inside 24 hours and send photos through when it is done, so you can re-list without chasing anyone.',\n    ask: 'your next vacate clean'\n  },\n  property_management: {\n    job: 'end-of-lease and common-area cleans',\n    pain: 'juggling different cleaners across a rent roll',\n    line: 'Most managers we work with use one number for the whole rent roll and get a single invoice at month end instead of chasing five contractors.',\n    ask: 'a couple of your managed properties'\n  },\n  strata: {\n    job: 'common areas, bin rooms and carparks',\n    pain: 'owner complaints about common areas',\n    line: 'We run scheduled common-area cleans with a signed-off checklist each visit, so you have something to show the committee when someone asks.',\n    ask: 'common-area cleaning for one of your buildings'\n  },\n  body_corporate: {\n    job: 'common property cleaning',\n    pain: 'committee complaints and inconsistent contractors',\n    line: 'We run scheduled common-property cleans with a checklist signed off each visit, so there is a record when the committee asks.',\n    ask: 'one of your buildings'\n  },\n  builders_construction: {\n    job: 'builders and handover cleans',\n    pain: 'a handover date slipping because the clean was not ready',\n    line: 'We do builders cleans and final sparkle before client walkthrough, and we book to your handover date rather than the other way around.',\n    ask: 'your next handover'\n  },\n  aged_care_facilities: {\n    job: 'facility cleaning',\n    pain: 'keeping cleaning evidence ready for an audit',\n    line: 'All our staff are police-checked and we work to infection-control routines with documented sign-off, so the paperwork is there when you are audited.',\n    ask: 'one wing or common area'\n  },\n  ndis: {\n    job: 'cleaning for SIL and supported housing',\n    pain: 'finding cleaners who are reliable and respectful with residents',\n    line: 'Our staff are police-checked and used to working around residents, on a set schedule so participants see the same faces.',\n    ask: 'one or two of your properties'\n  },\n  medical_childcare_gym: {\n    job: 'after-hours cleaning and sanitising',\n    pain: 'cleaning that has to happen outside opening hours',\n    line: 'We clean after hours to clinical standards with child-safe products where they are needed, so you open to a room that is genuinely ready.',\n    ask: 'your rooms and common areas'\n  },\n  commercial_office: {\n    job: 'office cleaning',\n    pain: 'a cleaner who changes every few weeks',\n    line: 'You get the same cleaner each visit and a direct number rather than a call centre, which is usually the thing offices tell us was missing.',\n    ask: 'your office'\n  },\n  education_training: {\n    job: 'classroom and facility cleaning',\n    pain: 'fitting deep cleans around term dates',\n    line: 'We work to the term calendar - lighter during teaching weeks, deep cleans in the breaks - and every staff member is police-checked.',\n    ask: 'your classrooms and amenities'\n  },\n  hospitality_venues: {\n    job: 'early-morning venue cleans',\n    pain: 'the room not being ready before service',\n    line: 'We come in early and are out before service, so the room is ready rather than being cleaned around your first guests.',\n    ask: 'your front of house'\n  },\n  retail_showrooms: {\n    job: 'floors, glass and showroom presentation',\n    pain: 'stock looking tired because the space does',\n    line: 'We do floors and glass before you open so the first thing a customer sees is the stock, not the fingerprints.',\n    ask: 'your showroom floor'\n  },\n  industrial_warehouse: {\n    job: 'warehouse and amenities cleaning',\n    pain: 'high-traffic floors and staff amenities slipping',\n    line: 'We handle high-traffic floors and staff amenities on a set schedule, and our team is site-inducted before they start.',\n    ask: 'your floors and amenities'\n  },\n  community_clubs: {\n    job: 'post-event and weekend cleans',\n    pain: 'volunteers cleaning up after functions',\n    line: 'We do post-function turnarounds on weekends so your volunteers are not the ones mopping the hall on a Sunday morning.',\n    ask: 'your next function turnaround'\n  },\n  automotive_trade: {\n    job: 'workshop and customer-area cleaning',\n    pain: 'a waiting area that does not match the workmanship',\n    line: 'We keep the customer waiting area and amenities presentable and degrease the workshop floors on a schedule.',\n    ask: 'your waiting area and workshop'\n  }\n};\nvar DEFAULT_PLAY = {\n  job: 'commercial cleaning',\n  pain: 'a cleaner who actually turns up',\n  line: 'We are Adelaide-based, fully insured, and every cleaner is police-checked - documentation available on request.',\n  ask: 'your site'\n};\n\n// ---- text helpers ----\nfunction kqClean(t) { return String(t == null ? '' : t).replace(/\\s+/g, ' ').trim(); }\nfunction kqTitleCase(s) {\n  return kqClean(s).toLowerCase().replace(/\\b[a-z]/g, function (m) { return m.toUpperCase(); });\n}\n// Stable per-candidate variant index so the same lead always gets the same\n// email, but neighbouring leads (and leads on one domain) do not match.\nfunction kqVariant(id, n) { return Math.abs(Number(id) || 0) % n; }\n\nvar KQ_AU_TAIL = /,\\s*Australia\\s*$/i;\nvar KQ_STATE = /\\s+(SA|NSW|VIC|QLD|WA|NT|TAS|ACT)\\s+\\d{4}.*$/i;\nfunction kqSuburb(r) {\n  if (r.suburb) return kqTitleCase(r.suburb);\n  var a = String(r.address || '').replace(KQ_AU_TAIL, '');\n  var p = a.split(',');\n  if (p.length < 2) return '';\n  return kqTitleCase(p[p.length - 1].replace(KQ_STATE, '').trim());\n}\n// \"Adelaide\" is the whole market, so it carries no signal in a subject line -\n// a subject that could have been sent to anyone reads as bulk mail.\nfunction kqSpecificSuburb(r) {\n  var s = kqSuburb(r);\n  return (/^(adelaide|adelaide cbd|south australia|sa)$/i.test(s)) ? '' : s;\n}\n// Subjects have to survive a phone preview pane, so long trading names get\n// clipped at a word boundary rather than mid-word.\nfunction kqShortName(name) {\n  var n = kqClean(name).replace(/\\s+(pty\\.?\\s*)?ltd\\.?$/i, '').replace(/\\s*\\|.*$/, '');\n  if (n.length <= 28) return n;\n  var words = n.split(' ');\n  var acc = '';\n  for (var i = 0; i < words.length; i++) {\n    if ((acc + ' ' + words[i]).trim().length > 28) break;\n    acc = (acc + ' ' + words[i]).trim();\n  }\n  return acc || n.slice(0, 28);\n}\n\n// A contact first name, only when we are confident it is a real person.\nvar KQ_ROLE_OK = /^(Owner|Co-?Owner|Director|Managing Director|CEO|Founder|Co-?Founder|Principal|General Manager|Practice Manager|Operations Manager|Facilities Manager)$/i;\nvar KQ_NAME_BLOCK = /(Care|Quality|Executive|Nurse|Registered|Enrolled|General|Office|Property|Practice|Team|Group|Services|Community|Heart|Solutions|Cleaning)/i;\nfunction kqFirstName(profile) {\n  var people = (profile && Array.isArray(profile.people)) ? profile.people : [];\n  for (var i = 0; i < people.length; i++) {\n    var p = people[i];\n    if (!p) continue;\n    var name = String(p.name || '');\n    if (!KQ_ROLE_OK.test(String(p.role || ''))) continue;\n    if (!/^[A-Z][a-z]{1,15} [A-Z][a-z]{1,20}$/.test(name)) continue;\n    if (KQ_NAME_BLOCK.test(name)) continue;\n    return name.split(' ')[0];\n  }\n  return null;\n}\n\n// One verifiable detail about them, drawn from their own website.\n// Returns null rather than inventing anything.\nfunction kqObservation(r, profile) {\n  var desc = kqClean(profile && profile.description);\n  var title = kqClean(profile && profile.title);\n  var name = kqClean(r.business_name);\n  var suburb = kqSuburb(r);\n\n  // Prefer their own words, trimmed to one clean clause. Quoting them back is\n  // the cheapest possible proof that this was not a blast.\n  if (desc && desc.length > 25 && desc.toLowerCase().indexOf('lorem') === -1) {\n    var snip = desc.slice(0, 95);\n    if (desc.length > 95) {\n      var cut = snip.lastIndexOf(' ');\n      snip = (cut > 40 ? snip.slice(0, cut) : snip).replace(/[,;:\\-\\s]+$/, '');\n    }\n    // Neutral lead-in: their description may start with a verb (\"Discover...\"),\n    // so anything of the form \"you are <desc>\" reads broken.\n    return 'Saw on your site - \"' + snip + '\".';\n  }\n  // Otherwise anchor on something factual: their site title or their suburb.\n  if (title && title.length > 8 && title.toLowerCase().indexOf(name.toLowerCase()) === -1) {\n    return 'Came across ' + kqShortName(name) + ' looking at ' + (suburb || 'Adelaide') + ' businesses.';\n  }\n  if (suburb) return 'I am working through ' + suburb + ' at the moment and ' + kqShortName(name) + ' came up.';\n  return null;\n}\n\n/*\n * kqCompose(row) -> { subject, body, variant }\n * row: { id, business_name, address, suburb, segment_code, qualification_score, profile }\n */\nfunction kqCompose(r) {\n  var profile = r.profile || {};\n  var play = PLAYBOOK[r.segment_code] || DEFAULT_PLAY;\n  var name = kqClean(r.business_name);\n  var shortName = kqShortName(name);\n  var suburb = kqSuburb(r);\n  var subLoc = kqSpecificSuburb(r);\n  var first = kqFirstName(profile);\n  var v = kqVariant(r.id, 4);\n  var score = Number(r.qualification_score || 0);\n\n  // --- subject: short, specific, no company-name stuffing, no \"(offer)\" ---\n  // Four families so one domain never sees the same shape twice. The old\n  // \"{Business} - cleaning support in {Suburb} (quick quote offer)\" was a\n  // visible mail-merge; these are shaped like something a person typed.\n  var subjects = [\n    'Quick question about ' + (subLoc || shortName),\n    play.job.charAt(0).toUpperCase() + play.job.slice(1) + ' for ' + shortName,\n    (first ? first + ', quick one' : 'Quick one') + ' about ' + (subLoc ? 'your ' + subLoc + ' site' : shortName),\n    'Cleaning quote for ' + shortName + '?'\n  ];\n  var subject = subjects[v].slice(0, 72);\n\n  // --- greeting ---\n  var greeting = first ? ('Hi ' + first + ',') : (shortName ? ('Hi ' + shortName + ' team,') : 'Hello,');\n\n  // --- opening: about them, not about us ---\n  var opener = kqObservation(r, profile);\n  if (!opener) {\n    opener = 'I look after the commercial side at ' + KQ.company + ' here in Adelaide.';\n  }\n\n  // --- the offer: their job, their pain, our specific proof ---\n  // One sentence of context, one of proof. Anything longer stops being read.\n  var offerVariants = [\n    'We do ' + play.job + ' for Adelaide businesses - the thing clients raise first is ' + play.pain + '. ' + play.line,\n    play.line + ' That is most of what we do here: ' + play.job + ' for Adelaide businesses.',\n    'We handle ' + play.job + '. ' + play.line,\n    'If ' + play.pain + ' sounds familiar, that is the bit we fix. ' + play.line\n  ];\n  var offer = offerVariants[v];\n\n  // --- CTA: a yes/no question, not a request for time ---\n  // \"Do you have 10 minutes\" asks for a commitment before any value has been\n  // given. A one-page price is a much cheaper yes.\n  var asks = [\n    'Want me to put a fixed price together for ' + play.ask + '? No obligation - if the number does not work, that is a fair answer.',\n    'Happy to price up ' + play.ask + ' so you have something to compare against. Worth sending through?',\n    'Should I send a fixed quote for ' + play.ask + '? Takes me ten minutes.',\n    'Want a price for ' + play.ask + '? I will keep it to one page.'\n  ];\n  var ask = asks[v];\n\n  if (score >= 85) {\n    ask = 'Want me to put a fixed price together for ' + play.ask + '? I can have it over today, and if the number does not work that is a fair answer.';\n  } else if (score && score < 65) {\n    ask = 'Not asking for a meeting - happy to send a one-page price for ' + play.ask + ' so it is on file for when the timing suits.';\n  }\n\n  // --- trust: concrete and checkable, no adjectives ---\n  var trust = 'Adelaide-based, public liability cover, every cleaner police-checked - documentation on request.';\n\n  var signoff = 'Thanks,\\n' + KQ.sender + '\\n' + KQ.company + '\\n' + KQ.phone;\n\n  // Only worth the extra lines when we could not find a named contact - it is\n  // a routing request, and it earns forwards to the person who actually buys.\n  var ps = first ? '' : '\\n\\nP.S. If premises are not your area, a pointer to whoever looks after them would be appreciated.';\n\n  var body = greeting + '\\n\\n' + opener + '\\n\\n' + offer + '\\n\\n' + ask + '\\n\\n' + trust + '\\n\\n' + signoff + ps;\n\n  return { subject: subject, body: body, variant: v, play: play };\n}\n// ---------- end composer ----------\n\nreturn $input.all().map(i => i.json).map(r => {\n  const composed = kqCompose({\n    id: r.id,\n    business_name: r.business_name,\n    address: r.address,\n    suburb: r.suburb,\n    segment_code: r.segment_code,\n    qualification_score: r.qualification_score,\n    profile: r.profile\n  });\n  const play = composed.play;\n  return { json: {\n    candidate_id: r.id,\n    fallback_subject: composed.subject,\n    fallback_body: composed.body,\n    compose_variant: composed.variant,\n    request: {\n      business: {\n        name: kqClean(r.business_name),\n        industry: r.segment_name || null,\n        location: kqSuburb(r) || kqClean(r.address) || null,\n        description: kqClean((r.profile || {}).description) || null\n      },\n      sender: { name: KQ.sender, company: KQ.company, phone: KQ.phone },\n      contact_name: kqFirstName(r.profile || {}),\n      notes: 'Service to pitch: ' + play.job + '. Pain to name: ' + play.pain\n           + '. Proof point: ' + play.line\n           + ' Ask them to let us price: ' + play.ask + '.'\n           + ' Adelaide-based, public liability cover, police-checked staff.'\n    }\n  } };\n});\n",
+                "language": "javaScript"
+            },
+            "typeVersion": 2
+        },
+        {
+            "id": "ed400fcd-9b5c-4bd8-a3f1-e7fa5b927541",
+            "name": "Upsert Draft Batch",
+            "type": "n8n-nodes-base.postgres",
+            "maxTries": 2,
+            "position": [
+                1100,
+                300
+            ],
+            "parameters": {
+                "query": "INSERT INTO leads.outreach_drafts (candidate_id, subject, body, method) SELECT d.candidate_id, d.subject, d.body, d.method FROM jsonb_to_recordset($1::jsonb) AS d(candidate_id bigint, subject text, body text, method text) ON CONFLICT (candidate_id) DO UPDATE SET subject = EXCLUDED.subject, body = EXCLUDED.body, method = EXCLUDED.method, updated_at = now() WHERE leads.outreach_drafts.status = 'draft'",
+                "options": {
+                    "queryReplacement": "={{ [$json.payload] }}"
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "retryOnFail": true,
+            "typeVersion": 2.6,
+            "waitBetweenTries": 2000
+        },
+        {
+            "id": "88c465bd-6dc1-4e52-94b4-b6783c0b8d43",
+            "name": "Outreach Draft Summary",
+            "type": "n8n-nodes-base.postgres",
+            "position": [
+                1320,
+                300
+            ],
+            "parameters": {
+                "query": "SELECT count(*) AS total_drafts, count(*) FILTER (WHERE status = 'draft') AS pending_review, max(updated_at) AS last_generated FROM leads.outreach_drafts",
+                "options": {
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "executeOnce": true,
+            "typeVersion": 2.6
+        },
+        {
+            "id": "6d5be37b-e344-4702-aee9-50185d3b2e22",
+            "name": "Sticky Note ca83321f",
+            "type": "n8n-nodes-base.stickyNote",
+            "position": [
+                -50,
+                250
+            ],
+            "parameters": {
+                "color": 2,
+                "width": 1620,
+                "height": 200,
+                "content": "## Personalized Outreach Engine v1.1 (draft-only, AI Gateway)\n\nWeekly Mon 08:00: generates personalized first-contact email drafts via the IVNautomation AI Gateway (generate_outreach_v2 / Qwen 3 8B). Top 50 leads by qualification score without a reviewed draft per run. Deterministic context prep (band, segment pitch, suburb, verified owner name) stays in code; language generation is delegated to POST /v1/ai/outreach/initial. Failed AI calls are skipped, retried next run. Reviewed drafts (status != draft) are never overwritten.\n\nNO EMAIL IS SENT by this workflow - it only writes drafts for review in the dashboard."
+            },
+            "typeVersion": 1
+        },
+        {
+            "id": "a1ce0fd8-0d7d-4160-ab9d-bf0988ad306a",
+            "name": "AI Generate Outreach",
+            "type": "n8n-nodes-base.httpRequest",
+            "onError": "continueRegularOutput",
+            "maxTries": 2,
+            "position": [
+                660,
+                300
+            ],
+            "parameters": {
+                "url": "http://ivnautomation-ai-gateway:8000/v1/ai/outreach/initial",
+                "method": "POST",
+                "options": {
+                    "timeout": 40000
+                },
+                "jsonBody": "={{ JSON.stringify($json.request) }}",
+                "sendBody": true,
+                "contentType": "json",
+                "specifyBody": "json"
+            },
+            "retryOnFail": true,
+            "typeVersion": 4.4,
+            "waitBetweenTries": 3000
+        },
+        {
+            "id": "9710dde5-ea7e-4d60-9d0b-d3ec6a8aa01d",
+            "name": "Assemble Draft Batch",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                880,
+                300
+            ],
+            "parameters": {
+                "mode": "runOnceForAllItems",
+                "jsCode": "\nconst BATCH_SIZE = 200;\nconst prev = $('Prepare AI Request').all();\nconst items = $input.all();\nconst drafts = [];\n\nfunction aiUsable(res) {\n  if (!res || res.success !== true || !res.data) return false;\n  const body = String(res.data.email_body || '').trim();\n  const subj = String(res.data.subject || '').trim();\n  if (body.length < 220 || body.length > 1600) return false;\n  if (!subj || subj.length > 90) return false;\n  if (/\\[[A-Za-z ]+\\]/.test(body)) return false;\n  if (/as an ai|language model|i cannot/i.test(body)) return false;\n  if (!/KQuality/i.test(body)) return false;\n  const words = body.split(/\\s+/).length;\n  return words >= 60 && words <= 220;\n}\n\n// One output per INPUT candidate, not per successful AI call. When the\n// gateway sheds the request we still persist the deterministic draft.\nfor (let i = 0; i < prev.length; i++) {\n  const src = prev[i] && prev[i].json;\n  if (!src || !src.candidate_id) continue;\n  const res = items[i] && items[i].json;\n  const ok = aiUsable(res);\n  drafts.push({\n    candidate_id: src.candidate_id,\n    subject: (ok ? String(res.data.subject) : src.fallback_subject).slice(0, 150),\n    body: ok ? String(res.data.email_body).trim() : src.fallback_body,\n    method: ok ? ('ai_' + res.capability + '_' + res.prompt_version)\n               : ('composer_v3_variant' + src.compose_variant)\n  });\n}\n\nconst out = [];\nfor (let i = 0; i < drafts.length; i += BATCH_SIZE) {\n  const chunk = drafts.slice(i, i + BATCH_SIZE);\n  out.push({ json: { payload: JSON.stringify(chunk), batch_index: out.length, batch_count: chunk.length } });\n}\nif (!out.length) out.push({ json: { payload: '[]', batch_index: 0, batch_count: 0 } });\nreturn out;\n",
+                "language": "javaScript"
+            },
+            "typeVersion": 2
         }
-      }
+    ],
+    "active": true,
+    "settings": {
+        "timezone": "Australia/Adelaide",
+        "errorWorkflow": "39Vcvm1lkmQZXFpS",
+        "availableInMCP": true,
+        "executionOrder": "v1",
+        "executionTimeout": 3600
     },
-    {
-      "id": "3128f17c-2841-44b7-b60a-d447104a3085",
-      "name": "Fetch Lead Pool",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        220,
-        300
-      ],
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT c.id, c.business_name, c.address, c.suburb, c.email, c.phone, c.stage, c.qualification_score, s.code AS segment_code, s.name AS segment_name, c.enrichment->'profile' AS profile FROM leads.candidates c LEFT JOIN leads.segments s ON s.id = c.segment_id LEFT JOIN leads.outreach_drafts d ON d.candidate_id = c.id WHERE c.duplicate_of IS NULL AND c.stage NOT IN ('lost','won') AND (d.candidate_id IS NULL OR (d.status = 'draft' AND d.method NOT LIKE 'ai\\_%')) ORDER BY (c.qualification_score >= 80) DESC, c.qualification_score DESC NULLS LAST, c.id LIMIT 15",
-        "options": {}
-      },
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
+    "connections": {
+        "Fetch Lead Pool": {
+            "main": [
+                [
+                    {
+                        "node": "Prepare AI Request",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepare AI Request": {
+            "main": [
+                [
+                    {
+                        "node": "AI Generate Outreach",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Upsert Draft Batch": {
+            "main": [
+                [
+                    {
+                        "node": "Outreach Draft Summary",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Generate Outreach": {
+            "main": [
+                [
+                    {
+                        "node": "Assemble Draft Batch",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Assemble Draft Batch": {
+            "main": [
+                [
+                    {
+                        "node": "Upsert Draft Batch",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Every 30 Minutes Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Lead Pool",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
         }
-      },
-      "executeOnce": true
-    },
-    {
-      "id": "ab286a00-8d9e-44ad-a849-1bc410eabe23",
-      "name": "Prepare AI Request",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        440,
-        300
-      ],
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "language": "javaScript",
-        "jsCode": "const COMPANY = 'KQuality Cleaning Services';\nconst SEGMENT_PITCH = {\n  commercial_office: 'we help Adelaide offices keep their workspaces spotless so staff and clients always walk into a fresh, professional space',\n  real_estate_strata: 'we support property and strata managers with dependable common-area, end-of-lease and vacate cleans across their portfolios',\n  medical_childcare_gym: 'we provide compliance-grade cleaning and sanitisation for medical, childcare and fitness spaces where hygiene standards are non-negotiable',\n  builders_construction: 'we handle post-construction and handover cleans so your sites are presentation-ready on deadline',\n  hospitality_venues: 'we keep hospitality venues guest-ready with thorough after-service and overnight cleans',\n  education_training: 'we help schools and learning centres maintain clean, healthy spaces for students and staff',\n  retail_showrooms: 'we keep showrooms and retail floors presentation-perfect so your stock always looks its best'\n};\nconst DEFAULT_PITCH = 'we provide reliable commercial cleaning for Adelaide businesses';\nconst ROLE_OK = /^(Owner|Co-?Owner|Director|Managing Director|CEO|Founder|Co-?Founder|Principal)$/i;\nconst NAME_BLOCK = /(Care|Quality|Executive|Nurse|Registered|Enrolled|General|Office|Property|Practice|Team|Group|Services)/i;\nconst AU_TAIL_RE = /,\\s*Australia\\s*$/i;\nconst STATE_RE = /\\s+(SA|NSW|VIC|QLD|WA|NT|TAS|ACT)\\s+\\d{4}.*$/i;\nconst suburbOf = (r) => { if (r.suburb) return r.suburb; const a = (r.address || '').replace(AU_TAIL_RE, ''); const p = a.split(','); return p.length < 2 ? '' : p[p.length - 1].replace(STATE_RE, '').trim(); };\nconst bandOf = (s) => s == null ? 'cold' : (Number(s) >= 80 ? 'hot' : (Number(s) >= 55 ? 'warm' : 'cold'));\nconst clean = (t) => String(t || '').replace(/\\s+/g, ' ').trim();\nreturn $input.all().map(i => i.json).map(r => {\n  const profile = r.profile || {};\n  const band = bandOf(r.qualification_score);\n  const suburb = suburbOf(r);\n  const pitch = SEGMENT_PITCH[r.segment_code] || DEFAULT_PITCH;\n  const people = Array.isArray(profile.people) ? profile.people : [];\n  const person = people.find(p => p && ROLE_OK.test(String(p.role || '')) && /^[A-Z][a-z]{1,15} [A-Z][a-z]{1,20}$/.test(String(p.name || '')) && !NAME_BLOCK.test(String(p.name)));\n  const firstName = person ? person.name.split(' ')[0] : null;\n  const desc = clean(profile.description);\n  return { json: {\n    candidate_id: r.id,\n    request: {\n      business: {\n        name: clean(r.business_name),\n        industry: r.segment_name || null,\n        location: suburb || clean(r.address) || null,\n        description: desc || null\n      },\n      sender: { name: 'Michelle', company: COMPANY },\n      contact_name: firstName,\n      notes: 'qualification band: ' + band + '. segment pitch: ' + pitch + '. Local Adelaide team.'\n    }\n  } };\n});"
-      }
-    },
-    {
-      "id": "ed400fcd-9b5c-4bd8-a3f1-e7fa5b927541",
-      "name": "Upsert Draft Batch",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        1100,
-        300
-      ],
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "INSERT INTO leads.outreach_drafts (candidate_id, subject, body, method) SELECT d.candidate_id, d.subject, d.body, d.method FROM jsonb_to_recordset($1::jsonb) AS d(candidate_id bigint, subject text, body text, method text) ON CONFLICT (candidate_id) DO UPDATE SET subject = EXCLUDED.subject, body = EXCLUDED.body, method = EXCLUDED.method, updated_at = now() WHERE leads.outreach_drafts.status = 'draft'",
-        "options": {
-          "queryReplacement": "={{ [$json.payload] }}"
-        }
-      },
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
-        }
-      },
-      "retryOnFail": true,
-      "maxTries": 2,
-      "waitBetweenTries": 2000
-    },
-    {
-      "id": "88c465bd-6dc1-4e52-94b4-b6783c0b8d43",
-      "name": "Outreach Draft Summary",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        1320,
-        300
-      ],
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT count(*) AS total_drafts, count(*) FILTER (WHERE status = 'draft') AS pending_review, max(updated_at) AS last_generated FROM leads.outreach_drafts",
-        "options": {}
-      },
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
-        }
-      },
-      "executeOnce": true
-    },
-    {
-      "id": "6d5be37b-e344-4702-aee9-50185d3b2e22",
-      "name": "Sticky Note ca83321f",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        -50,
-        250
-      ],
-      "parameters": {
-        "content": "## Personalized Outreach Engine v1.1 (draft-only, AI Gateway)\n\nWeekly Mon 08:00: generates personalized first-contact email drafts via the IVNautomation AI Gateway (generate_outreach_v2 / Qwen 3 8B). Top 50 leads by qualification score without a reviewed draft per run. Deterministic context prep (band, segment pitch, suburb, verified owner name) stays in code; language generation is delegated to POST /v1/ai/outreach/initial. Failed AI calls are skipped, retried next run. Reviewed drafts (status != draft) are never overwritten.\n\nNO EMAIL IS SENT by this workflow - it only writes drafts for review in the dashboard.",
-        "color": 2,
-        "width": 1620,
-        "height": 200
-      }
-    },
-    {
-      "id": "a1ce0fd8-0d7d-4160-ab9d-bf0988ad306a",
-      "name": "AI Generate Outreach",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        660,
-        300
-      ],
-      "parameters": {
-        "method": "POST",
-        "url": "http://ivnautomation-ai-gateway:8000/v1/ai/outreach/initial",
-        "sendBody": true,
-        "contentType": "json",
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.request) }}",
-        "options": {
-          "timeout": 120000
-        }
-      },
-      "onError": "continueRegularOutput",
-      "retryOnFail": true,
-      "maxTries": 2,
-      "waitBetweenTries": 3000
-    },
-    {
-      "id": "9710dde5-ea7e-4d60-9d0b-d3ec6a8aa01d",
-      "name": "Assemble Draft Batch",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        880,
-        300
-      ],
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "language": "javaScript",
-        "jsCode": "const BATCH_SIZE = 200;\nconst prev = $('Prepare AI Request').all();\nconst items = $input.all();\nconst drafts = [];\nfor (let i = 0; i < items.length; i++) {\n  const res = items[i].json;\n  if (!res || res.success !== true || !res.data || !res.data.email_body) continue;\n  const src = prev[i] && prev[i].json;\n  if (!src || !src.candidate_id) continue;\n  drafts.push({\n    candidate_id: src.candidate_id,\n    subject: String(res.data.subject || ('Cleaning support for ' + src.request.business.name)).slice(0, 150),\n    body: String(res.data.email_body),\n    method: 'ai_' + res.capability + '_' + res.prompt_version\n  });\n}\nconst out = [];\nfor (let i = 0; i < drafts.length; i += BATCH_SIZE) { const chunk = drafts.slice(i, i + BATCH_SIZE); out.push({ json: { payload: JSON.stringify(chunk), batch_index: out.length, batch_count: chunk.length } }); }\nif (!out.length) { out.push({ json: { payload: '[]', batch_index: 0, batch_count: 0 } }); }\nreturn out;"
-      }
     }
-  ],
-  "connections": {
-    "Fetch Lead Pool": {
-      "main": [
-        [
-          {
-            "node": "Prepare AI Request",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Upsert Draft Batch": {
-      "main": [
-        [
-          {
-            "node": "Outreach Draft Summary",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Prepare AI Request": {
-      "main": [
-        [
-          {
-            "node": "AI Generate Outreach",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "AI Generate Outreach": {
-      "main": [
-        [
-          {
-            "node": "Assemble Draft Batch",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Assemble Draft Batch": {
-      "main": [
-        [
-          {
-            "node": "Upsert Draft Batch",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Every 30 Minutes Trigger": {
-      "main": [
-        [
-          {
-            "node": "Fetch Lead Pool",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  }
 }

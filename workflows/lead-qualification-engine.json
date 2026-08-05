@@ -1,313 +1,317 @@
 {
-  "id": "mwHCwOBO9RuyDNGs",
-  "name": "Lead Qualification Engine",
-  "active": true,
-  "settings": {
-    "executionOrder": "v1",
-    "availableInMCP": true,
-    "errorWorkflow": "39Vcvm1lkmQZXFpS",
-    "timezone": "Australia/Adelaide",
-    "executionTimeout": 900,
-    "saveDataSuccessExecution": "all"
-  },
-  "nodes": [
-    {
-      "id": "1f606880-2598-45f8-86d8-eedbe98b36db",
-      "name": "Hourly Trigger",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.3,
-      "position": [
-        0,
-        300
-      ],
-      "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "hours",
-              "hoursInterval": 1
-            }
-          ]
-        }
-      },
-      "disabled": false
-    },
-    {
-      "id": "1e45f072-47a2-4baa-a301-608645e11737",
-      "name": "Fetch Scorable Candidates",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        220,
-        300
-      ],
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT c.id, c.email, c.phone, c.website, c.linkedin_url, c.stage, c.enrichment, COALESCE(s.priority_weight, 5) AS priority_weight FROM leads.candidates c LEFT JOIN leads.segments s ON s.id = c.segment_id WHERE c.duplicate_of IS NULL AND c.stage IN ('enriched','qualified','disqualified') ORDER BY c.id",
-        "options": {}
-      },
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
-        }
-      },
-      "executeOnce": true
-    },
-    {
-      "id": "a7c98730-a048-4bd4-8567-797dec7febbd",
-      "name": "Score Candidates",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        440,
-        300
-      ],
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "language": "javaScript",
-        "jsCode": "const SCORING_VERSION = 'qual_v1';\nconst W_EMAIL = 40;\nconst W_PREFERRED_EMAIL = 5;\nconst W_PHONE = 15;\nconst W_WEBSITE = 10;\nconst W_LINKEDIN = 10;\nconst W_SOCIAL = 5;\nconst W_CLEAN_ENRICHMENT = 5;\nconst QUALIFY_MIN_SCORE = 55;\nconst PREFERRED_EMAIL_RE = /^(info|contact|admin|hello|enquiries|enquiry|office|sales|reception|bookings)@/;\nconst rows = $input.all().map(i => i.json);\nconst scored = rows.map(r => {\n  const enrichment = r.enrichment ?? {};\n  const socials = enrichment.socials ?? {};\n  const factors = {\n    email: r.email ? W_EMAIL : 0,\n    preferred_email: (r.email && PREFERRED_EMAIL_RE.test(r.email)) ? W_PREFERRED_EMAIL : 0,\n    phone: r.phone ? W_PHONE : 0,\n    website: r.website ? W_WEBSITE : 0,\n    linkedin: (r.linkedin_url || socials.linkedin) ? W_LINKEDIN : 0,\n    social: (socials.facebook || socials.instagram) ? W_SOCIAL : 0,\n    clean_enrichment: enrichment.error ? 0 : W_CLEAN_ENRICHMENT,\n    segment_priority: Number(r.priority_weight ?? 0)\n  };\n  const score = Object.values(factors).reduce((a, b) => a + b, 0);\n  let new_stage;\n  if (r.email && score >= QUALIFY_MIN_SCORE) { new_stage = 'qualified'; }\n  else if (!r.email && !r.phone) { new_stage = 'disqualified'; }\n  else { new_stage = 'enriched'; }\n  return { id: r.id, score, new_stage, qual: { version: SCORING_VERSION, threshold: QUALIFY_MIN_SCORE, factors, decision: new_stage } };\n});\nreturn [{ json: { payload: JSON.stringify(scored), scored_count: scored.length } }];"
-      }
-    },
-    {
-      "id": "026fb96f-6380-4ebd-98cf-3ca5c56189f9",
-      "name": "Persist Scores",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        660,
-        300
-      ],
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "UPDATE leads.candidates c SET qualification_score = s.score, qualification = s.qual, qualified_at = CASE WHEN s.new_stage = 'qualified' THEN COALESCE(c.qualified_at, now()) ELSE NULL END, stage = s.new_stage, stage_updated_at = CASE WHEN c.stage IS DISTINCT FROM s.new_stage THEN now() ELSE c.stage_updated_at END FROM jsonb_to_recordset($1::jsonb) AS s(id bigint, score integer, new_stage text, qual jsonb) WHERE c.id = s.id",
-        "options": {
-          "queryReplacement": "={{ [$json.payload] }}"
-        }
-      },
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
-        }
-      },
-      "executeOnce": true,
-      "retryOnFail": true,
-      "maxTries": 2,
-      "waitBetweenTries": 2000
-    },
-    {
-      "id": "3d1b8697-f73d-4c82-aadb-f379adf63bce",
-      "name": "Recompute Shortlist Rank",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        880,
-        300
-      ],
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "WITH cleared AS (UPDATE leads.candidates SET shortlist_rank = NULL WHERE (stage <> 'qualified' OR duplicate_of IS NOT NULL) AND shortlist_rank IS NOT NULL RETURNING id), ranked AS (SELECT id, row_number() OVER (ORDER BY qualification_score DESC, id ASC) AS rn FROM leads.candidates WHERE stage = 'qualified' AND duplicate_of IS NULL) UPDATE leads.candidates c SET shortlist_rank = r.rn FROM ranked r WHERE c.id = r.id AND c.shortlist_rank IS DISTINCT FROM r.rn",
-        "options": {}
-      },
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
-        }
-      },
-      "executeOnce": true,
-      "retryOnFail": true,
-      "maxTries": 2,
-      "waitBetweenTries": 2000
-    },
-    {
-      "id": "e3db7990-c185-4564-a154-b48654a1cd69",
-      "name": "Qualification Summary",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        1100,
-        300
-      ],
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT count(*) FILTER (WHERE stage = 'qualified') AS qualified, count(*) FILTER (WHERE stage = 'disqualified') AS disqualified, count(*) FILTER (WHERE stage = 'enriched') AS still_enriched, max(shortlist_rank) AS shortlist_size FROM leads.candidates",
-        "options": {}
-      },
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
-        }
-      },
-      "executeOnce": true
-    },
-    {
-      "id": "2dfcbca3-5fea-4dc7-9fcf-7b2a4cfd4d19",
-      "name": "Sticky Note 4160506e",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        -50,
-        250
-      ],
-      "parameters": {
-        "content": "## Lead Qualification Engine v1\n\nHourly: deterministically scores every candidate in stage enriched/qualified/disqualified using qual_v1 weights (contactability + segment priority), persists score + factor breakdown to leads.candidates.qualification_score / qualification, transitions stage (qualified >= 55 with email; disqualified if no email and no phone), and recomputes leads.candidates.shortlist_rank (score DESC, id ASC) for the outreach shortlist.\n\nScoring is pure and reproducible: same inputs always produce the same scores and shortlist order. Segment weights live in leads.segments.priority_weight.",
-        "color": 6,
-        "width": 1400,
-        "height": 200
-      }
-    },
-    {
-      "id": "82571763-60c2-4b45-a1a8-cfe1158c2371",
-      "name": "Purge Expired Sessions",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        1320,
-        300
-      ],
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "DELETE FROM leads.dashboard_sessions WHERE expires_at < now() - interval '1 day'",
-        "options": {}
-      },
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
-        }
-      },
-      "disabled": false,
-      "onError": "continueRegularOutput",
-      "executeOnce": true
-    },
-    {
-      "id": "3ab8c262-aba2-4e5f-9d2e-92221653647e",
-      "name": "Trigger Outreach Engine",
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.3,
-      "position": [
-        1540,
-        300
-      ],
-      "parameters": {
-        "mode": "once",
-        "source": "database",
-        "workflowId": {
-          "__rl": true,
-          "mode": "id",
-          "value": "3bNNqQehDJdK8onH"
+    "id": "mwHCwOBO9RuyDNGs",
+    "name": "Lead Qualification Engine",
+    "nodes": [
+        {
+            "id": "1f606880-2598-45f8-86d8-eedbe98b36db",
+            "name": "Hourly Trigger",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "disabled": false,
+            "position": [
+                0,
+                300
+            ],
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "hoursInterval": 1
+                        }
+                    ]
+                }
+            },
+            "typeVersion": 1.3
         },
-        "options": {
-          "waitForSubWorkflow": false
+        {
+            "id": "1e45f072-47a2-4baa-a301-608645e11737",
+            "name": "Fetch Scorable Candidates",
+            "type": "n8n-nodes-base.postgres",
+            "position": [
+                220,
+                300
+            ],
+            "parameters": {
+                "query": "SELECT c.id, c.email, c.phone, c.website, c.linkedin_url, c.stage, c.enrichment,\n       c.business_name, c.address, c.suburb,\n       COALESCE(s.priority_weight, 5) AS priority_weight,\n       s.code AS segment_code,\n       EXISTS (SELECT 1 FROM leads.suppression sp\n               WHERE (sp.email_norm IS NOT NULL AND sp.email_norm = leads.norm_email(c.email))\n                  OR (sp.domain_norm IS NOT NULL AND sp.domain_norm = leads.norm_domain(c.website)))\n         AS suppressed\nFROM leads.candidates c\nLEFT JOIN leads.segments s ON s.id = c.segment_id\nWHERE c.duplicate_of IS NULL\n  AND c.do_not_contact = false\n  AND c.stage IN ('enriched','qualified')\nORDER BY c.id",
+                "options": {
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "executeOnce": true,
+            "typeVersion": 2.6
+        },
+        {
+            "id": "a7c98730-a048-4bd4-8567-797dec7febbd",
+            "name": "Score Candidates",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                440,
+                300
+            ],
+            "parameters": {
+                "mode": "runOnceForAllItems",
+                "jsCode": "\nconst SCORING_VERSION = 'qual_v2';\n// The threshold is an ELIGIBILITY floor, not a priority signal. Only 15 leads\n// a day are sent and they come off the top of shortlist_rank, which sorts by\n// score then segment weight — so a strict threshold buys nothing but starves\n// the pool. At 60 only 121 leads survived (eight days of sending); at 50 the\n// pool is ~380 while the same high-value leads still go out first.\nconst QUALIFY_MIN_SCORE = 50;\n\n// --- reach: can we actually land in a human inbox? (max 45) ---\nconst ROLE_EMAIL_RE   = /^(info|contact|admin|hello|enquiries|enquiry|office|sales|reception|bookings|mail|team)@/i;\nconst GENERIC_MBOX_RE = /@(gmail|hotmail|outlook|yahoo|bigpond|live|icloud|optusnet)\\./i;\n\n// --- fit: signals that the business has premises and a budget ---\nconst MULTISITE_RE = /\\b(branches?|locations?|offices across|sites across|our (centres|clinics|branches|offices|stores)|portfolio|nationwide|statewide|multiple sites)\\b/i;\nconst BIG_PREMISES_RE = /\\b(warehouse|facility|campus|complex|premises|head office|showroom|clinic|centre|building)\\b/i;\n\nconst rows = $input.all().map(i => i.json);\n\nconst scored = rows.map(r => {\n  const enrichment = r.enrichment || {};\n  const profile = enrichment.profile || {};\n  const socials = enrichment.socials || {};\n  const ai = enrichment.ai || {};\n  const analysis = (ai && typeof ai.analysis === 'object') ? (ai.analysis || {}) : {};\n  const opps = (ai && typeof ai.opportunities === 'object') ? (ai.opportunities || {}) : {};\n  const text = String(profile.description || '') + ' ' + String(profile.title || '') + ' ' + String(profile.page_text || '').slice(0, 3000);\n\n  const hasEmail = !!r.email;\n  const isRole   = hasEmail && ROLE_EMAIL_RE.test(r.email);\n  const isFreeMb = hasEmail && GENERIC_MBOX_RE.test(r.email);\n\n  const factors = {\n    // reach\n    email:        hasEmail ? (isRole ? 22 : 28) : 0,\n    phone:        r.phone ? 7 : 0,\n    website:      r.website ? 5 : 0,\n    linkedin:     (r.linkedin_url || socials.linkedin) ? 5 : 0,\n\n    // fit — segment weight is doubled so it dominates raw contactability\n    segment_fit:  Number(r.priority_weight || 0) * 2,\n    multi_site:   MULTISITE_RE.test(text) ? 8 : 0,\n    premises:     BIG_PREMISES_RE.test(text) ? 5 : 0,\n    size_signal:  ({ large: 8, medium: 6, small: 3 })[String(analysis.company_size_signal || '')] || 0,\n\n    // intent — only present on the ~11% of records where AI analysis succeeded\n    ai_fit:       ({ strong: 10, moderate: 5, weak: 0 })[String(opps.overall_fit || '')] || 0,\n    professional: Number(analysis.professionalism_score || 0) >= 7 ? 4 : 0,\n\n    // penalties\n    free_mailbox: isFreeMb ? -10 : 0,          // sole trader, no premises budget\n    enrich_error: enrichment.error ? -5 : 0,\n    thin_site:    (String(profile.page_text || '').length < 400) ? -5 : 0,\n    suppressed:   r.suppressed ? -200 : 0      // already contacted / bounced / competitor\n  };\n\n  const score = Math.max(0, Object.values(factors).reduce((a, b) => a + b, 0));\n\n  let new_stage;\n  if (r.suppressed)                                new_stage = 'disqualified';\n  else if (!hasEmail && !r.phone)                  new_stage = 'disqualified';\n  else if (hasEmail && score >= QUALIFY_MIN_SCORE) new_stage = 'qualified';\n  else                                             new_stage = 'enriched';\n\n  const band = score >= 85 ? 'hot' : (score >= 65 ? 'warm' : 'cold');\n\n  return {\n    id: r.id, score, new_stage,\n    qual: { version: SCORING_VERSION, threshold: QUALIFY_MIN_SCORE, band, factors, decision: new_stage }\n  };\n});\n\nreturn [{ json: { payload: JSON.stringify(scored), scored_count: scored.length } }];\n",
+                "language": "javaScript"
+            },
+            "typeVersion": 2
+        },
+        {
+            "id": "026fb96f-6380-4ebd-98cf-3ca5c56189f9",
+            "name": "Persist Scores",
+            "type": "n8n-nodes-base.postgres",
+            "maxTries": 2,
+            "position": [
+                660,
+                300
+            ],
+            "parameters": {
+                "query": "UPDATE leads.candidates c SET\n  qualification_score = s.score,\n  qualification = c.qualification || s.qual,\n  qualified_at = CASE WHEN s.new_stage = 'qualified'\n                      THEN COALESCE(c.qualified_at, now()) ELSE NULL END,\n  stage = s.new_stage,\n  stage_updated_at = CASE WHEN c.stage IS DISTINCT FROM s.new_stage\n                          THEN now() ELSE c.stage_updated_at END\nFROM jsonb_to_recordset($1::jsonb)\n  AS s(id bigint, score integer, new_stage text, qual jsonb)\nWHERE c.id = s.id\n  AND c.do_not_contact = false",
+                "options": {
+                    "queryReplacement": "={{ [$json.payload] }}"
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "executeOnce": true,
+            "retryOnFail": true,
+            "typeVersion": 2.6,
+            "waitBetweenTries": 2000
+        },
+        {
+            "id": "3d1b8697-f73d-4c82-aadb-f379adf63bce",
+            "name": "Recompute Shortlist Rank",
+            "type": "n8n-nodes-base.postgres",
+            "maxTries": 2,
+            "position": [
+                880,
+                300
+            ],
+            "parameters": {
+                "query": "WITH cleared AS (\n  UPDATE leads.candidates SET shortlist_rank = NULL\n  WHERE (stage <> 'qualified' OR duplicate_of IS NOT NULL OR do_not_contact)\n    AND shortlist_rank IS NOT NULL RETURNING id),\nranked AS (\n  SELECT c.id, row_number() OVER (\n    ORDER BY c.qualification_score DESC, COALESCE(s.priority_weight,5) DESC, c.id ASC) AS rn\n  FROM leads.candidates c LEFT JOIN leads.segments s ON s.id = c.segment_id\n  WHERE c.stage = 'qualified' AND c.duplicate_of IS NULL AND c.do_not_contact = false)\nUPDATE leads.candidates c SET shortlist_rank = r.rn FROM ranked r\nWHERE c.id = r.id AND c.shortlist_rank IS DISTINCT FROM r.rn",
+                "options": {
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "executeOnce": true,
+            "retryOnFail": true,
+            "typeVersion": 2.6,
+            "waitBetweenTries": 2000
+        },
+        {
+            "id": "e3db7990-c185-4564-a154-b48654a1cd69",
+            "name": "Qualification Summary",
+            "type": "n8n-nodes-base.postgres",
+            "position": [
+                1100,
+                300
+            ],
+            "parameters": {
+                "query": "SELECT count(*) FILTER (WHERE stage = 'qualified') AS qualified, count(*) FILTER (WHERE stage = 'disqualified') AS disqualified, count(*) FILTER (WHERE stage = 'enriched') AS still_enriched, max(shortlist_rank) AS shortlist_size FROM leads.candidates",
+                "options": {
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "executeOnce": true,
+            "typeVersion": 2.6
+        },
+        {
+            "id": "2dfcbca3-5fea-4dc7-9fcf-7b2a4cfd4d19",
+            "name": "Sticky Note 4160506e",
+            "type": "n8n-nodes-base.stickyNote",
+            "position": [
+                -50,
+                250
+            ],
+            "parameters": {
+                "color": 6,
+                "width": 1400,
+                "height": 200,
+                "content": "## Lead Qualification Engine v1\n\nHourly: deterministically scores every candidate in stage enriched/qualified/disqualified using qual_v1 weights (contactability + segment priority), persists score + factor breakdown to leads.candidates.qualification_score / qualification, transitions stage (qualified >= 55 with email; disqualified if no email and no phone), and recomputes leads.candidates.shortlist_rank (score DESC, id ASC) for the outreach shortlist.\n\nScoring is pure and reproducible: same inputs always produce the same scores and shortlist order. Segment weights live in leads.segments.priority_weight."
+            },
+            "typeVersion": 1
+        },
+        {
+            "id": "82571763-60c2-4b45-a1a8-cfe1158c2371",
+            "name": "Purge Expired Sessions",
+            "type": "n8n-nodes-base.postgres",
+            "onError": "continueRegularOutput",
+            "disabled": false,
+            "position": [
+                1320,
+                300
+            ],
+            "parameters": {
+                "query": "DELETE FROM leads.dashboard_sessions WHERE expires_at < now() - interval '1 day'",
+                "options": {
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "executeOnce": true,
+            "typeVersion": 2.6
+        },
+        {
+            "id": "3ab8c262-aba2-4e5f-9d2e-92221653647e",
+            "name": "Trigger Outreach Engine",
+            "type": "n8n-nodes-base.executeWorkflow",
+            "disabled": false,
+            "position": [
+                1540,
+                300
+            ],
+            "parameters": {
+                "mode": "once",
+                "source": "database",
+                "options": {
+                    "waitForSubWorkflow": false
+                },
+                "workflowId": {
+                    "__rl": true,
+                    "mode": "id",
+                    "value": "3bNNqQehDJdK8onH"
+                }
+            },
+            "typeVersion": 1.3
+        },
+        {
+            "id": "e91eb3e4-c72d-4fcb-a0fe-67f542ef6c2a",
+            "name": "Chain Trigger (from Intelligence)",
+            "type": "n8n-nodes-base.executeWorkflowTrigger",
+            "position": [
+                0,
+                460
+            ],
+            "parameters": {
+                "inputSource": "passthrough"
+            },
+            "typeVersion": 1.2
         }
-      },
-      "disabled": false
+    ],
+    "active": true,
+    "settings": {
+        "timezone": "Australia/Adelaide",
+        "errorWorkflow": "39Vcvm1lkmQZXFpS",
+        "availableInMCP": true,
+        "executionOrder": "v1",
+        "executionTimeout": 900,
+        "saveDataSuccessExecution": "all"
     },
-    {
-      "id": "e91eb3e4-c72d-4fcb-a0fe-67f542ef6c2a",
-      "name": "Chain Trigger (from Intelligence)",
-      "type": "n8n-nodes-base.executeWorkflowTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        0,
-        460
-      ],
-      "parameters": {
-        "inputSource": "passthrough"
-      }
+    "connections": {
+        "Hourly Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Scorable Candidates",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Persist Scores": {
+            "main": [
+                [
+                    {
+                        "node": "Recompute Shortlist Rank",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Score Candidates": {
+            "main": [
+                [
+                    {
+                        "node": "Persist Scores",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Qualification Summary": {
+            "main": [
+                [
+                    {
+                        "node": "Purge Expired Sessions",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Purge Expired Sessions": {
+            "main": [
+                [
+                    {
+                        "node": "Trigger Outreach Engine",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Recompute Shortlist Rank": {
+            "main": [
+                [
+                    {
+                        "node": "Qualification Summary",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Scorable Candidates": {
+            "main": [
+                [
+                    {
+                        "node": "Score Candidates",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Chain Trigger (from Intelligence)": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Scorable Candidates",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
     }
-  ],
-  "connections": {
-    "Fetch Scorable Candidates": {
-      "main": [
-        [
-          {
-            "node": "Score Candidates",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Score Candidates": {
-      "main": [
-        [
-          {
-            "node": "Persist Scores",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Persist Scores": {
-      "main": [
-        [
-          {
-            "node": "Recompute Shortlist Rank",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Recompute Shortlist Rank": {
-      "main": [
-        [
-          {
-            "node": "Qualification Summary",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Qualification Summary": {
-      "main": [
-        [
-          {
-            "node": "Purge Expired Sessions",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Purge Expired Sessions": {
-      "main": [
-        [
-          {
-            "node": "Trigger Outreach Engine",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Chain Trigger (from Intelligence)": {
-      "main": [
-        [
-          {
-            "node": "Fetch Scorable Candidates",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Hourly Trigger": {
-      "main": [
-        [
-          {
-            "node": "Fetch Scorable Candidates",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  }
 }

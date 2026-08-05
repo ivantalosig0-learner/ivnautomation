@@ -42,57 +42,72 @@ def _register(spec: PromptSpec) -> None:
 
 _register(PromptSpec(
     id="generate_outreach",
-    version="v2",
+    version="v3",
     system=(
         f"{_BRAND}\n"
-        "TASK: Write a first cold outreach email TO the business described in the "
-        "input JSON (the recipient), FROM the sender. NEVER greet or address "
-        "the sender; the greeting targets the recipient business or "
-        "contact_name. Always refer to the sending company using the exact "
-        "value of sender.company. The input may include deterministic context (qualification "
-        "band, segment pitch, suburb, profile description) in 'notes' — use it. "
-        "Reference one specific, verifiable detail about their business. Body "
-        "length 90-130 words. One clear low-friction call to action matched to "
-        "the qualification band: hot = offer a quick walkthrough/quote, warm = "
-        "soft offer of info or short call, cold = stay-on-radar soft touch. Do "
-        "not use placeholders like [Name]; if contact_name is missing, open "
-        "with a natural greeting without a name. Sign off with the sender "
-        "details given in the input. Also write an email subject line, max 55 "
-        "characters, specific and non-spammy.\n"
+        "TASK: Write ONE short cold outreach email TO the business in the input "
+        "JSON (the recipient), FROM the sender. Never greet or address the "
+        "sender. Always name the sending company using the exact value of "
+        "sender.company.\n"
+        "The 'notes' field tells you which service to pitch, which pain to "
+        "name, the proof point to use, and what to ask to price. Use them; do "
+        "not substitute a generic cleaning pitch.\n"
+        "HARD RULES:\n"
+        "- Body 90-130 words. Shorter beats longer.\n"
+        "- Open with something specific about THEM drawn from business.name, "
+        "business.description or business.location. Never open with a "
+        "sentence about us.\n"
+        "- Exactly one ask, and it must be a yes/no question offering a fixed "
+        "written price for the thing named in notes. Never ask for a meeting, "
+        "a call, or '10 minutes'.\n"
+        "- Include one trust line: Adelaide-based, public liability cover, "
+        "police-checked cleaners, documentation on request.\n"
+        "- Sign off with sender.name, then sender.company, then sender.phone "
+        "on separate lines.\n"
+        "- Plain text only. No links, no bullet points, no markdown, no "
+        "placeholders such as [Name], no emojis, no exclamation marks.\n"
+        "- If contact_name is null, greet the team by business name.\n"
+        "SUBJECT: max 60 characters, lowercase-natural, as if typed by a "
+        "person. Never append a parenthetical offer such as '(quick quote "
+        "offer)'. Never use the words free, offer, deal, discount, or "
+        "guarantee. Do not stuff the business name and suburb together.\n"
         'Return JSON: {"subject": string, "email_body": string, '
         '"personalization_used": string, "call_to_action": string, '
         '"word_count": integer}\n'
         f"{_JSON_RULES}"
     ),
     required_keys=["subject", "email_body", "personalization_used", "call_to_action"],
-    temperature=0.4,
+    temperature=0.5,
 ))
 
 _register(PromptSpec(
     id="generate_followup",
-    version="v2",
+    version="v3",
     system=(
         f"{_BRAND}\n"
-        "TASK: Write a follow-up email TO the business described in the input "
-        "JSON (the recipient), FROM the sender. NEVER greet or address the "
-        "sender; the greeting targets the recipient business or contact_name. "
-        "Always refer to the sending company using the exact value of "
+        "TASK: Write a follow-up email TO the business in the input JSON, FROM "
+        "the sender. Never greet or address the sender. Use the exact value of "
         "sender.company. Input includes the original outreach email, "
-        "sequence_number and days_since_last_contact.\n"
-        "Sequence rules: 1 = gentle bump referencing the earlier note plus a "
-        "no-obligation quote offer. 2 = new angle of value (e.g. after-hours "
-        "cleaning, fully insured local team, no lock-in contracts) plus a "
-        "10-minute walkthrough offer. 3 or higher = polite final note, no "
-        "pressure, door stays open; set is_final true.\n"
-        "Body 50-90 words, plain text, greeting line and sign-off with "
-        "sender.name and sender.company. Never guilt-trip. Do not repeat the "
-        "original email's wording.\n"
+        "sequence_number, days_since_last_contact and notes.\n"
+        "Sequence rules:\n"
+        "1 = two sentences maximum. Acknowledge the earlier note, then ask "
+        "whether to send a fixed price for the item in notes. Nothing else.\n"
+        "2 = lead with the proof point in notes as NEW information. Explicitly "
+        "give them permission to already have a cleaner, and offer to be the "
+        "backup number on file.\n"
+        "3 or higher = final note. Invite a one-word 'not now' reply so they "
+        "can close the loop without awkwardness. Set is_final true.\n"
+        "HARD RULES: body 40-80 words, plain text, no links, no markdown, no "
+        "placeholders, no exclamation marks. Never guilt-trip, never say "
+        "'just following up again' or 'circling back'. Never repeat sentences "
+        "from the original email. Sign off with sender.name, sender.company "
+        "and sender.phone on separate lines.\n"
         'Return JSON: {"email_body": string, "angle": string, '
         '"is_final": boolean, "word_count": integer}\n'
         f"{_JSON_RULES}"
     ),
     required_keys=["email_body", "angle", "is_final"],
-    temperature=0.4,
+    temperature=0.5,
 ))
 
 _register(PromptSpec(

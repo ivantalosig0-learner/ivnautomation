@@ -1,925 +1,929 @@
 {
-  "id": "3bNNqQehDJdK8onH",
-  "name": "Daily Automated Outreach Engine",
-  "active": true,
-  "settings": {
-    "executionOrder": "v1",
-    "availableInMCP": true,
-    "errorWorkflow": "39Vcvm1lkmQZXFpS",
-    "timezone": "Asia/Manila",
-    "executionTimeout": 3600
-  },
-  "nodes": [
-    {
-      "id": "0ba29f8f-281d-47bf-ad41-7a07b8c305a5",
-      "name": "Weekday 07:00 Trigger (Asia/Manila)",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.3,
-      "position": [
-        0,
-        624
-      ],
-      "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "cronExpression",
-              "expression": "0 7 * * 1-5"
-            }
-          ]
+    "id": "3bNNqQehDJdK8onH",
+    "name": "Daily Automated Outreach Engine",
+    "nodes": [
+        {
+            "id": "0ba29f8f-281d-47bf-ad41-7a07b8c305a5",
+            "name": "Weekday 07:00 Trigger (Asia/Manila)",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "disabled": false,
+            "position": [
+                0,
+                624
+            ],
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "cronExpression",
+                            "expression": "0 7 * * 1-5"
+                        }
+                    ]
+                }
+            },
+            "typeVersion": 1.3
+        },
+        {
+            "id": "eeea6b0f-e1f7-4e84-b8ef-91c909ec5d6f",
+            "name": "Check Health & Settings",
+            "type": "n8n-nodes-base.postgres",
+            "position": [
+                224,
+                624
+            ],
+            "parameters": {
+                "query": "SELECT COALESCE((SELECT value FROM leads.system_settings WHERE key='automatic_outreach_enabled'),'true') AS kill_switch, COALESCE((SELECT value FROM leads.system_settings WHERE key='qualification_threshold'),'55')::int AS threshold, COALESCE((SELECT value FROM leads.system_settings WHERE key='daily_send_cap'),'15')::int AS cap, EXISTS(SELECT 1 FROM leads.outreach_runs WHERE run_date=current_date AND status='completed') AS run_done",
+                "options": {
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "executeOnce": true,
+            "typeVersion": 2.6
+        },
+        {
+            "id": "5beedd6e-5f23-4e24-84f3-c60480647a71",
+            "name": "Evaluate Go-No-Go",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                448,
+                624
+            ],
+            "parameters": {
+                "mode": "runOnceForAllItems",
+                "jsCode": "const j = $input.first().json;\nconst reasons = [];\nlet quiet = false;\nlet disabled = false;\nif (String(j.kill_switch).toLowerCase() !== 'true') { reasons.push('Automatic outreach disabled by administrator.'); disabled = true; }\nconst phtHour = Number(new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Manila' }));\nif (reasons.length === 0 && phtHour < 7) { reasons.push('Before daily 7:00 AM PHT send window - skipping quietly.'); quiet = true; }\nif (reasons.length === 0 && j.run_done === true) { reasons.push('Daily outreach run already completed today - skipping quietly.'); quiet = true; }\nconst proceed = reasons.length === 0;\nconst notify = !proceed && !quiet && !disabled;\nreturn [{ json: { proceed, abort_reason: reasons.join(' '), quiet, disabled, notify, threshold: Number(j.threshold), cap: Number(j.cap) } }];"
+            },
+            "typeVersion": 2
+        },
+        {
+            "id": "a2d9b78c-f102-4b27-b6b9-e008266d5b44",
+            "name": "Proceed Today?",
+            "type": "n8n-nodes-base.if",
+            "position": [
+                672,
+                624
+            ],
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "leftValue": "",
+                        "caseSensitive": true,
+                        "typeValidation": "loose"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                        {
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "true"
+                            },
+                            "leftValue": "={{ $json.proceed }}",
+                            "rightValue": ""
+                        }
+                    ]
+                }
+            },
+            "typeVersion": 2.2
+        },
+        {
+            "id": "08c31e28-04d5-4129-8540-ea19265383e5",
+            "name": "Start Run Record",
+            "type": "n8n-nodes-base.postgres",
+            "position": [
+                896,
+                528
+            ],
+            "parameters": {
+                "query": "INSERT INTO leads.outreach_runs (run_date, status, threshold_used, cap_used) VALUES (current_date, 'running', $1, $2) ON CONFLICT (run_date) DO UPDATE SET status='running', started_at=now(), finished_at=NULL, abort_reason=NULL, threshold_used=EXCLUDED.threshold_used, cap_used=EXCLUDED.cap_used",
+                "options": {
+                    "queryReplacement": "={{ [$json.threshold, $json.cap] }}"
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "executeOnce": true,
+            "typeVersion": 2.6
+        },
+        {
+            "id": "3a16bcda-5736-4bcb-85c7-68f7e331246f",
+            "name": "Select Todays Best Leads",
+            "type": "n8n-nodes-base.postgres",
+            "position": [
+                1120,
+                528
+            ],
+            "parameters": {
+                "query": "WITH eligible AS (\n  SELECT c.id, c.business_name, c.address, c.suburb, c.email, c.phone, c.website,\n         c.qualification_score, c.duplicate_of, c.do_not_contact, c.excluded_from_outreach,\n         s.code AS segment_code, c.enrichment->'profile' AS profile,\n         split_part(lower(c.email), '@', 2) AS email_domain\n  FROM leads.candidates c\n  LEFT JOIN leads.segments s ON s.id = c.segment_id\n  LEFT JOIN leads.outreach_drafts d ON d.candidate_id = c.id\n  LEFT JOIN leads.crm_records cr ON cr.candidate_id = c.id\n  WHERE c.duplicate_of IS NULL\n    AND c.stage = 'qualified'\n    AND c.do_not_contact = false\n    AND c.excluded_from_outreach = false\n    AND c.email IS NOT NULL AND c.email <> ''\n    AND NOT leads.is_junk_email(c.email)\n    AND NOT leads.is_cleaning_competitor(c.business_name, c.website, c.email)\n    AND c.qualification_score >= $1\n    AND (d.candidate_id IS NULL OR d.status <> 'sent')\n    AND (cr.candidate_id IS NULL OR (cr.status = 'active' AND cr.stage = 'new'))\n    AND NOT EXISTS (SELECT 1 FROM leads.suppression sp\n                    WHERE (sp.email_norm IS NOT NULL\n                           AND sp.email_norm = leads.norm_email(c.email))\n                       OR (sp.domain_norm IS NOT NULL\n                           AND sp.domain_norm = leads.norm_domain(c.website)))\n    AND NOT EXISTS (SELECT 1 FROM leads.outreach_drafts d2\n                    WHERE d2.sent_at > now() - interval '90 days'\n                      AND split_part(lower(d2.sent_to), '@', 2)\n                          = split_part(lower(c.email), '@', 2))\n)\nSELECT * FROM (\n  SELECT DISTINCT ON (email_domain) *\n  FROM eligible\n  ORDER BY email_domain, qualification_score DESC NULLS LAST, id ASC\n) best_per_domain\nORDER BY qualification_score DESC NULLS LAST, id ASC\nLIMIT 45",
+                "options": {
+                    "queryReplacement": "={{ [$('Evaluate Go-No-Go').item.json.threshold] }}"
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "executeOnce": true,
+            "typeVersion": 2.6
+        },
+        {
+            "id": "67edadef-f619-459e-a717-5b2935df8042",
+            "name": "Finalize Run Summary",
+            "type": "n8n-nodes-base.postgres",
+            "position": [
+                1568,
+                0
+            ],
+            "parameters": {
+                "query": "UPDATE leads.outreach_runs SET status='completed', finished_at=now(), sent_count=(SELECT count(*) FROM leads.outreach_queue WHERE run_date=current_date AND status='sent'), skipped_count=(SELECT count(*) FROM leads.outreach_queue WHERE run_date=current_date AND status='skipped'), failed_count=(SELECT count(*) FROM leads.outreach_queue WHERE run_date=current_date AND status='failed') WHERE run_date=current_date",
+                "options": {
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "executeOnce": true,
+            "typeVersion": 2.6
+        },
+        {
+            "id": "2446d33e-f5e7-4893-b842-d9d5a0d5ed62",
+            "name": "Seed Queue Row",
+            "type": "n8n-nodes-base.postgres",
+            "position": [
+                1568,
+                192
+            ],
+            "parameters": {
+                "query": "INSERT INTO leads.outreach_queue (run_date, candidate_id, business_name, qualification_score, status) VALUES (current_date, $1::bigint, $2, $3::int, 'scheduled') ON CONFLICT (run_date, candidate_id) DO UPDATE SET business_name=EXCLUDED.business_name, qualification_score=EXCLUDED.qualification_score, status='scheduled', updated_at=now()",
+                "options": {
+                    "queryReplacement": "={{ [$('Daily Batch').item.json.id, $('Daily Batch').item.json.business_name, $('Daily Batch').item.json.qualification_score] }}"
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "typeVersion": 2.6
+        },
+        {
+            "id": "b7277b9c-1040-44d9-aa22-16f9c528667a",
+            "name": "Check Live Cap",
+            "type": "n8n-nodes-base.postgres",
+            "position": [
+                1792,
+                192
+            ],
+            "parameters": {
+                "query": "SELECT (SELECT count(*) FROM leads.outreach_queue WHERE run_date=current_date AND status='sent') AS sent_so_far, COALESCE((SELECT value FROM leads.system_settings WHERE key='automatic_outreach_enabled'),'true') AS kill_switch, COALESCE((SELECT value FROM leads.system_settings WHERE key='daily_send_cap'),'15')::int AS cap, COALESCE((SELECT value FROM leads.system_settings WHERE key='qualification_threshold'),'55')::int AS threshold",
+                "options": {
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "typeVersion": 2.6
+        },
+        {
+            "id": "0144881c-b0fc-4380-9136-44105c45b401",
+            "name": "Gate Decision",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                2016,
+                192
+            ],
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "const cap = $json;\nconst cand = $('Daily Batch').item.json;\nconst withinCap = Number(cap.sent_so_far) < Number(cap.cap);\nconst enabled = String(cap.kill_switch).toLowerCase() === 'true';\nconst reason = !enabled ? 'Automatic outreach disabled by administrator.' : (!withinCap ? 'Daily cap reached.' : null);\nreturn { json: { ...cand, sent_so_far: Number(cap.sent_so_far), cap: Number(cap.cap), threshold: Number(cap.threshold), kill_switch: cap.kill_switch, gate_ok: withinCap && enabled, gate_skip_reason: reason } };"
+            },
+            "typeVersion": 2
+        },
+        {
+            "id": "51a9e771-d7bb-439b-91aa-0406c9219280",
+            "name": "Within Cap And Enabled?",
+            "type": "n8n-nodes-base.if",
+            "position": [
+                2240,
+                192
+            ],
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "leftValue": "",
+                        "caseSensitive": true,
+                        "typeValidation": "loose"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                        {
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "true"
+                            },
+                            "leftValue": "={{ $json.gate_ok }}",
+                            "rightValue": ""
+                        }
+                    ]
+                }
+            },
+            "typeVersion": 2.2
+        },
+        {
+            "id": "0ea8e78a-c7f5-4838-a39e-e39e6c86bbed",
+            "name": "Validate Basic",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                2464,
+                192
+            ],
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "const r = $json;\nconst reasons = [];\nconst emailOk = !!(r.email && /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(r.email));\nif (!emailOk) reasons.push('Invalid or missing email address.');\nif (r.duplicate_of) reasons.push('Lead is marked as a duplicate.');\nif (r.do_not_contact) reasons.push('Lead is marked Do Not Contact.');\nif (r.excluded_from_outreach) reasons.push('Lead is manually excluded from outreach.');\nif (r.qualification_score == null || Number(r.qualification_score) < Number(r.threshold)) reasons.push('Qualification score below threshold.');\nif (!r.business_name) reasons.push('Missing required field: business_name.');\nconst hasWebsite = !!(r.website && /^https?:\\/\\//i.test(String(r.website)));\nreturn { json: { ...r, basic_passed: reasons.length === 0, basic_reasons: reasons, has_website: hasWebsite } };"
+            },
+            "typeVersion": 2
+        },
+        {
+            "id": "323bb4bf-f8cd-415e-be69-c4ffbd1ae34b",
+            "name": "Has Website?",
+            "type": "n8n-nodes-base.if",
+            "position": [
+                2688,
+                192
+            ],
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "leftValue": "",
+                        "caseSensitive": true,
+                        "typeValidation": "loose"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                        {
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "true"
+                            },
+                            "leftValue": "={{ $json.has_website }}",
+                            "rightValue": ""
+                        }
+                    ]
+                }
+            },
+            "typeVersion": 2.2
+        },
+        {
+            "id": "19e3be79-e80a-4765-b82d-65b6b6fd0c6c",
+            "name": "Check Website",
+            "type": "n8n-nodes-base.httpRequest",
+            "onError": "continueRegularOutput",
+            "position": [
+                2912,
+                96
+            ],
+            "parameters": {
+                "url": "={{ $json.website }}",
+                "method": "GET",
+                "options": {
+                    "timeout": 6000,
+                    "redirect": {
+                        "redirect": {
+                            "followRedirects": true
+                        }
+                    },
+                    "response": {
+                        "response": {
+                            "neverError": true,
+                            "responseFormat": "text"
+                        }
+                    }
+                }
+            },
+            "typeVersion": 4.4
+        },
+        {
+            "id": "08630ab3-bf19-453d-8c69-8176d53a7317",
+            "name": "Merge Website Result",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                3136,
+                96
+            ],
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "const httpItem = $json;\nconst cand = $('Validate Basic').item.json;\nconst failed = !!(httpItem.error);\nconst reasons = cand.basic_reasons.slice();\nif (failed) reasons.push('Website is not reachable.');\nreturn { json: { ...cand, website_ok: !failed, final_passed: cand.basic_passed && !failed, fail_reasons: reasons } };"
+            },
+            "typeVersion": 2
+        },
+        {
+            "id": "f37d6309-4dba-4fa0-b125-39c164314bd4",
+            "name": "Merge Validation Branches",
+            "type": "n8n-nodes-base.merge",
+            "position": [
+                3360,
+                192
+            ],
+            "parameters": {
+                "mode": "append"
+            },
+            "typeVersion": 3.2
+        },
+        {
+            "id": "36c690a9-521d-41e1-a886-e406725b9c2f",
+            "name": "No Website Passthrough",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                3136,
+                288
+            ],
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "const cand = $json;\nreturn { json: { ...cand, website_ok: true, final_passed: cand.basic_passed, fail_reasons: cand.basic_reasons } };"
+            },
+            "typeVersion": 2
+        },
+        {
+            "id": "efd5ce7c-b65b-4ae6-828e-0242d031718a",
+            "name": "Record Skip - Cap Or Disabled",
+            "type": "n8n-nodes-base.postgres",
+            "position": [
+                2464,
+                384
+            ],
+            "parameters": {
+                "query": "UPDATE leads.outreach_queue SET status='skipped', reason=$1, updated_at=now() WHERE run_date=current_date AND candidate_id=$2",
+                "options": {
+                    "queryReplacement": "={{ [$json.gate_skip_reason, $json.id] }}"
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "typeVersion": 2.6
+        },
+        {
+            "id": "1050fd2d-f221-49fe-8ec7-fff59fe2207e",
+            "name": "Daily Batch",
+            "type": "n8n-nodes-base.splitInBatches",
+            "position": [
+                1344,
+                528
+            ],
+            "parameters": {
+            },
+            "typeVersion": 3
+        },
+        {
+            "id": "50aae39d-71fa-4c72-aea3-3eec0a31ccfc",
+            "name": "Record Run Aborted",
+            "type": "n8n-nodes-base.postgres",
+            "position": [
+                896,
+                720
+            ],
+            "parameters": {
+                "query": "WITH r AS (INSERT INTO leads.outreach_runs (run_date, status, abort_reason, threshold_used, cap_used) SELECT current_date, 'aborted', $1, $2::int, $3::int WHERE NOT $4::boolean ON CONFLICT (run_date) DO UPDATE SET status='aborted', abort_reason=EXCLUDED.abort_reason, finished_at=now(), threshold_used=EXCLUDED.threshold_used, cap_used=EXCLUDED.cap_used RETURNING run_date) INSERT INTO leads.notifications (type, title, message, severity) SELECT 'outreach_aborted', 'Daily outreach aborted', $1, 'error' FROM r WHERE $5::boolean",
+                "options": {
+                    "queryReplacement": "={{ [$json.abort_reason, $json.threshold, $json.cap, $json.quiet === true, $json.notify === true] }}"
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "typeVersion": 2.6
+        },
+        {
+            "id": "37894f48-72cb-4791-9a95-e180646c5b52",
+            "name": "Passed All Checks?",
+            "type": "n8n-nodes-base.if",
+            "position": [
+                3584,
+                192
+            ],
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "leftValue": "",
+                        "caseSensitive": true,
+                        "typeValidation": "loose"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                        {
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "true"
+                            },
+                            "leftValue": "={{ $json.final_passed }}",
+                            "rightValue": ""
+                        }
+                    ]
+                }
+            },
+            "typeVersion": 2.2
+        },
+        {
+            "id": "8db49c3e-5203-4818-a38a-62b2a1a00b0b",
+            "name": "Prepare Daily Outreach",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                3808,
+                96
+            ],
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "\n// ---------- KQuality outreach composer v3 (deterministic) ----------\nvar KQ = {\n  company: 'KQuality Cleaning Services',\n  sender: 'Michelle',\n  phone: '0439 489 630',\n  email: 'info@kqualitycleaningservices.com.au'\n};\n\n// Segment playbook: the specific job we want, the pain it removes, and the\n// noun we ask to price. Written for the buyer, never about us.\nvar PLAYBOOK = {\n  real_estate_strata: {\n    job: 'vacate and bond cleans',\n    pain: 'getting a property re-listed without waiting on a cleaner',\n    line: 'We turn vacate cleans around inside 24 hours and send photos through when it is done, so you can re-list without chasing anyone.',\n    ask: 'your next vacate clean'\n  },\n  property_management: {\n    job: 'end-of-lease and common-area cleans',\n    pain: 'juggling different cleaners across a rent roll',\n    line: 'Most managers we work with use one number for the whole rent roll and get a single invoice at month end instead of chasing five contractors.',\n    ask: 'a couple of your managed properties'\n  },\n  strata: {\n    job: 'common areas, bin rooms and carparks',\n    pain: 'owner complaints about common areas',\n    line: 'We run scheduled common-area cleans with a signed-off checklist each visit, so you have something to show the committee when someone asks.',\n    ask: 'common-area cleaning for one of your buildings'\n  },\n  body_corporate: {\n    job: 'common property cleaning',\n    pain: 'committee complaints and inconsistent contractors',\n    line: 'We run scheduled common-property cleans with a checklist signed off each visit, so there is a record when the committee asks.',\n    ask: 'one of your buildings'\n  },\n  builders_construction: {\n    job: 'builders and handover cleans',\n    pain: 'a handover date slipping because the clean was not ready',\n    line: 'We do builders cleans and final sparkle before client walkthrough, and we book to your handover date rather than the other way around.',\n    ask: 'your next handover'\n  },\n  aged_care_facilities: {\n    job: 'facility cleaning',\n    pain: 'keeping cleaning evidence ready for an audit',\n    line: 'All our staff are police-checked and we work to infection-control routines with documented sign-off, so the paperwork is there when you are audited.',\n    ask: 'one wing or common area'\n  },\n  ndis: {\n    job: 'cleaning for SIL and supported housing',\n    pain: 'finding cleaners who are reliable and respectful with residents',\n    line: 'Our staff are police-checked and used to working around residents, on a set schedule so participants see the same faces.',\n    ask: 'one or two of your properties'\n  },\n  medical_childcare_gym: {\n    job: 'after-hours cleaning and sanitising',\n    pain: 'cleaning that has to happen outside opening hours',\n    line: 'We clean after hours to clinical standards with child-safe products where they are needed, so you open to a room that is genuinely ready.',\n    ask: 'your rooms and common areas'\n  },\n  commercial_office: {\n    job: 'office cleaning',\n    pain: 'a cleaner who changes every few weeks',\n    line: 'You get the same cleaner each visit and a direct number rather than a call centre, which is usually the thing offices tell us was missing.',\n    ask: 'your office'\n  },\n  education_training: {\n    job: 'classroom and facility cleaning',\n    pain: 'fitting deep cleans around term dates',\n    line: 'We work to the term calendar - lighter during teaching weeks, deep cleans in the breaks - and every staff member is police-checked.',\n    ask: 'your classrooms and amenities'\n  },\n  hospitality_venues: {\n    job: 'early-morning venue cleans',\n    pain: 'the room not being ready before service',\n    line: 'We come in early and are out before service, so the room is ready rather than being cleaned around your first guests.',\n    ask: 'your front of house'\n  },\n  retail_showrooms: {\n    job: 'floors, glass and showroom presentation',\n    pain: 'stock looking tired because the space does',\n    line: 'We do floors and glass before you open so the first thing a customer sees is the stock, not the fingerprints.',\n    ask: 'your showroom floor'\n  },\n  industrial_warehouse: {\n    job: 'warehouse and amenities cleaning',\n    pain: 'high-traffic floors and staff amenities slipping',\n    line: 'We handle high-traffic floors and staff amenities on a set schedule, and our team is site-inducted before they start.',\n    ask: 'your floors and amenities'\n  },\n  community_clubs: {\n    job: 'post-event and weekend cleans',\n    pain: 'volunteers cleaning up after functions',\n    line: 'We do post-function turnarounds on weekends so your volunteers are not the ones mopping the hall on a Sunday morning.',\n    ask: 'your next function turnaround'\n  },\n  automotive_trade: {\n    job: 'workshop and customer-area cleaning',\n    pain: 'a waiting area that does not match the workmanship',\n    line: 'We keep the customer waiting area and amenities presentable and degrease the workshop floors on a schedule.',\n    ask: 'your waiting area and workshop'\n  }\n};\nvar DEFAULT_PLAY = {\n  job: 'commercial cleaning',\n  pain: 'a cleaner who actually turns up',\n  line: 'We are Adelaide-based, fully insured, and every cleaner is police-checked - documentation available on request.',\n  ask: 'your site'\n};\n\n// ---- text helpers ----\nfunction kqClean(t) { return String(t == null ? '' : t).replace(/\\s+/g, ' ').trim(); }\nfunction kqTitleCase(s) {\n  return kqClean(s).toLowerCase().replace(/\\b[a-z]/g, function (m) { return m.toUpperCase(); });\n}\n// Stable per-candidate variant index so the same lead always gets the same\n// email, but neighbouring leads (and leads on one domain) do not match.\nfunction kqVariant(id, n) { return Math.abs(Number(id) || 0) % n; }\n\nvar KQ_AU_TAIL = /,\\s*Australia\\s*$/i;\nvar KQ_STATE = /\\s+(SA|NSW|VIC|QLD|WA|NT|TAS|ACT)\\s+\\d{4}.*$/i;\nfunction kqSuburb(r) {\n  if (r.suburb) return kqTitleCase(r.suburb);\n  var a = String(r.address || '').replace(KQ_AU_TAIL, '');\n  var p = a.split(',');\n  if (p.length < 2) return '';\n  return kqTitleCase(p[p.length - 1].replace(KQ_STATE, '').trim());\n}\n// \"Adelaide\" is the whole market, so it carries no signal in a subject line -\n// a subject that could have been sent to anyone reads as bulk mail.\nfunction kqSpecificSuburb(r) {\n  var s = kqSuburb(r);\n  return (/^(adelaide|adelaide cbd|south australia|sa)$/i.test(s)) ? '' : s;\n}\n// Subjects have to survive a phone preview pane, so long trading names get\n// clipped at a word boundary rather than mid-word.\nfunction kqShortName(name) {\n  var n = kqClean(name).replace(/\\s+(pty\\.?\\s*)?ltd\\.?$/i, '').replace(/\\s*\\|.*$/, '');\n  if (n.length <= 28) return n;\n  var words = n.split(' ');\n  var acc = '';\n  for (var i = 0; i < words.length; i++) {\n    if ((acc + ' ' + words[i]).trim().length > 28) break;\n    acc = (acc + ' ' + words[i]).trim();\n  }\n  return acc || n.slice(0, 28);\n}\n\n// A contact first name, only when we are confident it is a real person.\nvar KQ_ROLE_OK = /^(Owner|Co-?Owner|Director|Managing Director|CEO|Founder|Co-?Founder|Principal|General Manager|Practice Manager|Operations Manager|Facilities Manager)$/i;\nvar KQ_NAME_BLOCK = /(Care|Quality|Executive|Nurse|Registered|Enrolled|General|Office|Property|Practice|Team|Group|Services|Community|Heart|Solutions|Cleaning)/i;\nfunction kqFirstName(profile) {\n  var people = (profile && Array.isArray(profile.people)) ? profile.people : [];\n  for (var i = 0; i < people.length; i++) {\n    var p = people[i];\n    if (!p) continue;\n    var name = String(p.name || '');\n    if (!KQ_ROLE_OK.test(String(p.role || ''))) continue;\n    if (!/^[A-Z][a-z]{1,15} [A-Z][a-z]{1,20}$/.test(name)) continue;\n    if (KQ_NAME_BLOCK.test(name)) continue;\n    return name.split(' ')[0];\n  }\n  return null;\n}\n\n// One verifiable detail about them, drawn from their own website.\n// Returns null rather than inventing anything.\nfunction kqObservation(r, profile) {\n  var desc = kqClean(profile && profile.description);\n  var title = kqClean(profile && profile.title);\n  var name = kqClean(r.business_name);\n  var suburb = kqSuburb(r);\n\n  // Prefer their own words, trimmed to one clean clause. Quoting them back is\n  // the cheapest possible proof that this was not a blast.\n  if (desc && desc.length > 25 && desc.toLowerCase().indexOf('lorem') === -1) {\n    var snip = desc.slice(0, 95);\n    if (desc.length > 95) {\n      var cut = snip.lastIndexOf(' ');\n      snip = (cut > 40 ? snip.slice(0, cut) : snip).replace(/[,;:\\-\\s]+$/, '');\n    }\n    // Neutral lead-in: their description may start with a verb (\"Discover...\"),\n    // so anything of the form \"you are <desc>\" reads broken.\n    return 'Saw on your site - \"' + snip + '\".';\n  }\n  // Otherwise anchor on something factual: their site title or their suburb.\n  if (title && title.length > 8 && title.toLowerCase().indexOf(name.toLowerCase()) === -1) {\n    return 'Came across ' + kqShortName(name) + ' looking at ' + (suburb || 'Adelaide') + ' businesses.';\n  }\n  if (suburb) return 'I am working through ' + suburb + ' at the moment and ' + kqShortName(name) + ' came up.';\n  return null;\n}\n\n/*\n * kqCompose(row) -> { subject, body, variant }\n * row: { id, business_name, address, suburb, segment_code, qualification_score, profile }\n */\nfunction kqCompose(r) {\n  var profile = r.profile || {};\n  var play = PLAYBOOK[r.segment_code] || DEFAULT_PLAY;\n  var name = kqClean(r.business_name);\n  var shortName = kqShortName(name);\n  var suburb = kqSuburb(r);\n  var subLoc = kqSpecificSuburb(r);\n  var first = kqFirstName(profile);\n  var v = kqVariant(r.id, 4);\n  var score = Number(r.qualification_score || 0);\n\n  // --- subject: short, specific, no company-name stuffing, no \"(offer)\" ---\n  // Four families so one domain never sees the same shape twice. The old\n  // \"{Business} - cleaning support in {Suburb} (quick quote offer)\" was a\n  // visible mail-merge; these are shaped like something a person typed.\n  var subjects = [\n    'Quick question about ' + (subLoc || shortName),\n    play.job.charAt(0).toUpperCase() + play.job.slice(1) + ' for ' + shortName,\n    (first ? first + ', quick one' : 'Quick one') + ' about ' + (subLoc ? 'your ' + subLoc + ' site' : shortName),\n    'Cleaning quote for ' + shortName + '?'\n  ];\n  var subject = subjects[v].slice(0, 72);\n\n  // --- greeting ---\n  var greeting = first ? ('Hi ' + first + ',') : (shortName ? ('Hi ' + shortName + ' team,') : 'Hello,');\n\n  // --- opening: about them, not about us ---\n  var opener = kqObservation(r, profile);\n  if (!opener) {\n    opener = 'I look after the commercial side at ' + KQ.company + ' here in Adelaide.';\n  }\n\n  // --- the offer: their job, their pain, our specific proof ---\n  // One sentence of context, one of proof. Anything longer stops being read.\n  var offerVariants = [\n    'We do ' + play.job + ' for Adelaide businesses - the thing clients raise first is ' + play.pain + '. ' + play.line,\n    play.line + ' That is most of what we do here: ' + play.job + ' for Adelaide businesses.',\n    'We handle ' + play.job + '. ' + play.line,\n    'If ' + play.pain + ' sounds familiar, that is the bit we fix. ' + play.line\n  ];\n  var offer = offerVariants[v];\n\n  // --- CTA: a yes/no question, not a request for time ---\n  // \"Do you have 10 minutes\" asks for a commitment before any value has been\n  // given. A one-page price is a much cheaper yes.\n  var asks = [\n    'Want me to put a fixed price together for ' + play.ask + '? No obligation - if the number does not work, that is a fair answer.',\n    'Happy to price up ' + play.ask + ' so you have something to compare against. Worth sending through?',\n    'Should I send a fixed quote for ' + play.ask + '? Takes me ten minutes.',\n    'Want a price for ' + play.ask + '? I will keep it to one page.'\n  ];\n  var ask = asks[v];\n\n  if (score >= 85) {\n    ask = 'Want me to put a fixed price together for ' + play.ask + '? I can have it over today, and if the number does not work that is a fair answer.';\n  } else if (score && score < 65) {\n    ask = 'Not asking for a meeting - happy to send a one-page price for ' + play.ask + ' so it is on file for when the timing suits.';\n  }\n\n  // --- trust: concrete and checkable, no adjectives ---\n  var trust = 'Adelaide-based, public liability cover, every cleaner police-checked - documentation on request.';\n\n  var signoff = 'Thanks,\\n' + KQ.sender + '\\n' + KQ.company + '\\n' + KQ.phone;\n\n  // Only worth the extra lines when we could not find a named contact - it is\n  // a routing request, and it earns forwards to the person who actually buys.\n  var ps = first ? '' : '\\n\\nP.S. If premises are not your area, a pointer to whoever looks after them would be appreciated.';\n\n  var body = greeting + '\\n\\n' + opener + '\\n\\n' + offer + '\\n\\n' + ask + '\\n\\n' + trust + '\\n\\n' + signoff + ps;\n\n  return { subject: subject, body: body, variant: v, play: play };\n}\n// ---------- end composer ----------\n\nconst r = $json;\nconst composed = kqCompose({\n  id: r.id,\n  business_name: r.business_name,\n  address: r.address,\n  suburb: r.suburb,\n  segment_code: r.segment_code,\n  qualification_score: r.qualification_score,\n  profile: r.profile\n});\n\n// The AI request is still built, but it is now an OPTIONAL enhancement.\n// The gateway sheds most calls under CPU inference; when it does, the\n// deterministic email above ships unchanged rather than a degraded one.\nconst play = composed.play;\nreturn { json: Object.assign({}, r, {\n  fallback_subject: composed.subject,\n  fallback_body: composed.body,\n  compose_variant: composed.variant,\n  ai_request: {\n    business: {\n      name: kqClean(r.business_name),\n      industry: r.segment_code || null,\n      location: kqSuburb(r) || kqClean(r.address) || null,\n      description: kqClean((r.profile || {}).description) || null\n    },\n    sender: { name: KQ.sender, company: KQ.company, phone: KQ.phone },\n    contact_name: kqFirstName(r.profile || {}),\n    notes: 'Service to pitch: ' + play.job + '. Pain to name: ' + play.pain\n         + '. Proof point: ' + play.line\n         + ' Ask them to let us price: ' + play.ask + '.'\n         + ' Adelaide-based, public liability cover, police-checked staff.'\n  }\n}) };\n"
+            },
+            "typeVersion": 2
+        },
+        {
+            "id": "a682f55d-1b95-48b0-a91a-f80d011c1195",
+            "name": "Send Daily Outreach Email",
+            "type": "n8n-nodes-base.emailSend",
+            "onError": "continueRegularOutput",
+            "position": [
+                4432,
+                96
+            ],
+            "webhookId": "f1d12c7c-a205-4c7c-ad01-9370bff1cba4",
+            "parameters": {
+                "text": "={{ $json.body }}",
+                "options": {
+                    "bccEmail": "kqualitycleaningservices+outreach@gmail.com",
+                    "appendAttribution": false
+                },
+                "subject": "={{ $json.subject }}",
+                "toEmail": "={{ $json.email }}",
+                "fromEmail": "KQuality Cleaning Services <kqualitycleaningservices@gmail.com>",
+                "emailFormat": "text"
+            },
+            "credentials": {
+                "smtp": {
+                    "id": "91G0HwEy1X4Eu1Qm",
+                    "name": "SMTP account"
+                }
+            },
+            "typeVersion": 2.1
+        },
+        {
+            "id": "ccccc959-ca08-4c5f-a95c-5253780657e7",
+            "name": "Record Send Result",
+            "type": "n8n-nodes-base.postgres",
+            "position": [
+                4256,
+                272
+            ],
+            "parameters": {
+                "query": "WITH send_ok AS (SELECT ($1::text IS NULL) AS ok), ins_draft AS (INSERT INTO leads.outreach_drafts (candidate_id, subject, body, method, status, sent_at, sent_to, sent_by, message_id) SELECT $2::bigint, $3, $4, 'daily_auto_v1', 'sent', now(), $5, 'daily_auto_engine', $6 FROM send_ok WHERE ok ON CONFLICT (candidate_id) DO UPDATE SET subject = EXCLUDED.subject, body = EXCLUDED.body, method = EXCLUDED.method, status = 'sent', sent_at = now(), sent_to = EXCLUDED.sent_to, sent_by = 'daily_auto_engine', message_id = EXCLUDED.message_id, updated_at = now() RETURNING candidate_id), crm_upsert AS (INSERT INTO leads.crm_records (candidate_id, status, stage, source, added_by, last_contact_at) SELECT $2::bigint, 'active', 'contacted', 'sent', 'daily_auto_engine', now() FROM send_ok WHERE ok ON CONFLICT (candidate_id) DO UPDATE SET stage = CASE WHEN leads.crm_records.stage = 'new' THEN 'contacted' ELSE leads.crm_records.stage END, last_contact_at = now(), updated_at = now() RETURNING candidate_id, stage), stage_log AS (INSERT INTO leads.crm_stage_history (candidate_id, stage, changed_by) SELECT candidate_id, stage, 'daily_auto_engine' FROM crm_upsert WHERE stage = 'contacted' RETURNING candidate_id), notif AS (INSERT INTO leads.notifications (type, candidate_id, title, message) SELECT 'daily_outreach_sent', c.id, 'Daily outreach sent', 'Automated daily outreach sent to ' || c.business_name || '.' FROM ins_draft JOIN leads.candidates c ON c.id = ins_draft.candidate_id RETURNING id), q_sent AS (UPDATE leads.outreach_queue SET status='sent', reason=NULL, email_generated=true, sent_at=now(), message_id=$6, crm_updated=EXISTS(SELECT 1 FROM crm_upsert), notification_created=EXISTS(SELECT 1 FROM notif), updated_at=now() WHERE run_date=current_date AND candidate_id=$2::bigint AND $1::text IS NULL RETURNING candidate_id), q_failed AS (UPDATE leads.outreach_queue SET status='failed', reason=$1, email_generated=true, updated_at=now() WHERE run_date=current_date AND candidate_id=$2::bigint AND $1::text IS NOT NULL RETURNING candidate_id) SELECT $1::text AS send_error, (SELECT candidate_id FROM q_sent) AS sent_candidate, (SELECT candidate_id FROM q_failed) AS failed_candidate",
+                "options": {
+                    "queryReplacement": "={{ [$json.error ? ($json.error.message || 'SMTP send failed') : null, $('Compose Daily Outreach').item.json.id, $('Compose Daily Outreach').item.json.subject, $('Compose Daily Outreach').item.json.body, $('Compose Daily Outreach').item.json.email, $json.messageId || null] }}"
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "retryOnFail": true,
+            "typeVersion": 2.6
+        },
+        {
+            "id": "06b3d894-bce6-4e22-bc70-8598ad73ed70",
+            "name": "Record Skip - Validation",
+            "type": "n8n-nodes-base.postgres",
+            "position": [
+                3808,
+                288
+            ],
+            "parameters": {
+                "query": "UPDATE leads.outreach_queue SET status='skipped', reason=$1, validation=$2::jsonb, updated_at=now() WHERE run_date=current_date AND candidate_id=$3",
+                "options": {
+                    "queryReplacement": "={{ [$json.fail_reasons.join(' '), JSON.stringify({ reasons: $json.fail_reasons, has_website: $json.has_website, website_ok: $json.website_ok }), $json.id] }}"
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "typeVersion": 2.6
+        },
+        {
+            "id": "18afe5f3-61b2-4d29-a9c2-60312025e86c",
+            "name": "AI Generate Daily Outreach",
+            "type": "n8n-nodes-base.httpRequest",
+            "onError": "continueRegularOutput",
+            "maxTries": 2,
+            "position": [
+                4032,
+                0
+            ],
+            "parameters": {
+                "url": "http://ivnautomation-ai-gateway:8000/v1/ai/outreach/initial",
+                "method": "POST",
+                "options": {
+                    "timeout": 25000
+                },
+                "jsonBody": "={{ JSON.stringify($json.ai_request) }}",
+                "sendBody": true,
+                "contentType": "json",
+                "specifyBody": "json"
+            },
+            "retryOnFail": true,
+            "typeVersion": 4.4,
+            "waitBetweenTries": 3000
+        },
+        {
+            "id": "36cd3a8b-8a14-4098-b155-e5c35999202b",
+            "name": "Compose Daily Outreach",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                4232,
+                0
+            ],
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "\nconst prep = $('Prepare Daily Outreach').item.json;\nconst res  = $json;\n\nfunction aiUsable(res) {\n  if (!res || res.success !== true || !res.data) return false;\n  const body = String(res.data.email_body || '').trim();\n  const subj = String(res.data.subject || '').trim();\n  if (body.length < 220 || body.length > 1600) return false;\n  if (!subj || subj.length > 90) return false;\n  if (/\\[[A-Za-z ]+\\]/.test(body)) return false;          // [Name] placeholders\n  if (/as an ai|language model|i cannot/i.test(body)) return false;\n  if (!/KQuality/i.test(body)) return false;              // lost our identity\n  const words = body.split(/\\s+/).length;\n  return words >= 60 && words <= 220;\n}\n\nconst ok = aiUsable(res);\nconst out = Object.assign({}, prep);\ndelete out.ai_request; delete out.fallback_subject; delete out.fallback_body;\n\nout.subject = ok ? String(res.data.subject).slice(0, 150) : prep.fallback_subject;\nout.body    = ok ? String(res.data.email_body).trim()     : prep.fallback_body;\nout.method  = ok ? ('ai_generate_outreach_' + res.prompt_version)\n                 : ('composer_v3_variant' + prep.compose_variant);\nout.compose_valid = !!(out.subject && out.subject.trim() && out.body && out.body.trim() && prep.email);\nreturn { json: out };\n"
+            },
+            "typeVersion": 2
+        },
+        {
+            "id": "c8b66a7a-56ae-4bf8-b199-b4192ddc9106",
+            "name": "Chain Trigger (from Qualification)",
+            "type": "n8n-nodes-base.executeWorkflowTrigger",
+            "position": [
+                0,
+                780
+            ],
+            "parameters": {
+                "inputSource": "passthrough"
+            },
+            "typeVersion": 1.2
         }
-      },
-      "disabled": false
+    ],
+    "active": true,
+    "settings": {
+        "timezone": "Asia/Manila",
+        "errorWorkflow": "39Vcvm1lkmQZXFpS",
+        "availableInMCP": true,
+        "executionOrder": "v1",
+        "executionTimeout": 3600
     },
-    {
-      "id": "eeea6b0f-e1f7-4e84-b8ef-91c909ec5d6f",
-      "name": "Check Health & Settings",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        224,
-        624
-      ],
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT COALESCE((SELECT value FROM leads.system_settings WHERE key='automatic_outreach_enabled'),'true') AS kill_switch, COALESCE((SELECT value FROM leads.system_settings WHERE key='qualification_threshold'),'55')::int AS threshold, COALESCE((SELECT value FROM leads.system_settings WHERE key='daily_send_cap'),'15')::int AS cap, EXISTS(SELECT 1 FROM leads.outreach_runs WHERE run_date=current_date AND status='completed') AS run_done",
-        "options": {}
-      },
-      "executeOnce": true,
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
+    "connections": {
+        "Daily Batch": {
+            "main": [
+                [
+                    {
+                        "node": "Finalize Run Summary",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Seed Queue Row",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Has Website?": {
+            "main": [
+                [
+                    {
+                        "node": "Check Website",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "No Website Passthrough",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Website": {
+            "main": [
+                [
+                    {
+                        "node": "Merge Website Result",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Gate Decision": {
+            "main": [
+                [
+                    {
+                        "node": "Within Cap And Enabled?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Live Cap": {
+            "main": [
+                [
+                    {
+                        "node": "Gate Decision",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Proceed Today?": {
+            "main": [
+                [
+                    {
+                        "node": "Start Run Record",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Record Run Aborted",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Seed Queue Row": {
+            "main": [
+                [
+                    {
+                        "node": "Check Live Cap",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Validate Basic": {
+            "main": [
+                [
+                    {
+                        "node": "Has Website?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Start Run Record": {
+            "main": [
+                [
+                    {
+                        "node": "Select Todays Best Leads",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Evaluate Go-No-Go": {
+            "main": [
+                [
+                    {
+                        "node": "Proceed Today?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Passed All Checks?": {
+            "main": [
+                [
+                    {
+                        "node": "Prepare Daily Outreach",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Record Skip - Validation",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Record Send Result": {
+            "main": [
+                [
+                    {
+                        "node": "Daily Batch",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Merge Website Result": {
+            "main": [
+                [
+                    {
+                        "node": "Merge Validation Branches",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Compose Daily Outreach": {
+            "main": [
+                [
+                    {
+                        "node": "Send Daily Outreach Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "No Website Passthrough": {
+            "main": [
+                [
+                    {
+                        "node": "Merge Validation Branches",
+                        "type": "main",
+                        "index": 1
+                    }
+                ]
+            ]
+        },
+        "Prepare Daily Outreach": {
+            "main": [
+                [
+                    {
+                        "node": "AI Generate Daily Outreach",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Health & Settings": {
+            "main": [
+                [
+                    {
+                        "node": "Evaluate Go-No-Go",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Within Cap And Enabled?": {
+            "main": [
+                [
+                    {
+                        "node": "Validate Basic",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Record Skip - Cap Or Disabled",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Record Skip - Validation": {
+            "main": [
+                [
+                    {
+                        "node": "Daily Batch",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Select Todays Best Leads": {
+            "main": [
+                [
+                    {
+                        "node": "Daily Batch",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Merge Validation Branches": {
+            "main": [
+                [
+                    {
+                        "node": "Passed All Checks?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send Daily Outreach Email": {
+            "main": [
+                [
+                    {
+                        "node": "Record Send Result",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Generate Daily Outreach": {
+            "main": [
+                [
+                    {
+                        "node": "Compose Daily Outreach",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Record Skip - Cap Or Disabled": {
+            "main": [
+                [
+                    {
+                        "node": "Daily Batch",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Chain Trigger (from Qualification)": {
+            "main": [
+                [
+                    {
+                        "node": "Check Health & Settings",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Weekday 07:00 Trigger (Asia/Manila)": {
+            "main": [
+                [
+                    {
+                        "node": "Check Health & Settings",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
         }
-      }
-    },
-    {
-      "id": "5beedd6e-5f23-4e24-84f3-c60480647a71",
-      "name": "Evaluate Go-No-Go",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        448,
-        624
-      ],
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "const j = $input.first().json;\nconst reasons = [];\nlet quiet = false;\nlet disabled = false;\nif (String(j.kill_switch).toLowerCase() !== 'true') { reasons.push('Automatic outreach disabled by administrator.'); disabled = true; }\nconst phtHour = Number(new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Manila' }));\nif (reasons.length === 0 && phtHour < 7) { reasons.push('Before daily 7:00 AM PHT send window - skipping quietly.'); quiet = true; }\nif (reasons.length === 0 && j.run_done === true) { reasons.push('Daily outreach run already completed today - skipping quietly.'); quiet = true; }\nconst proceed = reasons.length === 0;\nconst notify = !proceed && !quiet && !disabled;\nreturn [{ json: { proceed, abort_reason: reasons.join(' '), quiet, disabled, notify, threshold: Number(j.threshold), cap: Number(j.cap) } }];"
-      }
-    },
-    {
-      "id": "a2d9b78c-f102-4b27-b6b9-e008266d5b44",
-      "name": "Proceed Today?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        672,
-        624
-      ],
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.proceed }}",
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              },
-              "rightValue": ""
-            }
-          ],
-          "combinator": "and"
-        }
-      }
-    },
-    {
-      "id": "08c31e28-04d5-4129-8540-ea19265383e5",
-      "name": "Start Run Record",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        896,
-        528
-      ],
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "INSERT INTO leads.outreach_runs (run_date, status, threshold_used, cap_used) VALUES (current_date, 'running', $1, $2) ON CONFLICT (run_date) DO UPDATE SET status='running', started_at=now(), finished_at=NULL, abort_reason=NULL, threshold_used=EXCLUDED.threshold_used, cap_used=EXCLUDED.cap_used",
-        "options": {
-          "queryReplacement": "={{ [$json.threshold, $json.cap] }}"
-        }
-      },
-      "executeOnce": true,
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "id": "3a16bcda-5736-4bcb-85c7-68f7e331246f",
-      "name": "Select Todays Best Leads",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        1120,
-        528
-      ],
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT c.id, c.business_name, c.address, c.suburb, c.email, c.phone, c.website, c.qualification_score, c.duplicate_of, c.do_not_contact, c.excluded_from_outreach, s.code AS segment_code, c.enrichment->'profile' AS profile FROM leads.candidates c LEFT JOIN leads.segments s ON s.id = c.segment_id LEFT JOIN leads.outreach_drafts d ON d.candidate_id = c.id LEFT JOIN leads.crm_records cr ON cr.candidate_id = c.id WHERE c.duplicate_of IS NULL AND c.stage = 'qualified' AND c.do_not_contact = false AND c.excluded_from_outreach = false AND c.email IS NOT NULL AND c.email <> '' AND c.qualification_score >= $1 AND (d.candidate_id IS NULL OR d.status <> 'sent') AND (cr.candidate_id IS NULL OR (cr.status = 'active' AND cr.stage = 'new')) ORDER BY c.qualification_score DESC NULLS LAST, c.qualified_at ASC NULLS LAST, c.id ASC LIMIT 45",
-        "options": {
-          "queryReplacement": "={{ [$('Evaluate Go-No-Go').item.json.threshold] }}"
-        }
-      },
-      "executeOnce": true,
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "id": "67edadef-f619-459e-a717-5b2935df8042",
-      "name": "Finalize Run Summary",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        1568,
-        0
-      ],
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "UPDATE leads.outreach_runs SET status='completed', finished_at=now(), sent_count=(SELECT count(*) FROM leads.outreach_queue WHERE run_date=current_date AND status='sent'), skipped_count=(SELECT count(*) FROM leads.outreach_queue WHERE run_date=current_date AND status='skipped'), failed_count=(SELECT count(*) FROM leads.outreach_queue WHERE run_date=current_date AND status='failed') WHERE run_date=current_date",
-        "options": {}
-      },
-      "executeOnce": true,
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "id": "2446d33e-f5e7-4893-b842-d9d5a0d5ed62",
-      "name": "Seed Queue Row",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        1568,
-        192
-      ],
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "INSERT INTO leads.outreach_queue (run_date, candidate_id, business_name, qualification_score, status) VALUES (current_date, $1::bigint, $2, $3::int, 'scheduled') ON CONFLICT (run_date, candidate_id) DO UPDATE SET business_name=EXCLUDED.business_name, qualification_score=EXCLUDED.qualification_score, status='scheduled', updated_at=now()",
-        "options": {
-          "queryReplacement": "={{ [$('Daily Batch').item.json.id, $('Daily Batch').item.json.business_name, $('Daily Batch').item.json.qualification_score] }}"
-        }
-      },
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "id": "b7277b9c-1040-44d9-aa22-16f9c528667a",
-      "name": "Check Live Cap",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        1792,
-        192
-      ],
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT (SELECT count(*) FROM leads.outreach_queue WHERE run_date=current_date AND status='sent') AS sent_so_far, COALESCE((SELECT value FROM leads.system_settings WHERE key='automatic_outreach_enabled'),'true') AS kill_switch, COALESCE((SELECT value FROM leads.system_settings WHERE key='daily_send_cap'),'15')::int AS cap, COALESCE((SELECT value FROM leads.system_settings WHERE key='qualification_threshold'),'55')::int AS threshold",
-        "options": {}
-      },
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "id": "0144881c-b0fc-4380-9136-44105c45b401",
-      "name": "Gate Decision",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2016,
-        192
-      ],
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "const cap = $json;\nconst cand = $('Daily Batch').item.json;\nconst withinCap = Number(cap.sent_so_far) < Number(cap.cap);\nconst enabled = String(cap.kill_switch).toLowerCase() === 'true';\nconst reason = !enabled ? 'Automatic outreach disabled by administrator.' : (!withinCap ? 'Daily cap reached.' : null);\nreturn { json: { ...cand, sent_so_far: Number(cap.sent_so_far), cap: Number(cap.cap), threshold: Number(cap.threshold), kill_switch: cap.kill_switch, gate_ok: withinCap && enabled, gate_skip_reason: reason } };"
-      }
-    },
-    {
-      "id": "51a9e771-d7bb-439b-91aa-0406c9219280",
-      "name": "Within Cap And Enabled?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        2240,
-        192
-      ],
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.gate_ok }}",
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              },
-              "rightValue": ""
-            }
-          ],
-          "combinator": "and"
-        }
-      }
-    },
-    {
-      "id": "0ea8e78a-c7f5-4838-a39e-e39e6c86bbed",
-      "name": "Validate Basic",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2464,
-        192
-      ],
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "const r = $json;\nconst reasons = [];\nconst emailOk = !!(r.email && /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(r.email));\nif (!emailOk) reasons.push('Invalid or missing email address.');\nif (r.duplicate_of) reasons.push('Lead is marked as a duplicate.');\nif (r.do_not_contact) reasons.push('Lead is marked Do Not Contact.');\nif (r.excluded_from_outreach) reasons.push('Lead is manually excluded from outreach.');\nif (r.qualification_score == null || Number(r.qualification_score) < Number(r.threshold)) reasons.push('Qualification score below threshold.');\nif (!r.business_name) reasons.push('Missing required field: business_name.');\nconst hasWebsite = !!(r.website && /^https?:\\/\\//i.test(String(r.website)));\nreturn { json: { ...r, basic_passed: reasons.length === 0, basic_reasons: reasons, has_website: hasWebsite } };"
-      }
-    },
-    {
-      "id": "323bb4bf-f8cd-415e-be69-c4ffbd1ae34b",
-      "name": "Has Website?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        2688,
-        192
-      ],
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.has_website }}",
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              },
-              "rightValue": ""
-            }
-          ],
-          "combinator": "and"
-        }
-      }
-    },
-    {
-      "id": "19e3be79-e80a-4765-b82d-65b6b6fd0c6c",
-      "name": "Check Website",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        2912,
-        96
-      ],
-      "parameters": {
-        "method": "GET",
-        "url": "={{ $json.website }}",
-        "options": {
-          "timeout": 6000,
-          "response": {
-            "response": {
-              "neverError": true,
-              "responseFormat": "text"
-            }
-          },
-          "redirect": {
-            "redirect": {
-              "followRedirects": true
-            }
-          }
-        }
-      },
-      "onError": "continueRegularOutput"
-    },
-    {
-      "id": "08630ab3-bf19-453d-8c69-8176d53a7317",
-      "name": "Merge Website Result",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3136,
-        96
-      ],
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "const httpItem = $json;\nconst cand = $('Validate Basic').item.json;\nconst failed = !!(httpItem.error);\nconst reasons = cand.basic_reasons.slice();\nif (failed) reasons.push('Website is not reachable.');\nreturn { json: { ...cand, website_ok: !failed, final_passed: cand.basic_passed && !failed, fail_reasons: reasons } };"
-      }
-    },
-    {
-      "id": "f37d6309-4dba-4fa0-b125-39c164314bd4",
-      "name": "Merge Validation Branches",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        3360,
-        192
-      ],
-      "parameters": {
-        "mode": "append"
-      }
-    },
-    {
-      "id": "36c690a9-521d-41e1-a886-e406725b9c2f",
-      "name": "No Website Passthrough",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3136,
-        288
-      ],
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "const cand = $json;\nreturn { json: { ...cand, website_ok: true, final_passed: cand.basic_passed, fail_reasons: cand.basic_reasons } };"
-      }
-    },
-    {
-      "id": "efd5ce7c-b65b-4ae6-828e-0242d031718a",
-      "name": "Record Skip - Cap Or Disabled",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        2464,
-        384
-      ],
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "UPDATE leads.outreach_queue SET status='skipped', reason=$1, updated_at=now() WHERE run_date=current_date AND candidate_id=$2",
-        "options": {
-          "queryReplacement": "={{ [$json.gate_skip_reason, $json.id] }}"
-        }
-      },
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "id": "1050fd2d-f221-49fe-8ec7-fff59fe2207e",
-      "name": "Daily Batch",
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 3,
-      "position": [
-        1344,
-        528
-      ],
-      "parameters": {}
-    },
-    {
-      "id": "50aae39d-71fa-4c72-aea3-3eec0a31ccfc",
-      "name": "Record Run Aborted",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        896,
-        720
-      ],
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "WITH r AS (INSERT INTO leads.outreach_runs (run_date, status, abort_reason, threshold_used, cap_used) SELECT current_date, 'aborted', $1, $2::int, $3::int WHERE NOT $4::boolean ON CONFLICT (run_date) DO UPDATE SET status='aborted', abort_reason=EXCLUDED.abort_reason, finished_at=now(), threshold_used=EXCLUDED.threshold_used, cap_used=EXCLUDED.cap_used RETURNING run_date) INSERT INTO leads.notifications (type, title, message, severity) SELECT 'outreach_aborted', 'Daily outreach aborted', $1, 'error' FROM r WHERE $5::boolean",
-        "options": {
-          "queryReplacement": "={{ [$json.abort_reason, $json.threshold, $json.cap, $json.quiet === true, $json.notify === true] }}"
-        }
-      },
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "id": "37894f48-72cb-4791-9a95-e180646c5b52",
-      "name": "Passed All Checks?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        3584,
-        192
-      ],
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose"
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.final_passed }}",
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              },
-              "rightValue": ""
-            }
-          ],
-          "combinator": "and"
-        }
-      }
-    },
-    {
-      "id": "8db49c3e-5203-4818-a38a-62b2a1a00b0b",
-      "name": "Prepare Daily Outreach",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3808,
-        96
-      ],
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "const COMPANY = 'KQuality Cleaning Services';\nconst SEGMENT_PITCH = {\n  commercial_office: 'we help Adelaide offices keep their workspaces spotless so staff and clients always walk into a fresh, professional space',\n  real_estate_strata: 'we support property and strata managers with dependable common-area, end-of-lease and vacate cleans across their portfolios',\n  medical_childcare_gym: 'we provide compliance-grade cleaning and sanitisation for medical, childcare and fitness spaces where hygiene standards are non-negotiable',\n  builders_construction: 'we handle post-construction and handover cleans so your sites are presentation-ready on deadline',\n  hospitality_venues: 'we keep hospitality venues guest-ready with thorough after-service and overnight cleans',\n  education_training: 'we help schools and learning centres maintain clean, healthy spaces for students and staff',\n  retail_showrooms: 'we keep showrooms and retail floors presentation-perfect so your stock always looks its best'\n};\nconst DEFAULT_PITCH = 'we provide reliable commercial cleaning for Adelaide businesses';\nconst ROLE_OK = /^(Owner|Co-?Owner|Director|Managing Director|CEO|Founder|Co-?Founder|Principal)$/i;\nconst NAME_BLOCK = /(Care|Quality|Executive|Nurse|Registered|Enrolled|General|Office|Property|Practice|Team|Group|Services)/i;\nconst AU_TAIL_RE = /,\\s*Australia\\s*$/i;\nconst STATE_RE = /\\s+(SA|NSW|VIC|QLD|WA|NT|TAS|ACT)\\s+\\d{4}.*$/i;\nconst suburbOf = (r) => { if (r.suburb) return r.suburb; const a = (r.address || '').replace(AU_TAIL_RE, ''); const p = a.split(','); return p.length < 2 ? '' : p[p.length - 1].replace(STATE_RE, '').trim(); };\nconst bandOf = (s) => s == null ? 'cold' : (Number(s) >= 80 ? 'hot' : (Number(s) >= 55 ? 'warm' : 'cold'));\nconst clean = (t) => String(t || '').replace(/\\s+/g, ' ').trim();\nconst r = $json;\nconst profile = r.profile || {};\nconst band = bandOf(r.qualification_score);\nconst suburb = suburbOf(r);\nconst pitch = SEGMENT_PITCH[r.segment_code] || DEFAULT_PITCH;\nconst people = Array.isArray(profile.people) ? profile.people : [];\nconst person = people.find(p => p && ROLE_OK.test(String(p.role || '')) && /^[A-Z][a-z]{1,15} [A-Z][a-z]{1,20}$/.test(String(p.name || '')) && !NAME_BLOCK.test(String(p.name)));\nconst firstName = person ? person.name.split(' ')[0] : null;\nconst greeting = firstName ? ('Hi ' + firstName + ',') : ('Hi ' + clean(r.business_name) + ' team,');\nlet aboutLine = '';\nconst desc = clean(profile.description);\nif (desc) {\n  let snip = desc.slice(0, 110);\n  if (desc.length > 110) { snip = snip.slice(0, snip.lastIndexOf(' ')) + '...'; }\n  aboutLine = 'I came across ' + clean(r.business_name) + ' recently - \"' + snip + '\" - and it is exactly the kind of business we enjoy working with.';\n} else {\n  aboutLine = 'I came across ' + clean(r.business_name) + (suburb ? ' in ' + suburb : '') + ' recently and wanted to reach out directly.';\n}\nlet ask = '';\nif (band === 'hot') {\n  ask = 'Would you have 10 minutes this week for a quick walkthrough? We can put together a no-obligation quote tailored to your space - no pressure either way.';\n} else if (band === 'warm') {\n  ask = 'If cleaning is on your radar this quarter, I would love to show you how we work with businesses like yours - happy to send more info or jump on a short call, whatever suits you best.';\n} else {\n  ask = 'If it is ever useful down the track, I am happy to send over a short summary of what we offer, just so we are on your radar when the timing is right.';\n}\nconst subjectBase = suburb ? (clean(r.business_name) + ' - cleaning support in ' + suburb) : ('Cleaning support for ' + clean(r.business_name));\nconst fallback_subject = band === 'hot' ? subjectBase + ' (quick quote offer)' : subjectBase;\nconst fallback_body = greeting + '\\n\\n' + aboutLine + '\\n\\nWe are ' + COMPANY + ', a local Adelaide team - ' + pitch + '.\\n\\n' + ask + '\\n\\nKind regards,\\n' + COMPANY + '\\n\\n(If this has reached the wrong person, I would appreciate being pointed to whoever looks after your premises.)';\nconst ai_summary = (r.enrichment && r.enrichment.ai && r.enrichment.ai.opportunities) ? JSON.stringify(r.enrichment.ai.opportunities).slice(0, 800) : null;\nreturn { json: { ...r, fallback_subject, fallback_body, ai_request: {\n  business: { name: clean(r.business_name), industry: r.segment_code || null, location: suburb || clean(r.address) || null, description: desc || null },\n  sender: { name: 'Michelle', company: COMPANY },\n  contact_name: firstName,\n  notes: 'qualification band: ' + band + '. segment pitch: ' + pitch + '. Local Adelaide team.' + (ai_summary ? (' Known cleaning opportunities: ' + ai_summary) : '')\n} } };"
-      }
-    },
-    {
-      "id": "a682f55d-1b95-48b0-a91a-f80d011c1195",
-      "name": "Send Daily Outreach Email",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
-      "position": [
-        4432,
-        96
-      ],
-      "parameters": {
-        "fromEmail": "KQuality Cleaning Services <kqualitycleaningservices@gmail.com>",
-        "toEmail": "={{ $json.email }}",
-        "subject": "={{ $json.subject }}",
-        "emailFormat": "text",
-        "text": "={{ $json.body }}",
-        "options": {
-          "appendAttribution": false,
-          "bccEmail": "kqualitycleaningservices+outreach@gmail.com"
-        }
-      },
-      "onError": "continueRegularOutput",
-      "webhookId": "f1d12c7c-a205-4c7c-ad01-9370bff1cba4",
-      "credentials": {
-        "smtp": {
-          "id": "91G0HwEy1X4Eu1Qm",
-          "name": "SMTP account"
-        }
-      }
-    },
-    {
-      "id": "ccccc959-ca08-4c5f-a95c-5253780657e7",
-      "name": "Record Send Result",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        4256,
-        272
-      ],
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "WITH send_ok AS (SELECT ($1::text IS NULL) AS ok), ins_draft AS (INSERT INTO leads.outreach_drafts (candidate_id, subject, body, method, status, sent_at, sent_to, sent_by, message_id) SELECT $2::bigint, $3, $4, 'daily_auto_v1', 'sent', now(), $5, 'daily_auto_engine', $6 FROM send_ok WHERE ok ON CONFLICT (candidate_id) DO UPDATE SET subject = EXCLUDED.subject, body = EXCLUDED.body, method = EXCLUDED.method, status = 'sent', sent_at = now(), sent_to = EXCLUDED.sent_to, sent_by = 'daily_auto_engine', message_id = EXCLUDED.message_id, updated_at = now() RETURNING candidate_id), crm_upsert AS (INSERT INTO leads.crm_records (candidate_id, status, stage, source, added_by, last_contact_at) SELECT $2::bigint, 'active', 'contacted', 'sent', 'daily_auto_engine', now() FROM send_ok WHERE ok ON CONFLICT (candidate_id) DO UPDATE SET stage = CASE WHEN leads.crm_records.stage = 'new' THEN 'contacted' ELSE leads.crm_records.stage END, last_contact_at = now(), updated_at = now() RETURNING candidate_id, stage), stage_log AS (INSERT INTO leads.crm_stage_history (candidate_id, stage, changed_by) SELECT candidate_id, stage, 'daily_auto_engine' FROM crm_upsert WHERE stage = 'contacted' RETURNING candidate_id), notif AS (INSERT INTO leads.notifications (type, candidate_id, title, message) SELECT 'daily_outreach_sent', c.id, 'Daily outreach sent', 'Automated daily outreach sent to ' || c.business_name || '.' FROM ins_draft JOIN leads.candidates c ON c.id = ins_draft.candidate_id RETURNING id), q_sent AS (UPDATE leads.outreach_queue SET status='sent', reason=NULL, email_generated=true, sent_at=now(), message_id=$6, crm_updated=EXISTS(SELECT 1 FROM crm_upsert), notification_created=EXISTS(SELECT 1 FROM notif), updated_at=now() WHERE run_date=current_date AND candidate_id=$2::bigint AND $1::text IS NULL RETURNING candidate_id), q_failed AS (UPDATE leads.outreach_queue SET status='failed', reason=$1, email_generated=true, updated_at=now() WHERE run_date=current_date AND candidate_id=$2::bigint AND $1::text IS NOT NULL RETURNING candidate_id) SELECT $1::text AS send_error, (SELECT candidate_id FROM q_sent) AS sent_candidate, (SELECT candidate_id FROM q_failed) AS failed_candidate",
-        "options": {
-          "queryReplacement": "={{ [$json.error ? ($json.error.message || 'SMTP send failed') : null, $('Compose Daily Outreach').item.json.id, $('Compose Daily Outreach').item.json.subject, $('Compose Daily Outreach').item.json.body, $('Compose Daily Outreach').item.json.email, $json.messageId || null] }}"
-        }
-      },
-      "retryOnFail": true,
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "id": "06b3d894-bce6-4e22-bc70-8598ad73ed70",
-      "name": "Record Skip - Validation",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        3808,
-        288
-      ],
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "UPDATE leads.outreach_queue SET status='skipped', reason=$1, validation=$2::jsonb, updated_at=now() WHERE run_date=current_date AND candidate_id=$3",
-        "options": {
-          "queryReplacement": "={{ [$json.fail_reasons.join(' '), JSON.stringify({ reasons: $json.fail_reasons, has_website: $json.has_website, website_ok: $json.website_ok }), $json.id] }}"
-        }
-      },
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "id": "18afe5f3-61b2-4d29-a9c2-60312025e86c",
-      "name": "AI Generate Daily Outreach",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        4032,
-        0
-      ],
-      "parameters": {
-        "method": "POST",
-        "url": "http://ivnautomation-ai-gateway:8000/v1/ai/outreach/initial",
-        "sendBody": true,
-        "contentType": "json",
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.ai_request) }}",
-        "options": {
-          "timeout": 120000
-        }
-      },
-      "onError": "continueRegularOutput",
-      "retryOnFail": true,
-      "maxTries": 2,
-      "waitBetweenTries": 3000
-    },
-    {
-      "id": "36cd3a8b-8a14-4098-b155-e5c35999202b",
-      "name": "Compose Daily Outreach",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        4232,
-        0
-      ],
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "const prep = $('Prepare Daily Outreach').item.json;\nconst res = $json;\nconst ok = res && res.success === true && res.data && typeof res.data.email_body === 'string' && res.data.email_body.trim().length >= 60 && res.data.subject;\nconst subject = ok ? String(res.data.subject).slice(0, 150) : prep.fallback_subject;\nconst body = ok ? res.data.email_body.trim() : prep.fallback_body;\nconst out = { ...prep };\ndelete out.ai_request;\ndelete out.fallback_subject;\ndelete out.fallback_body;\nout.subject = subject;\nout.body = body;\nout.method = ok ? ('ai_generate_outreach_' + res.prompt_version) : 'daily_auto_v1';\nout.compose_valid = !!(subject && subject.trim() && body && body.trim() && prep.email);\nreturn { json: out };"
-      }
-    },
-    {
-      "id": "c8b66a7a-56ae-4bf8-b199-b4192ddc9106",
-      "name": "Chain Trigger (from Qualification)",
-      "type": "n8n-nodes-base.executeWorkflowTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        0,
-        780
-      ],
-      "parameters": {
-        "inputSource": "passthrough"
-      }
     }
-  ],
-  "connections": {
-    "Check Health & Settings": {
-      "main": [
-        [
-          {
-            "node": "Evaluate Go-No-Go",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Evaluate Go-No-Go": {
-      "main": [
-        [
-          {
-            "node": "Proceed Today?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Proceed Today?": {
-      "main": [
-        [
-          {
-            "node": "Start Run Record",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Record Run Aborted",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Start Run Record": {
-      "main": [
-        [
-          {
-            "node": "Select Todays Best Leads",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Select Todays Best Leads": {
-      "main": [
-        [
-          {
-            "node": "Daily Batch",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Seed Queue Row": {
-      "main": [
-        [
-          {
-            "node": "Check Live Cap",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Live Cap": {
-      "main": [
-        [
-          {
-            "node": "Gate Decision",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Gate Decision": {
-      "main": [
-        [
-          {
-            "node": "Within Cap And Enabled?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Within Cap And Enabled?": {
-      "main": [
-        [
-          {
-            "node": "Validate Basic",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Record Skip - Cap Or Disabled",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Validate Basic": {
-      "main": [
-        [
-          {
-            "node": "Has Website?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Has Website?": {
-      "main": [
-        [
-          {
-            "node": "Check Website",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "No Website Passthrough",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Website": {
-      "main": [
-        [
-          {
-            "node": "Merge Website Result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Merge Website Result": {
-      "main": [
-        [
-          {
-            "node": "Merge Validation Branches",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Merge Validation Branches": {
-      "main": [
-        [
-          {
-            "node": "Passed All Checks?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "No Website Passthrough": {
-      "main": [
-        [
-          {
-            "node": "Merge Validation Branches",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Record Skip - Cap Or Disabled": {
-      "main": [
-        [
-          {
-            "node": "Daily Batch",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Daily Batch": {
-      "main": [
-        [
-          {
-            "node": "Finalize Run Summary",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Seed Queue Row",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Passed All Checks?": {
-      "main": [
-        [
-          {
-            "node": "Prepare Daily Outreach",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Record Skip - Validation",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Daily Outreach Email": {
-      "main": [
-        [
-          {
-            "node": "Record Send Result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Record Send Result": {
-      "main": [
-        [
-          {
-            "node": "Daily Batch",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Record Skip - Validation": {
-      "main": [
-        [
-          {
-            "node": "Daily Batch",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Prepare Daily Outreach": {
-      "main": [
-        [
-          {
-            "node": "AI Generate Daily Outreach",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "AI Generate Daily Outreach": {
-      "main": [
-        [
-          {
-            "node": "Compose Daily Outreach",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Compose Daily Outreach": {
-      "main": [
-        [
-          {
-            "node": "Send Daily Outreach Email",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Chain Trigger (from Qualification)": {
-      "main": [
-        [
-          {
-            "node": "Check Health & Settings",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Weekday 07:00 Trigger (Asia/Manila)": {
-      "main": [
-        [
-          {
-            "node": "Check Health & Settings",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  }
 }

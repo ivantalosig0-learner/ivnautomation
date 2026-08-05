@@ -1,312 +1,315 @@
 {
-  "id": "Lib5FMwNDcgaX3qv",
-  "name": "Outreach Follow-up Engine",
-  "active": true,
-  "settings": {
-    "executionOrder": "v1",
-    "availableInMCP": true,
-    "errorWorkflow": "39Vcvm1lkmQZXFpS",
-    "timezone": "Australia/Adelaide",
-    "executionTimeout": 900,
-    "binaryMode": "separate"
-  },
-  "nodes": [
-    {
-      "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "cronExpression",
-              "expression": "30 9 * * 2-5"
-            }
-          ]
+    "id": "Lib5FMwNDcgaX3qv",
+    "name": "Outreach Follow-up Engine",
+    "nodes": [
+        {
+            "id": "6b3a2215-f076-477d-9eb7-a1d1d9a1fb4c",
+            "name": "Weekday 09:30 Trigger",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "position": [
+                0,
+                304
+            ],
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "cronExpression",
+                            "expression": "30 9 * * 2-5"
+                        }
+                    ]
+                }
+            },
+            "typeVersion": 1.3
+        },
+        {
+            "id": "349974e5-dc8b-4381-b778-164b7d9c8fa5",
+            "name": "Fetch Due Follow-ups",
+            "type": "n8n-nodes-base.postgres",
+            "position": [
+                224,
+                304
+            ],
+            "parameters": {
+                "query": "SELECT d.candidate_id, d.subject AS orig_subject, d.body AS orig_body, d.followup_count,\n       EXTRACT(day FROM now() - COALESCE(d.last_followup_at, d.sent_at))::int AS days_since,\n       c.business_name, c.email, c.address, c.suburb, c.qualification_score,\n       s.code AS segment_code\nFROM leads.outreach_drafts d\nJOIN leads.candidates c ON c.id = d.candidate_id\nJOIN leads.crm_records r ON r.candidate_id = d.candidate_id\nLEFT JOIN leads.segments s ON s.id = c.segment_id\nWHERE d.status = 'sent'\n  AND d.followup_count < 3\n  AND r.stage = 'contacted'\n  AND r.status = 'active'\n  AND c.email IS NOT NULL\n  AND c.duplicate_of IS NULL\n  AND c.do_not_contact = false\n  AND NOT EXISTS (SELECT 1 FROM leads.inbound_replies ir\n                  WHERE ir.candidate_id = d.candidate_id)\n  AND NOT EXISTS (SELECT 1 FROM leads.suppression sp\n                  WHERE sp.email_norm = leads.norm_email(c.email)\n                    AND sp.reason IN ('hard_bounce','opt_out','cleaning_competitor'))\n  AND (CASE d.followup_count\n         WHEN 0 THEN d.sent_at + interval '3 days'\n         WHEN 1 THEN d.last_followup_at + interval '7 days'\n         WHEN 2 THEN d.last_followup_at + interval '14 days'\n       END) <= now()\nORDER BY c.qualification_score DESC NULLS LAST, d.sent_at\nLIMIT 10",
+                "options": {
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "executeOnce": true,
+            "typeVersion": 2.6
+        },
+        {
+            "id": "ec52866e-cf50-4b9c-9785-769493dd62d2",
+            "name": "Follow-up Summary",
+            "type": "n8n-nodes-base.postgres",
+            "position": [
+                672,
+                144
+            ],
+            "parameters": {
+                "query": "SELECT count(*) AS total_followups_sent, count(*) FILTER (WHERE sent_at::date = now()::date) AS sent_today FROM leads.outreach_followups",
+                "options": {
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "executeOnce": true,
+            "typeVersion": 2.6
+        },
+        {
+            "id": "5f39d8df-e4e9-4ad6-aae0-d34dcb69ba12",
+            "name": "Prepare Follow-up Request",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                672,
+                400
+            ],
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "\nconst KQ = {\n  company: 'KQuality Cleaning Services',\n  sender: 'Michelle',\n  phone: '0439 489 630'\n};\n\n// Each follow-up carries a DIFFERENT reason to reply. Repeating the first\n// email is what makes a sequence feel automated.\nconst ANGLE = {\n  real_estate_strata: { proof: 'we can usually turn a vacate clean around inside 24 hours, photos sent through when it is done', ask: 'your next vacate clean' },\n  property_management:{ proof: 'most managers we work with run the whole rent roll through one number and one monthly invoice', ask: 'a couple of managed properties' },\n  strata:             { proof: 'we leave a signed checklist after each common-area visit, so you have something for the committee', ask: 'one building' },\n  body_corporate:     { proof: 'we leave a signed checklist after each visit, so there is a record when owners ask', ask: 'one building' },\n  builders_construction:{ proof: 'we book builders cleans to your handover date, not ours, and do the final sparkle before walkthrough', ask: 'your next handover' },\n  aged_care_facilities:{ proof: 'police-checked staff and documented infection-control sign-off, ready for audit', ask: 'one wing' },\n  ndis:               { proof: 'police-checked staff on a fixed schedule, so participants see the same faces each week', ask: 'one or two properties' },\n  medical_childcare_gym:{ proof: 'we clean after hours to clinical standards, child-safe products where they are needed', ask: 'your rooms' },\n  commercial_office:  { proof: 'the same cleaner every visit and a direct mobile rather than a call centre', ask: 'your office' },\n  education_training: { proof: 'lighter cleans during teaching weeks, deep cleans in the breaks, all staff police-checked', ask: 'your classrooms' },\n  hospitality_venues: { proof: 'we are in early and out before service, so the room is ready rather than being cleaned around guests', ask: 'front of house' },\n  retail_showrooms:   { proof: 'floors and glass done before you open', ask: 'your showroom floor' },\n  industrial_warehouse:{ proof: 'site-inducted crew, high-traffic floors and amenities on a set schedule', ask: 'your floors and amenities' },\n  community_clubs:    { proof: 'weekend post-function turnarounds, so volunteers are not mopping on a Sunday', ask: 'your next function' },\n  automotive_trade:   { proof: 'customer waiting area kept presentable and workshop floors degreased on schedule', ask: 'your waiting area' }\n};\nconst DEFAULT_ANGLE = { proof: 'Adelaide-based, fully insured, every cleaner police-checked', ask: 'your site' };\n\nconst r = $json;\nconst n = Number(r.followup_count) + 1;\nconst name = String(r.business_name || '').replace(/\\s+/g, ' ').trim();\nconst a = ANGLE[r.segment_code] || DEFAULT_ANGLE;\nconst greeting = 'Hi ' + name + ' team,';\nconst signature = 'Thanks,\\n' + KQ.sender + '\\n' + KQ.company + '\\n' + KQ.phone;\n\nlet middle = '';\nif (n === 1) {\n  // Touch 1: shortest possible. One line, one question. Highest reply rate.\n  middle = 'Bumping my note from last week in case it slipped past.\\n\\n'\n         + 'Worth me sending a fixed price for ' + a.ask + '? One page, no obligation.';\n} else if (n === 2) {\n  // Touch 2: new information, not a repeat.\n  middle = 'One more from me, then I will leave it.\\n\\n'\n         + 'The part clients usually care about: ' + a.proof + '.\\n\\n'\n         + 'If you already have a cleaner you are happy with, genuinely no problem - '\n         + 'a lot of people just like having a second number on file for when one falls through. '\n         + 'Want me to send ours?';\n} else {\n  // Touch 3: permission to close the loop. \"No\" is an easy, honest reply.\n  middle = 'Last note - I will not keep filling your inbox.\\n\\n'\n         + 'If cleaning is not something you are looking at, just reply \"not now\" and I will close it off. '\n         + 'If it becomes useful later, reply to this email any time and I will pick it straight up.';\n}\n\nconst fallback_body = greeting + '\\n\\n' + middle + '\\n\\n' + signature;\nconst subject = 'Re: ' + String(r.orig_subject || ('Cleaning quote for ' + name));\n\nreturn { json: {\n  candidate_id: r.candidate_id,\n  email: r.email,\n  subject: subject,\n  followup_no: n,\n  fallback_body: fallback_body,\n  request: {\n    business: { name: name, location: r.suburb || null },\n    sender: { name: KQ.sender, company: KQ.company, phone: KQ.phone },\n    original_email: String(r.orig_body || r.orig_subject || 'first outreach email').slice(0, 4000),\n    sequence_number: n,\n    days_since_last_contact: Math.max(0, Number(r.days_since) || 0),\n    notes: 'Angle for this touch: ' + a.proof + '. Ask to price: ' + a.ask + '.'\n  }\n} };\n"
+            },
+            "typeVersion": 2
+        },
+        {
+            "id": "c0116fa8-fb3c-4664-b42a-ccb918607bce",
+            "name": "Send Follow-up Email",
+            "type": "n8n-nodes-base.emailSend",
+            "position": [
+                1280,
+                400
+            ],
+            "webhookId": "ed9cc907-f145-43e1-b156-0dd88c694edc",
+            "parameters": {
+                "text": "={{ $json.body }}",
+                "options": {
+                    "bccEmail": "kqualitycleaningservices+outreach@gmail.com",
+                    "appendAttribution": false
+                },
+                "subject": "={{ $json.subject }}",
+                "toEmail": "={{ $json.email }}",
+                "fromEmail": "KQuality Cleaning Services <kqualitycleaningservices@gmail.com>",
+                "emailFormat": "text"
+            },
+            "credentials": {
+                "smtp": {
+                    "id": "91G0HwEy1X4Eu1Qm",
+                    "name": "SMTP account"
+                }
+            },
+            "typeVersion": 2.1
+        },
+        {
+            "id": "2c1e3d02-0d19-4da0-80af-2561b2344a06",
+            "name": "Record Follow-up",
+            "type": "n8n-nodes-base.postgres",
+            "maxTries": 2,
+            "position": [
+                1480,
+                400
+            ],
+            "parameters": {
+                "query": "WITH log AS (\n  INSERT INTO leads.outreach_followups (candidate_id, followup_no, subject, body, sent_to, message_id)\n  VALUES ($1::bigint, $2::smallint, $3, $4, $5, $6)\n  ON CONFLICT (candidate_id, followup_no) DO NOTHING\n  RETURNING candidate_id\n),\nd AS (\n  UPDATE leads.outreach_drafts\n  SET followup_count = $2::smallint, last_followup_at = now(), updated_at = now()\n  WHERE candidate_id = (SELECT candidate_id FROM log)\n  RETURNING candidate_id\n)\nUPDATE leads.crm_records\nSET last_contact_at = now(), updated_at = now()\nWHERE candidate_id = (SELECT candidate_id FROM d);",
+                "options": {
+                    "queryReplacement": "={{ [$('Compose Follow-up').item.json.candidate_id, $('Compose Follow-up').item.json.followup_no, $('Compose Follow-up').item.json.subject, $('Compose Follow-up').item.json.body, $('Compose Follow-up').item.json.email, $('Send Follow-up Email').item.json.messageId || null] }}"
+                },
+                "operation": "executeQuery"
+            },
+            "credentials": {
+                "postgres": {
+                    "id": "jqlh240FlAgCW2po",
+                    "name": "Postgres account"
+                }
+            },
+            "retryOnFail": true,
+            "typeVersion": 2.6,
+            "waitBetweenTries": 2000
+        },
+        {
+            "id": "c98e8229-d45d-408a-a747-1448d83171b4",
+            "name": "Follow-up Batch",
+            "type": "n8n-nodes-base.splitInBatches",
+            "position": [
+                448,
+                304
+            ],
+            "parameters": {
+                "options": {
+                }
+            },
+            "typeVersion": 3
+        },
+        {
+            "id": "f958a99f-2c09-4b77-8050-acfdd519b5eb",
+            "name": "Sticky Note 7ed0d378",
+            "type": "n8n-nodes-base.stickyNote",
+            "position": [
+                -256,
+                -144
+            ],
+            "parameters": {
+                "color": 4,
+                "width": 1900,
+                "height": 744,
+                "content": "## Outreach Follow-up Engine v1.1 (AI Gateway)\n\nWeekdays Tue-Fri 09:30 Adelaide: sends up to 25 personalized follow-ups per run to leads whose first email was sent but who have not progressed past stage=contacted in the CRM.\n\nCadence: FU1 at day 2, FU2 at day 5 (3 days after FU1), FU3 (final, breakup note) at day 10 (5 days after FU2). Max 3 follow-ups per lead. Auto-stops on any CRM stage/status change.\n\nThe stage is claimed atomically in Fetch Due Follow-ups (followup_count is incremented in the same locked UPDATE that selects the lead), so overlapping or re-fired runs can never send the same follow-up twice.\n\nv1.1: follow-up wording is generated by the AI Gateway (generate_followup_v2 / Qwen 3 8B) via POST /v1/ai/outreach/followup, with the original deterministic template retained as an automatic fallback if the AI call fails — a send NEVER fails because of AI. Subject keeps deterministic 'Re:' threading. Cadence, caps, stop rules, sending and audit logging are unchanged and deterministic."
+            },
+            "typeVersion": 1
+        },
+        {
+            "id": "9508d26a-e2d5-4f48-946f-a6dedbb141b9",
+            "name": "AI Generate Follow-up",
+            "type": "n8n-nodes-base.httpRequest",
+            "onError": "continueRegularOutput",
+            "maxTries": 2,
+            "position": [
+                872,
+                400
+            ],
+            "parameters": {
+                "url": "http://ivnautomation-ai-gateway:8000/v1/ai/outreach/followup",
+                "method": "POST",
+                "options": {
+                    "timeout": 20000
+                },
+                "jsonBody": "={{ JSON.stringify($json.request) }}",
+                "sendBody": true,
+                "contentType": "json",
+                "specifyBody": "json"
+            },
+            "retryOnFail": true,
+            "typeVersion": 4.4,
+            "waitBetweenTries": 2000
+        },
+        {
+            "id": "e6cc3ee5-9487-4c72-8465-f4bfdd4d3868",
+            "name": "Compose Follow-up",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                1072,
+                400
+            ],
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "const prep = $('Prepare Follow-up Request').item.json;\nconst res = $json;\nconst ok = res && res.success === true && res.data && typeof res.data.email_body === 'string' && res.data.email_body.trim().length >= 40;\nconst body = ok ? res.data.email_body.trim() : prep.fallback_body;\nreturn { json: {\n  candidate_id: prep.candidate_id,\n  email: prep.email,\n  subject: prep.subject,\n  body,\n  followup_no: prep.followup_no,\n  method: ok ? 'ai_generate_followup_v2' : 'template_fallback_v1'\n} };"
+            },
+            "typeVersion": 2
         }
-      },
-      "id": "6b3a2215-f076-477d-9eb7-a1d1d9a1fb4c",
-      "name": "Weekday 09:30 Trigger",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.3,
-      "position": [
-        0,
-        304
-      ]
+    ],
+    "active": true,
+    "settings": {
+        "timezone": "Australia/Adelaide",
+        "binaryMode": "separate",
+        "errorWorkflow": "39Vcvm1lkmQZXFpS",
+        "availableInMCP": true,
+        "executionOrder": "v1",
+        "executionTimeout": 900
     },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT d.candidate_id, d.subject AS orig_subject, d.body AS orig_body, d.followup_count,\n       EXTRACT(day FROM now() - COALESCE(d.last_followup_at, d.sent_at))::int AS days_since,\n       c.business_name, c.email, c.address, c.suburb, s.code AS segment_code\nFROM leads.outreach_drafts d\nJOIN leads.candidates c ON c.id = d.candidate_id\nJOIN leads.crm_records r ON r.candidate_id = d.candidate_id\nLEFT JOIN leads.segments s ON s.id = c.segment_id\nWHERE d.status = 'sent'\n  AND d.followup_count < 3\n  AND r.stage = 'contacted'\n  AND r.status = 'active'\n  AND c.email IS NOT NULL\n  AND c.duplicate_of IS NULL\n  AND NOT EXISTS (SELECT 1 FROM leads.inbound_replies ir WHERE ir.candidate_id = d.candidate_id)\n  AND (CASE d.followup_count WHEN 0 THEN d.sent_at + interval '2 days' WHEN 1 THEN d.last_followup_at + interval '3 days' WHEN 2 THEN d.last_followup_at + interval '5 days' END) <= now()\nORDER BY d.sent_at\nLIMIT 10;",
-        "options": {}
-      },
-      "id": "349974e5-dc8b-4381-b778-164b7d9c8fa5",
-      "name": "Fetch Due Follow-ups",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        224,
-        304
-      ],
-      "executeOnce": true,
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
+    "connections": {
+        "Follow-up Batch": {
+            "main": [
+                [
+                    {
+                        "node": "Follow-up Summary",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Prepare Follow-up Request",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Record Follow-up": {
+            "main": [
+                [
+                    {
+                        "node": "Follow-up Batch",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Compose Follow-up": {
+            "main": [
+                [
+                    {
+                        "node": "Send Follow-up Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Due Follow-ups": {
+            "main": [
+                [
+                    {
+                        "node": "Follow-up Batch",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send Follow-up Email": {
+            "main": [
+                [
+                    {
+                        "node": "Record Follow-up",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Generate Follow-up": {
+            "main": [
+                [
+                    {
+                        "node": "Compose Follow-up",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Weekday 09:30 Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Due Follow-ups",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepare Follow-up Request": {
+            "main": [
+                [
+                    {
+                        "node": "AI Generate Follow-up",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
         }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT count(*) AS total_followups_sent, count(*) FILTER (WHERE sent_at::date = now()::date) AS sent_today FROM leads.outreach_followups",
-        "options": {}
-      },
-      "id": "ec52866e-cf50-4b9c-9785-769493dd62d2",
-      "name": "Follow-up Summary",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        672,
-        144
-      ],
-      "executeOnce": true,
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "const COMPANY = 'KQuality Cleaning Services';\nconst r = $json;\nconst n = Number(r.followup_count) + 1;\nconst name = String(r.business_name || '').replace(/\\s+/g, ' ').trim();\nconst greeting = 'Hi ' + name + ' team,';\nconst signature = 'Kind regards,\\n' + COMPANY;\nlet middle = '';\nif (n === 1) {\n  middle = 'Just floating our earlier note back to the top of your inbox - I know how busy things get.\\n\\nIf keeping your space consistently clean is something you would like taken off your plate, I would be glad to put together a quick, no-obligation quote for ' + name + '.';\n} else if (n === 2) {\n  middle = 'Following up once more in case the timing was not right before.\\n\\nA few things clients tell us they value: we clean after hours so your day is never interrupted, we are fully insured, and we are a local Adelaide team with no lock-in contracts.\\n\\nWould a 10-minute walkthrough some time this week be worth it? The quote is free either way.';\n} else {\n  middle = 'Last note from us - I do not want to clutter your inbox.\\n\\nIf cleaning support is not on the agenda right now, no worries at all; the door stays open. If it becomes useful down the track, just reply to this email and I will sort you out quickly.';\n}\nconst fallback_body = greeting + '\\n\\n' + middle + '\\n\\n' + signature;\nconst subject = 'Re: ' + String(r.orig_subject || 'Cleaning support for ' + name);\nreturn { json: {\n  candidate_id: r.candidate_id,\n  email: r.email,\n  subject,\n  followup_no: n,\n  fallback_body,\n  request: {\n    business: { name: name, location: r.suburb || null },\n    sender: { name: 'Michelle', company: COMPANY },\n    original_email: String(r.orig_body || r.orig_subject || 'first outreach email').slice(0, 4000),\n    sequence_number: n,\n    days_since_last_contact: Math.max(0, Number(r.days_since) || 0)\n  }\n} };"
-      },
-      "id": "5f39d8df-e4e9-4ad6-aae0-d34dcb69ba12",
-      "name": "Prepare Follow-up Request",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        672,
-        400
-      ]
-    },
-    {
-      "parameters": {
-        "fromEmail": "KQuality Cleaning Services <kqualitycleaningservices@gmail.com>",
-        "toEmail": "={{ $json.email }}",
-        "subject": "={{ $json.subject }}",
-        "emailFormat": "text",
-        "text": "={{ $json.body }}",
-        "options": {
-          "appendAttribution": false,
-          "bccEmail": "kqualitycleaningservices+outreach@gmail.com"
-        }
-      },
-      "id": "c0116fa8-fb3c-4664-b42a-ccb918607bce",
-      "name": "Send Follow-up Email",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
-      "position": [
-        1280,
-        400
-      ],
-      "webhookId": "ed9cc907-f145-43e1-b156-0dd88c694edc",
-      "credentials": {
-        "smtp": {
-          "id": "91G0HwEy1X4Eu1Qm",
-          "name": "SMTP account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "WITH log AS (\n  INSERT INTO leads.outreach_followups (candidate_id, followup_no, subject, body, sent_to, message_id)\n  VALUES ($1::bigint, $2::smallint, $3, $4, $5, $6)\n  ON CONFLICT (candidate_id, followup_no) DO NOTHING\n  RETURNING candidate_id\n),\nd AS (\n  UPDATE leads.outreach_drafts\n  SET followup_count = $2::smallint, last_followup_at = now(), updated_at = now()\n  WHERE candidate_id = (SELECT candidate_id FROM log)\n  RETURNING candidate_id\n)\nUPDATE leads.crm_records\nSET last_contact_at = now(), updated_at = now()\nWHERE candidate_id = (SELECT candidate_id FROM d);",
-        "options": {
-          "queryReplacement": "={{ [$('Compose Follow-up').item.json.candidate_id, $('Compose Follow-up').item.json.followup_no, $('Compose Follow-up').item.json.subject, $('Compose Follow-up').item.json.body, $('Compose Follow-up').item.json.email, $('Send Follow-up Email').item.json.messageId || null] }}"
-        }
-      },
-      "id": "2c1e3d02-0d19-4da0-80af-2561b2344a06",
-      "name": "Record Follow-up",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        1480,
-        400
-      ],
-      "retryOnFail": true,
-      "maxTries": 2,
-      "waitBetweenTries": 2000,
-      "credentials": {
-        "postgres": {
-          "id": "jqlh240FlAgCW2po",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "options": {}
-      },
-      "id": "c98e8229-d45d-408a-a747-1448d83171b4",
-      "name": "Follow-up Batch",
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 3,
-      "position": [
-        448,
-        304
-      ]
-    },
-    {
-      "parameters": {
-        "content": "## Outreach Follow-up Engine v1.1 (AI Gateway)\n\nWeekdays Tue-Fri 09:30 Adelaide: sends up to 10 personalized follow-ups per run (LIMIT 10, oldest-due first) to leads whose first email was sent but who have not progressed past stage=contacted in the CRM.\n\nCadence: FU1 at day 2, FU2 at day 5 (3 days after FU1), FU3 (final, breakup note) at day 10 (5 days after FU2). Max 3 follow-ups per lead. Auto-stops on any CRM stage/status change.\n\nFetch Due Follow-ups is a read-only SELECT; followup_count and last_followup_at are advanced ONLY in Record Follow-up, after a confirmed send. A lead is therefore never marked as followed-up unless it actually received the email (important because a slow AI Gateway can time the run out mid-batch). Record uses ON CONFLICT (candidate_id, followup_no) DO NOTHING for idempotency.\n\nv1.1: follow-up wording is generated by the AI Gateway (generate_followup_v2 / Qwen 3 8B) via POST /v1/ai/outreach/followup, with the original deterministic template retained as an automatic fallback if the AI call fails - a send NEVER fails because of AI. Subject keeps deterministic 'Re:' threading. Cadence, caps, stop rules, sending and audit logging are unchanged and deterministic.",
-        "height": 744,
-        "width": 1900,
-        "color": 4
-      },
-      "id": "f958a99f-2c09-4b77-8050-acfdd519b5eb",
-      "name": "Sticky Note 7ed0d378",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        -256,
-        -144
-      ]
-    },
-    {
-      "id": "9508d26a-e2d5-4f48-946f-a6dedbb141b9",
-      "name": "AI Generate Follow-up",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        872,
-        400
-      ],
-      "parameters": {
-        "method": "POST",
-        "url": "http://ivnautomation-ai-gateway:8000/v1/ai/outreach/followup",
-        "sendBody": true,
-        "contentType": "json",
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.request) }}",
-        "options": {
-          "timeout": 20000
-        }
-      },
-      "onError": "continueRegularOutput",
-      "retryOnFail": true,
-      "maxTries": 2,
-      "waitBetweenTries": 2000
-    },
-    {
-      "id": "e6cc3ee5-9487-4c72-8465-f4bfdd4d3868",
-      "name": "Compose Follow-up",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1072,
-        400
-      ],
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "const prep = $('Prepare Follow-up Request').item.json;\nconst res = $json;\nconst ok = res && res.success === true && res.data && typeof res.data.email_body === 'string' && res.data.email_body.trim().length >= 40;\nconst body = ok ? res.data.email_body.trim() : prep.fallback_body;\nreturn { json: {\n  candidate_id: prep.candidate_id,\n  email: prep.email,\n  subject: prep.subject,\n  body,\n  followup_no: prep.followup_no,\n  method: ok ? 'ai_generate_followup_v2' : 'template_fallback_v1'\n} };"
-      }
     }
-  ],
-  "connections": {
-    "Weekday 09:30 Trigger": {
-      "main": [
-        [
-          {
-            "node": "Fetch Due Follow-ups",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Fetch Due Follow-ups": {
-      "main": [
-        [
-          {
-            "node": "Follow-up Batch",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Follow-up Email": {
-      "main": [
-        [
-          {
-            "node": "Record Follow-up",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Record Follow-up": {
-      "main": [
-        [
-          {
-            "node": "Follow-up Batch",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Follow-up Batch": {
-      "main": [
-        [
-          {
-            "node": "Follow-up Summary",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Prepare Follow-up Request",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Prepare Follow-up Request": {
-      "main": [
-        [
-          {
-            "node": "AI Generate Follow-up",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "AI Generate Follow-up": {
-      "main": [
-        [
-          {
-            "node": "Compose Follow-up",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Compose Follow-up": {
-      "main": [
-        [
-          {
-            "node": "Send Follow-up Email",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  }
 }
