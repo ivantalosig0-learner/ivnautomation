@@ -124,6 +124,7 @@ dashboard/ served snapshot of the worker dashboard page
 gateway/ AI Gateway FastAPI source (no .env)
 database/ schema.sql — full `leads` schema DDL
 website/ public marketing site (kqualitycleaningservices.com.au)
+ops/ leadgen/ tooling + outreach copy source of truth; tablet/ VPS connector setup
 docs/ infra docker-compose (env-var references only)
 
 ---
