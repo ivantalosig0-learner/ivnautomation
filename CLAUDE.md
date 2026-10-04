@@ -126,6 +126,7 @@ database/ schema.sql — full `leads` schema DDL
 website/ public marketing site (kqualitycleaningservices.com.au)
 docs/ infra docker-compose (env-var references only)
 mogoba-pos/ offline-first POS + inventory for Mogoba Korean Food House (separate client project — see mogoba-pos/README.md)
+juvals/ pitch deck and research for Juval's Grill & Restaurant and Lucia's (client prospect; see juvals/README.md)
 
 ---
 
