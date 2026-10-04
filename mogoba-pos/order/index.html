@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0E0D0C">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Order Korean food from Mogoba Korean Food House in Aparri for pickup or delivery. Pay with GCash, Maya or cash.">
+  <title>Order online | Mogoba Korean Food House</title>
+  <link rel="icon" type="image/png" href="assets/logo.png">
+  <link rel="apple-touch-icon" href="assets/logo.png">
+  <link rel="preload" href="assets/fonts/ga1-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/ga1-800-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="order.css">
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+  <a class="skip" href="#view">Skip to content</a>
+  <div id="app">
+    <main id="view" tabindex="-1">
+      <div class="boot" role="status"><img src="assets/logo.png" alt="" width="64" height="64"><span>Loading menu</span></div>
+    </main>
+  </div>
+  <div id="cartbar" hidden></div>
+  <div id="layer"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <noscript><p class="noscript">Turn on JavaScript to order online, or call 0936 575 7278.</p></noscript>
+  <script src="config.js"></script>
+  <script src="order.js"></script>
+</body>
+</html>

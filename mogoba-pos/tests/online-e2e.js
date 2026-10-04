@@ -4,7 +4,8 @@
  * the register publishes the menu, a GCash order with a screenshot reaches the Online tab,
  * staff verify the amount and accept, the sale is recorded once, and the customer's tracking
  * shows each step. Also checks the v1.1 rules end to end: reference reuse, prepay and cash
- * limit, pause, and the register heartbeat. */
+ * limit, pause, and the register heartbeat. Then the hosted demo: the one-file register and the
+ * customer site on one static origin, from a customer order to Confirmed on their phone. */
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -21,6 +22,9 @@ const ROOT = path.join(__dirname, '..');
 const PORT = 8141;
 const ORIGIN = 'http://127.0.0.1:' + PORT;
 const KEY = 'test-register-key-0123456789abcdef';
+const DEMO_PORT = 8142;
+const DEMO = 'http://127.0.0.1:' + DEMO_PORT;
+let stopStatic = () => {};
 const DATA = fs.mkdtempSync(path.join(os.tmpdir(), 'mogoba-online-'));
 /* 1x1 PNG, a valid image for the proof check */
 const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
@@ -71,6 +75,7 @@ const orderBody = (store, extra) => {
   let srvErr = '';
   srv.stderr.on('data', (d) => (srvErr += d));
   const stop = () => {
+    stopStatic();
     try {
       srv.kill();
     } catch (e) {
@@ -189,6 +194,68 @@ const orderBody = (store, extra) => {
     ok(whilePaused.status === 423, 'orders refused while paused: ' + whilePaused.status);
 
     ok(errors.length === 0, 'no register page errors' + (errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''));
+    await ctx.close();
+
+    /* The hosted demo: the one-file register and the customer site on the same origin, talking
+     * through localStorage, exactly as on a static host. */
+    console.log('Demo mode on one origin');
+    const stat = spawn('npx', ['http-server', ROOT, '-p', String(DEMO_PORT), '-a', '127.0.0.1', '-c-1', '-s'], { detached: true, stdio: 'ignore' });
+    stopStatic = () => {
+      try {
+        process.kill(-stat.pid);
+      } catch (e) {
+        /* gone */
+      }
+    };
+    ok(!!(await until(async () => (await fetch(DEMO + '/order/index.html')).ok, 20000)), 'static host is up');
+    const dctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, timezoneId: 'Asia/Manila' });
+    const reg = await dctx.newPage();
+    const derr = [];
+    reg.on('pageerror', (e) => derr.push('register: ' + e.message));
+    await reg.goto(DEMO + '/dist/mogoba-pos.html');
+    await reg.click('text=Explore with sample data');
+    await reg.waitForSelector('.user-card', { timeout: 60000 });
+    await reg.click('.user-card:has-text("Owner")');
+    for (const d of '1234') await reg.keyboard.press(d);
+    await reg.waitForSelector('.view');
+    await reg.evaluate(() => M.core.saveSettings({ online: Object.assign({}, M.state.settings.online, { hours: [0, 1, 2, 3, 4, 5, 6].map((day) => ({ day, open: '00:00', close: '24:00' })) }) }));
+    const siteUrl = await reg.evaluate(() => M.online.siteUrl());
+    ok(siteUrl === DEMO + '/order/index.html', 'register links to the customer site next to it: ' + siteUrl);
+
+    const cust = await dctx.newPage();
+    await cust.setViewportSize({ width: 390, height: 844 });
+    cust.on('pageerror', (e) => derr.push('site: ' + e.message));
+    await cust.goto(siteUrl);
+    await cust.waitForSelector('.item');
+    await cust.click('.item[data-id="gimbap"]');
+    await cust.waitForSelector('.sheet');
+    await cust.click('#add-item');
+    await cust.waitForSelector('.sheet', { state: 'detached' });
+    await cust.click('#cartbar-btn');
+    await cust.click('#to-details');
+    await cust.fill('#f-name', 'Ana Reyes');
+    await cust.fill('#f-phone', '0917 123 4567');
+    await cust.click('#to-pay');
+    await cust.click('label.choice:has-text("GCash")');
+    ok(await cust.locator('.qr img').evaluate((img) => img.complete && img.naturalWidth > 0), 'customer sees the GCash QR the register published');
+    await cust.fill('#f-ref', '1012 345 678904');
+    await cust.click('#place');
+    await cust.waitForSelector('#track-status', { timeout: 10000 });
+    const dcode = (/#\/track\/(MGB-\d{4})\//.exec(cust.url()) || [])[1];
+    ok(!!dcode, 'customer order placed: ' + dcode);
+
+    await reg.evaluate(() => M.app.go('orders'));
+    await reg.evaluate(() => M.bus.emit('orders:tab', 'online'));
+    const dcard = reg.locator('.oo-card', { hasText: dcode });
+    ok(!!(await until(async () => (await dcard.count()) === 1, 10000)), 'order reaches the register in the same browser');
+    await dcard.locator('button:has-text("Verify payment")').click();
+    await reg.waitForSelector('.keypad');
+    const dtotal = await reg.evaluate((c) => M.online.state.orders[c].total, dcode);
+    for (const d of String(dtotal / 100)) await reg.click('.keypad button[aria-label="' + d + '"]');
+    await reg.click('button:has-text("Verify and accept")');
+    ok(!!(await until(async () => ((await cust.locator('#track-status').innerText()) === 'Confirmed' ? true : null), 10000)), 'customer tracking switches to Confirmed');
+    ok(derr.length === 0, 'no page errors in the demo' + (derr.length ? ': ' + derr.slice(0, 3).join(' | ') : ''));
+    await dctx.close();
   } catch (e) {
     failures++;
     console.error('  ✗ ' + (e.stack || e.message));

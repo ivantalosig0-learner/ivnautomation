@@ -46,10 +46,41 @@ const items = seed.items
     price: it.price,
     soldOut: false,
     badge: it.badge || '',
+    /* v1.1 rule 2, same test as the register (www/js/online.js): bilao trays are paid ahead. */
+    prepay: it.cat === 'bilao' || !!it.prepay,
     variantLabel: it.variants && it.variants.length ? it.variantLabel || 'Choose' : '',
     variants: (it.variants || []).map((v) => ({ id: v.id, name: v.name, price: v.price, soldOut: false })),
     addons: (it.addons || []).map(addonGroup),
   }));
+
+/* Placeholder wallet QR, the same look as the register's sample data (www/js/demo.js):
+ * QR-like but not decodable, stamped SAMPLE. The real codes come from Settings → Online ordering. */
+function sampleQr(seedText, color) {
+  const N = 25;
+  const px = 12;
+  const pad = 2 * px;
+  const size = N * px + pad * 2;
+  let x = 0;
+  for (const ch of seedText) x = (x * 31 + ch.charCodeAt(0)) >>> 0;
+  const rnd = () => (x = (x * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const finder = (r, c) => (r < 8 && c < 8) || (r < 8 && c >= N - 8) || (r >= N - 8 && c < 8);
+  const rects = [];
+  const rect = (c, r, w, h, fill) => rects.push('<rect x="' + (pad + c * px) + '" y="' + (pad + r * px) + '" width="' + w * px + '" height="' + h * px + '" fill="' + fill + '"/>');
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (!finder(r, c) && rnd() < 0.5) rect(c, r, 1, 1, '#111');
+  for (const [r, c] of [[0, 0], [0, N - 7], [N - 7, 0]]) {
+    rect(c, r, 7, 7, '#111');
+    rect(c + 1, r + 1, 5, 5, '#fff');
+    rect(c + 2, r + 2, 3, 3, '#111');
+  }
+  const bw = Math.round(size * 0.62);
+  const bh = Math.round(size * 0.2);
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + size + ' ' + size + '" width="' + size + '" height="' + size + '">' +
+    '<rect width="' + size + '" height="' + size + '" fill="#fff"/>' + rects.join('') +
+    '<rect x="' + (size - bw) / 2 + '" y="' + (size - bh) / 2 + '" width="' + bw + '" height="' + bh + '" fill="' + color + '"/>' +
+    '<text x="' + size / 2 + '" y="' + size / 2 + '" fill="#fff" font-family="system-ui, sans-serif" font-weight="800" font-size="' + Math.round(bh * 0.5) + '" text-anchor="middle" dominant-baseline="central">SAMPLE</text></svg>';
+  return 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64');
+}
 
 const store = {
   v: 1,
@@ -58,15 +89,16 @@ const store = {
   address: seed.SETTINGS().business.address,
   phone: seed.SETTINGS().business.phone,
   accepting: true,
+  pausedUntil: 0,
   hours: [0, 1, 2, 3, 4, 5, 6].map((day) => ({ day, open: '09:00', close: '20:00' })),
   prepMinutes: 20,
   pickup: { enabled: true },
   delivery: { enabled: true, fee: 5000, minOrder: 30000, area: 'Aparri town proper' },
   /* Placeholders. With no QR the site shows GCash and Maya as "QR not set up yet". */
   payments: {
-    gcash: { enabled: true, accountName: 'Mogoba Korean Food House', number: '', qr: '' },
-    maya: { enabled: true, accountName: 'Mogoba Korean Food House', number: '', qr: '' },
-    cash: { enabled: true },
+    gcash: { enabled: true, accountName: 'Mogoba Korean Food House', number: '0917 000 0000', qr: sampleQr('gcash', '#0A5BD8') },
+    maya: { enabled: true, accountName: 'Mogoba Korean Food House', number: '0917 000 0000', qr: sampleQr('maya', '#0B8A4C') },
+    cash: { enabled: true, maxTotal: 100000 },
   },
   cats,
   items,
