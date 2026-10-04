@@ -25,7 +25,7 @@ Juval's has what most highway restaurants lack: three kitchens under one roof (J
 **Taking the order**
 - Bilao, catering and hall bookings come in through Messenger threads and phone calls. There is no shared hall calendar and no deposit record, and deposits can land in personal GCash accounts.
 - GCash warned on 14 July 2025 about AI-generated fake payment screenshots.
-- Delivery apps do not solve this. GrabFood does not operate anywhere in Cagayan Valley. Foodpanda's Aparri page lists one restaurant, and riders reaching Dacal la Fugu is unverified. Commissions are commonly estimated at 25 to 30% of each order.
+- Delivery apps do not solve this. GrabFood does not operate anywhere in Cagayan Valley. Foodpanda's Aparri page lists one restaurant, and riders reaching Dacal la Fugu is unverified. Commissions run about 20 to 33% of each order depending on the plan (Foodpanda is commonly quoted at 25 to 30%).
 - One table ordering sisig, pizza and milk tea touches three kitchens. Whatever Juval's uses today (to be confirmed) does not split that order by kitchen. Our own Mogoba POS (built, at demo stage, not yet in daily use) sends one ticket per order with no station routing yet.
 
 **Bringing guests back**
@@ -34,7 +34,7 @@ Juval's has what most highway restaurants lack: three kitchens under one roof (J
 - There is no private feedback channel, so a bad night becomes a public review.
 
 **Running the place**
-- Food cost: the Philippine target is 28 to 35% of revenue, and above 40% signals a problem. Ingredient costs have risen 15 to 25% since 2024, and waste costs 5 to 10% of revenue. Without recipe depletion and counts, nobody sees the leak. On PHP 400,000 of monthly sales, each food cost point recovered is PHP 4,000 a month (illustration from the POS brief).
+- Food cost: the Philippine target is 28 to 35% of revenue, and above 40% signals a problem. Ingredient costs have risen 15 to 25% since 2024, and waste costs 5 to 10% of revenue. Without recipe depletion and counts, nobody sees the leak. On the illustrative PHP 840,000 of monthly sales, each food cost point recovered is about PHP 8,400 a month (our arithmetic).
 - Labor: the Region II minimum has been PHP 500 a day since 5 November 2025, and a new order is expected in November 2026. One minimum-wage worker costs about PHP 16,100 a month all-in. The 13th month is due 24 December 2026. 24, 25, 30 and 31 December are premium-pay days in the busiest event month.
 - BIR: Mogoba prints an "ORDER SLIP" and is not an accredited invoicing machine. Any Hapag rollout has to respect that from day one.
 
@@ -84,7 +84,7 @@ Hapag puts every guest, order, kitchen ticket, stock lot, shift and review of Ju
   3. Table tents and server cards with NTAG213 or NTAG215 chips, written and locked, with a large QR beside every chip. Many budget Android phones lack NFC or have it switched off.
   4. A review QR on the receipt footer. After an event, reservation or bilao order, one message goes to customers who consented.
   5. Replies to every review within 48 hours, in the reviewer's language (Ilocano, Filipino or English). Hapag drafts the reply and the owner approves it.
-- **Left out:** Birdeye, Podium, Yext, branded stands at A$27 to 49, on-premises review kiosks, AI auto-posting, separate profiles for Don Jose or Rosalina, and any incentive, raffle or "review night".
+- **Left out:** Birdeye, Podium, Yext, branded stands at about PHP 1,000 to 1,900 each, on-premises review kiosks, AI auto-posting, separate profiles for Don Jose or Rosalina, and any incentive, raffle or "review night".
 - **Connects:** the review record (monthly count, rating and newest review age) and private feedback tied to the order, table and server.
 - **Delivery:** set up on Google for PHP 0, plus a kit at about PHP 3,500 to 7,500 one-time. Hooks are built in Hapag in 2 to 4 days.
 
@@ -131,7 +131,7 @@ Hapag puts every guest, order, kitchen ticket, stock lot, shift and review of Ju
 - **Staff see:** a PIN clock-in on the counter tablet and a payslip (printed, or an image sent by Messenger).
 - **Features that matter:**
   1. Clock in with a PIN plus an automatic front-camera photo. It works offline and syncs through the Mogoba outbox. The Galaxy Tab A11 has no NFC, so card taps need a USB reader.
-  2. A Philippine pay rules engine covering overtime +25%, night +10% from 10 PM to 6 AM, rest day and special day 130%, and regular holiday 200%, with the worked-the-day-before check. The holiday and wage tables carry effective dates, ready for the November 2026 order.
+  2. A Philippine pay rules engine covering overtime +25% on ordinary days and +30% of the day's rate on rest days, special days and holidays, night +10% from 10 PM to 6 AM, rest day and special day 130%, and regular holiday 200%, with the worked-the-day-before check. The holiday and wage tables carry effective dates, ready for the November 2026 order.
   3. Flags for a 7th straight day, more than 8 hours without approval, and a meal break under 60 minutes.
   4. A semi-monthly register CSV, payslips, the 13th month report and SSS, PhilHealth and Pag-IBIG lines, all marked "for bookkeeper review".
   5. A service charge split by hours among non-managerial staff, only if one is charged.
@@ -145,7 +145,7 @@ Hapag puts every guest, order, kitchen ticket, stock lot, shift and review of Ju
 - **Features that matter:**
   1. A guest record keyed by mobile number, with consent date and source, a marketing yes or no, birthday month only, and brands and branch visited.
   2. Stamps: 1 per PHP 300 of net spend, valid across Juval's Grill, Don Jose, Rosalina and Lucia's. 5 stamps earn a Rosalina drink. 10 stamps earn a pizza or a small pancit bilao, a food cost of about 4.5% of qualifying spend.
-  3. A birthday-week treat for members who joined at least 7 days before and visited in the last 90 days.
+  3. A birthday-month treat for members who joined at least 7 days before and visited in the last 90 days.
   4. Automatic groups: regulars (3 visits in 6 months) and lapsed (regulars absent 6 weeks).
   5. Private feedback, 1 to 5 stars with tap reasons, tied to the order, table and server. The Google link shows on the same screen for every score, and a 1 or 2 alerts the owner's phone.
 - **Left out:** an app, plastic cards, a paid membership, points tiers, drip campaigns, and full birth dates, addresses or ID photos.
@@ -240,7 +240,7 @@ Our fees are proposals priced against the benchmarks in the briefs. Each figure 
 |---|---|---|---|
 | Setup | PHP 10,000 (range 8,000 to 12,000) | PHP 30,000 (range 25,000 to 35,000) | PHP 60,000 (range 45,000 to 70,000) |
 | Monthly | PHP 5,000 (range 4,000 to 6,000) | PHP 9,000 (range 8,000 to 10,000) | PHP 14,000 (range 12,000 to 15,000) |
-| Includes | Domain move and site upkeep, speed pass, Google profile clean-up, review kit setup and reply routine, Messenger inbox setup, 8 Facebook posts a month, monthly 1-page report | Everything in Tanaw, plus the suki list with stamps and birthdays, private feedback with alerts, the events board with deposits and BEO, the SMS sender, and Click-to-Messenger ad management with a monthly scorecard | Everything in Suki, plus the three-kitchen POS with printing to each kitchen, stock and food cost, time clock and payroll prep, and the owner dashboard and 8 AM message. BIR accreditation work is quoted separately, only if wanted |
+| Includes | Domain move and site upkeep, speed pass, Google profile clean-up, review kit setup and reply routine, Messenger inbox setup, 8 Facebook posts a month, monthly 1-page report | Everything in Tanaw, plus the suki list with stamps and birthdays, private feedback with alerts, the events board with deposits and BEO, the SMS sender, and Click-to-Messenger ad management with a monthly scorecard | Everything in Suki, plus the three-kitchen POS with printing to each kitchen, online orders, stock and food cost, time clock and payroll prep, and the owner dashboard and 8 AM message. BIR accreditation work is quoted separately, only if wanted |
 | For | Owners who want visibility first, with no new system to learn | Owners whose events and bilao trade matter most | Owners ready to run the counter, kitchens and staff on one system |
 
 - Lucia's POS terminals add PHP 1,000 a month once they go live (from the POS brief).
@@ -279,7 +279,7 @@ Our fees are proposals priced against the benchmarks in the briefs. Each figure 
 | Samsung Galaxy Tab A11 Wi-Fi (counter POS and clock-in; second unit for Lucia's or as a spare) | 2 | PHP 7,990 each (promo PHP 6,990) |
 | Grill: 80 mm LAN printer, impact type if near heat (Xprinter 76IIN) | 1 | PHP 9,980 (thermal D600 PHP 8,200 to 10,880) |
 | Don Jose: 80 mm LAN thermal printer | 1 | PHP 1,408 to 10,880 (low end unverified) |
-| Rosalina: 58 mm printer (LAN model preferred, so the counter tablet can reach it) | 1 | PHP 1,190 to 3,798 |
+| Rosalina: 58 or 80 mm printer, LAN required so the counter tablet can reach it | 1 | PHP 1,190 to 3,798 (low end is likely USB or Bluetooth; re-quote LAN models) |
 | Cashier: 80 mm receipt printer (Xprinter D600) | 1 | PHP 8,200 |
 | Cash drawer | 1 | PHP 1,890 to 4,500 |
 | Router and small UPS for the counter tablet and printers | 1 set | quote locally (our estimate, not in the briefs) |
@@ -294,7 +294,7 @@ For comparison, the UTAK complete bundle is PHP 49,999 and includes only 6 month
 | Measure | Today | Month 6 | Month 12 | Why it matters | Basis |
 |---|---|---|---|---|---|
 | Google reviews | 27 | about 117 | about 207 | 47% skip places under 20 reviews; volume and recency drive Maps rank | our base-case projection |
-| Google rating | 4.1 | about 4.3 | about 4.5 | 31% of consumers only use places rated 4.5+ | our projection, if new reviews average about 4.4 then 4.6 |
+| Google rating | 4.1 | about 4.3 | about 4.5 | 31% of consumers only use places rated 4.5+ | our projection, if new reviews average about 4.4 at first, then about 4.7 |
 | Age of newest review | not tracked | under 14 days | under 14 days | 32% look for reviews from the last 2 weeks | our target |
 | Reviews answered within 48 h | not tracked | 100% | 100% | 80% favor businesses that reply to all | our target |
 | Cost per Messenger conversation | no ads tracked | PHP 20 to 60 | PHP 15 to 50 | Shows which peso of ad spend works | our padded target from the ads brief |
@@ -392,7 +392,7 @@ We will not promise a sales lift. The only figure we use to show direction is Lu
 | Points tiers or a paid membership card | Stamps on a phone number are enough; a 4.1-star provincial venue lacks Shakey's-style pull | After 6 months of stamp data |
 | Payment gateway checkout | Manual QR checks are cheap at this volume and gateways need DTI and BIR 2303 | When manual checks exceed about 15 minutes a day (our rule of thumb) |
 | BIR e-invoicing transmission | POS users are in a later group and micro taxpayers are exempt | When BIR issues the POS regulation, or if the accountant says online orders trigger it |
-| foodpanda or GrabFood integration | GrabFood is absent from Cagayan; foodpanda coverage of Dacal la Fugu is unverified; commissions run 25 to 30% | If foodpanda riders reach the venue and the owners want discovery, with a short delivery menu priced for commission |
+| foodpanda or GrabFood integration | GrabFood is absent from Cagayan; foodpanda coverage of Dacal la Fugu is unverified; commissions run about 20 to 33% by plan | If foodpanda riders reach the venue and the owners want discovery, with a short delivery menu priced for commission |
 | Messenger chatbot or Marketing Messages API | Saved replies and labels handle the volume; the API needs Meta app review | When the inbox is more than staff can answer |
 | KDS screens in every kitchen | Printers are cheaper, heat-tolerant and need no training | A café counter screen first, when timing data is wanted |
 | Fingerprint or face recognition clock | PIN plus photo deters buddy punching at PHP 0 | Only if photo plus PIN visibly fails |

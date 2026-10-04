@@ -3,7 +3,7 @@
   "discover": "Few fresh reviews or photos on Google Maps, so highway searchers scroll past.",
   "decide": "27 reviews at 4.1 stars, while 31% of people only pick places rated 4.5 and up.",
   "order": "Bilao and event orders sit in Messenger threads, with no deposit record or hall calendar.",
-  "review": "No routine to ask or reply. Replying alone brought 12% more reviews in one study."
+  "review": "No routine to ask or reply. Replying alone brought 12% more reviews in one hotel study."
  },
  "stats": [
   {
@@ -60,8 +60,8 @@
  ],
  "adBudget": "₱5,600 always on, about ₱16,560 in growth months, about ₱38,720 at peak. Ads, VAT and creators, paid by you directly.",
  "adSources": "https://datareportal.com/reports/digital-2026-philippines ; https://modernchameleon.com/how-much-are-facebook-ads-in-the-philippines-the-2026-reality-check/ ; https://www.spiralytics.com/blog/guide-tiktok-ads-philippines ; https://www.pwc.com/ph/en/tax/tax-publications/taxwise-or-otherwise/2025/soon-taking-effect-the-12-vat-on-digital-services.html",
- "posBir": "Until Hapag is BIR-accredited, it prints order slips and you keep your registered invoices.",
- "dole": "Region II minimum ₱500 a day (RTWPB 2-24). Overtime +25%, night +10%, regular holiday 200%, special day 130%.",
+ "posBir": "Hapag prints order slips, not invoices; you keep your registered invoices unless you later choose accreditation.",
+ "dole": "Region II minimum ₱500 a day (RTWPB 2-24). Overtime +25% (+30% on rest days and holidays), night +10%, regular holiday 200%, special day 130%.",
  "roadmap": [
   {
    "when": "Next 2 weeks",
@@ -94,7 +94,7 @@
    "when": "By month 12",
    "items": [
     "Lucia's on the same system",
-    "BIR accreditation, if you want it",
+    "Apply for BIR accreditation, if you want it",
     "About 200 reviews, near 4.5 stars",
     "Next steps chosen from real data"
    ]
@@ -134,7 +134,7 @@
    "forWho": "Run three kitchens and staff on one system.",
    "includes": [
     "Everything in Suki",
-    "POS with a ticket per kitchen",
+    "POS per kitchen, plus online orders",
     "Stock and weekly food cost",
     "Time clock and payroll prep",
     "Owner dashboard and 8 AM message"

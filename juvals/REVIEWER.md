@@ -101,11 +101,14 @@ No commission to an app." Show the same flow in the Mogoba demo we built for Apa
 your Google review page. We ask every guest, we never pay for reviews, we never hide the
 unhappy ones. That keeps Google happy."
 
-**9. Ads.** "Ads only reach people within a short drive: Aparri, Lal-lo, Buguey, Gonzaga.
-The ad opens a Messenger chat to reserve or order a bilao."
+**9. Ads.** "Most ads reach people within about 25 km: Aparri, Lal-lo, Buguey, Sta. Teresita.
+One small Tuguegarao set promotes only bilao trays and the hall. The ad opens a Messenger chat
+to reserve or order a bilao."
 
 **10. POS.** "One bill, three kitchen tickets, three clear reports." This is often the
-moment owners lean in. Offer the tablet demo here.
+moment owners lean in. Offer the tablet demo here, and say plainly: the demo has one kitchen
+queue; splitting the order into three kitchen tickets is a 1 to 2 week extension we build for
+Juval's.
 
 **11. Stock.** "Every sale deducts its recipe. You see food cost per kitchen, and what is
 about to expire."
@@ -121,8 +124,8 @@ are worked out. You or your bookkeeper approve the payroll."
 
 **16. Roadmap.** "We do not switch everything on at once. First two weeks: Google profile,
 review stands, your own domain and the Undas ads. By January: the events board, the stamp
-card, and the staff clock before the December payroll. The POS comes after that, one kitchen
-at a time, once the staff are used to the first steps."
+card and feedback, bilao pre-orders by QR, and the staff clock before the December payroll.
+The POS comes after that, one kitchen at a time, once the staff are used to the first steps."
 
 **17. Packages (presenter only, not in the PDF).** Show only if they ask about price. In the
 PowerPoint this slide is hidden in the slideshow; if they ask, type 17 and press Enter to jump to it.
@@ -156,6 +159,15 @@ it. Say: "Ads money, the creators and payment fees are paid by you directly. Our
 separate and fixed." If ₱14,000 feels heavy, the rule we use is that our monthly fee should
 stay under about 1.5 to 2% of their monthly sales; offer Tanaw or Suki first.
 
+**When do we start paying, and how?**
+Setup is 50% to start and 50% at go-live. Each package's monthly fee starts when its first part
+goes live; on Hapag Buo you pay the Suki rate until the POS is live. Our quotation states
+whether VAT is included, and we issue a receipt or invoice for every payment.
+
+**Can we get only the POS, without the marketing?**
+Yes, we can quote the POS on its own after we see your counter and kitchens. It works better
+with Suki, because the guest list, reviews and events connect to it.
+
 **Why a monthly fee and not one payment?**
 Hosting, updates, backups, review replies, the monthly report and support cost us every month.
 The monthly fee is what keeps the system running and improving. The setup fee covers the build.
@@ -168,8 +180,11 @@ show results within weeks. The POS and payroll can come later.
 Google profile, review stands, your own domain and the first ads: the first two weeks. The
 events board, stamp card and feedback, the staff clock (before the December payroll) and bilao
 pre-orders by QR: within 90 days. The POS, stock, owner dashboard and online pickup orders: by
-month 6, one kitchen at a time, after the staff use each step daily. Lucia's: by month 12. Most of it is already built for Mogoba, so we are
-extending, not starting from zero.
+month 6, one kitchen at a time, after the staff use each step daily. Lucia's: by month 12. The
+POS, stock and online ordering exist for Mogoba at demo stage; the rest we build on the same
+records. This is the full Hapag Buo path: on Suki the staff clock and POS are not included, and
+on Tanaw you run the ads yourself or add ad management. Undas pre-orders in October go
+through Messenger; QR pre-orders come by day 90.
 
 **Is there a contract? Can we stop?**
 A simple agreement, month to month after an initial period of three months.
@@ -181,8 +196,8 @@ You do. The domain is registered in Juval's name. The Google Business Profile an
 Facebook page stay owned by you; we are added as managers and you can remove us any time.
 
 **When will we see results?**
-Reviews and Google profile improvements: within the first month. Online orders: after the
-ordering page is live and promoted, usually within one to two months. POS savings show in the
+Reviews and Google profile improvements: within the first month. Bilao pre-orders by QR within
+90 days; full online ordering by month 6, once the POS is in. POS savings show in the
 first full month of stock and sales reports.
 
 **Can you guarantee more customers or a top spot on Google?**
@@ -205,7 +220,7 @@ Yes. Once the POS is in, the website menu updates from the same menu. Before tha
 message and we update it the same day.
 
 **Why not just use Foodpanda or GrabFood?**
-GrabFood does not operate anywhere in Cagayan Valley, and Foodpanda's Aparri page lists a single restaurant; whether its riders reach Dacal la Fugu is untested. Their commission is commonly estimated at 25 to 30% per order (not published officially). On a ₱1,500 family order that is about ₱375 to ₱450; a business QR payment costs about ₱15. With your own ordering, the
+GrabFood does not operate anywhere in Cagayan Valley, and Foodpanda's Aparri page lists a single restaurant; whether its riders reach Dacal la Fugu is untested. Their commission is about 20 to 33% depending on the plan (Foodpanda is commonly quoted at 25 to 30%; not published officially). On a ₱1,500 family order that is about ₱300 to ₱495; a business QR payment costs about ₱15. With your own ordering, the
 guest pays you directly and you keep the full price. You can still use the apps; this is an
 extra channel you own.
 
@@ -221,7 +236,8 @@ cannot be accepted. Big orders need a manager PIN. This is already built in the 
 
 **Who delivers?**
 Your own rider for nearby towns, or a courier such as Lalamove or a local rider group where
-available. We set delivery areas and a fee per area. Pickup works from day one.
+available. We set delivery areas and a fee per area. Bilao pickup pre-orders by QR come within
+90 days; full online pickup ordering by month 6.
 
 **Can we ask for a deposit for parties and big bilao orders?**
 Yes, and Manila restaurants do it to stop no-shows. Written on the form: for example 50% down
@@ -241,9 +257,9 @@ footer and on the order page.
 ### Google reviews and NFC cards
 
 **What is NFC? Will it work on every phone?**
-It is the same tap used for contactless cards. Most Android phones and iPhones from the last
-several years read it without an app. Every card and stand also has a QR code for phones that
-do not tap. iPhone XS and newer read it with no app (a banner appears to tap). On Android, NFC must be switched on and many budget models sold here have no NFC at all.
+It is the same tap used for contactless cards. iPhone XS and newer read it with no app (a
+banner appears to tap). On Android, NFC must be switched on, and many budget models sold here
+have none. That is why every card and stand also has a QR code.
 
 **Is it allowed to ask for reviews?**
 Yes. Google allows asking every guest. What it does not allow is paying or giving freebies for
@@ -271,8 +287,8 @@ profile. Lucia's, being a separate place, gets its own profile.
 Sudden bursts look like manipulation to Google. A steady flow every week ranks better and is safer.
 
 **Why does each server get a card?**
-So you can see who is asking guests to review. Reward the asking (most reviews collected),
-never the star rating, and never pay guests.
+So you can see who offers the card and coach them. Taps are counted for coaching only: no
+prizes or quotas tied to review counts or stars, and never pay guests.
 
 **How much do the cards and stands cost?**
 Cheap. An NFC review card costs around ₱140 online, NFC stickers about ₱10 each, and a locally printed acrylic table stand about ₱100 to ₱250. For 20 tables, two counter stands and six server cards: roughly ₱3,500 to ₱7,500 one time. We write and lock each chip so nobody can change where it points.
@@ -280,8 +296,8 @@ Cheap. An NFC review card costs around ₱140 online, NFC stickers about ₱10 e
 **How many reviews can we expect?**
 Our base case, if staff offer the card at every bill: about 15 new reviews a month, so about
 72 by month 3, 117 by month 6 and 207 by month 12, assuming around 100 guests a day. If new
-reviews average about 4.4 at first and 4.6 later, the rating reaches about 4.3 by month 6 and
-4.5 by month 12. These are estimates; we measure from week one. It depends on how consistently the staff ask.
+reviews average about 4.4 at first and about 4.7 later, the rating reaches about 4.3 by month 6
+and about 4.5 by month 12. These are estimates; we measure from week one. It depends on how consistently the staff ask.
 
 ### Ads and content
 
@@ -326,16 +342,39 @@ Grill, Don Jose and Rosalina, counts stock as you sell, handles senior and PWD d
 legal way, and shows you everything on your phone.
 
 **Is your POS BIR-accredited?**
-Not yet. Today it runs the kitchen, stock and reports, and prints order slips marked "not an invoice". Your invoices still come from your registered booklets or machine. When you want Hapag to be your official invoicing machine, we apply for BIR accreditation as the developer (the application is free under RMO 24-2023) and register each terminal for a Permit to Use. Until it is registered, it prints order slips and you keep
+Not yet. In the demo it runs the kitchen queue, stock and reports, and prints order slips marked "not an invoice". Your invoices still come from your registered booklets or machine. When you want Hapag to be your official invoicing machine, we apply for BIR accreditation as the developer (the application is free under RMO 24-2023) and register each terminal for a Permit to Use. Until it is registered, it prints order slips and you keep
 issuing your BIR-registered invoices exactly as you do now. We do not take risks with BIR.
+
+**Until accreditation, does the cashier ring every sale twice?**
+Yes. Until Hapag is accredited, each sale still gets its BIR invoice from your current machine
+or booklet, copied from the Hapag total. If that double step is a problem, start with Tanaw or
+Suki and add the POS when you choose accreditation.
+
+**Do we need Wi-Fi?**
+You need a router on site so the tablet reaches the kitchen printers, even with no internet.
+The internet itself is only for sync, online orders and the owner's dashboard. Starlink is an
+optional backup.
+
+**Can guests pay by card?**
+Yes. Hapag records card payments; the terminal and its fees come from your bank or Maya. We do
+not supply card terminals.
+
+**What happens to our current data?**
+We load your menu and prices. Old sales stay in your current system or books for BIR (keep them
+5 years). Old order books, Messenger threads and GCash histories are not used for promos;
+guests join the suki list fresh, with consent.
+
+**What if a tablet breaks or is stolen?**
+Hardware is bought at cost in your name, with the store warranty. Your data is already synced,
+so a new tablet is set up in minutes; the second tablet is the spare.
 
 **What if the internet or power goes out?**
 The POS works fully offline: sales, kitchen tickets and stock keep going, and everything syncs
-when the internet is back. For power, a small UPS or power bank keeps the tablet and printer
+when the internet is back. For power, a small UPS keeps the tablet, the router and the printers
 running.
 
 **What hardware do we need? Can we use our own tablet?**
-A Samsung Galaxy Tab A11 (about ₱8,000) for the counter, an 80 mm printer for the cashier, a heat-tolerant printer at the grill (about ₱8,000 to ₱11,000 for LAN models), small printers for the oven and the café (₱1,200 to ₱3,800), and a cash drawer (₱1,900 to ₱4,500). About ₱35,000 to ₱60,000 in all, bought at cost, compared with UTAK's ₱49,999 bundle. An Android tablet you already own can work if it is recent
+A Samsung Galaxy Tab A11 (about ₱8,000) for the counter, an 80 mm printer for the cashier, a heat-tolerant printer at the grill (about ₱8,000 to ₱11,000 for LAN models), LAN printers for the oven and the café (about ₱1,200 to ₱10,900, depending on model), a router and a small UPS, and a cash drawer (₱1,900 to ₱4,500). About ₱35,000 to ₱60,000 in all, bought at cost, compared with UTAK's ₱49,999 bundle. An Android tablet you already own can work if it is recent
 enough; we check it first.
 
 **Our staff are not techy.**
@@ -345,9 +384,10 @@ sessions on site, and we come back during the first busy weekend.
 **How are senior and PWD discounts handled?**
 The POS follows RA 9994 and RA 10754: 20% of the senior or PWD guest's share, VAT exemption
 when you are VAT-registered, name and ID number captured on the slip. The example on the POS
-slide: ₱1,410 bill, four guests, one senior. Her share is ₱352.50, so 20% is ₱70.50 off and the
-bill is ₱1,339.50 (non-VAT). If you are VAT-registered, the VAT comes off her share first
-(₱352.50 / 1.12 = ₱314.73), then 20%, so ₱100.71 off.
+slide (VAT-registered, which is likely at Juval's size): ₱1,670 bill, four guests, one senior.
+Her share is ₱417.50. The VAT comes off first (₱417.50 / 1.12 = ₱372.77), then 20%, so ₱119.29
+off and the bill is ₱1,550.71. If you are not VAT-registered it is simply 20% of ₱417.50, so
+₱83.50 off.
 
 **Can staff steal by voiding orders?**
 Voids, refunds and discounts need a manager PIN, and every one is logged with who did it and
@@ -358,14 +398,15 @@ Yes, on your phone, per kitchen and per branch, and a short message every mornin
 yesterday's numbers.
 
 **Why not just buy UTAK or StoreHub?**
-They are proven, at about ₱1,500 to ₱4,500 a month plus ₱30,000 to ₱50,000 in hardware.
+They are proven: UTAK about ₱1,500 a month after the first 6 months, StoreHub ₱2,249 to
+₱8,999 a month, plus about ₱30,000 to ₱50,000 in hardware.
 Neither is built around three kitchens in one order with per-brand reports, and neither has
 support here in Cagayan. If BIR accreditation today is the deciding factor, StoreHub Starter
 is a fair choice, and we would still do your website, reviews and ads.
 
 **Do we need e-invoicing by December 2026?**
-Probably not. Under RR 11-2025, POS users are in a later group and micro businesses (under
-₱3M yearly sales) are exempt. Ask your accountant whether online orders put you in the
+Probably not: under RR 11-2025, POS users are in a later group. (Micro businesses under ₱3M
+yearly sales are exempt, but Juval's is likely above that.) Ask your accountant whether online orders put you in the
 e-commerce group.
 
 **Can one cashier sell all three brands on one bill?**
@@ -407,9 +448,9 @@ Fingerprint machines are possible later, but PIN plus photo is usually enough.
 
 **Is taking photos or fingerprints legal?**
 Yes, if staff are told in writing what is collected and why, it is kept only as long as
-needed, and it is protected. Only the manager sees the photos, they are deleted after the
-payroll dispute window (we suggest 60 days), and we store no face templates and track no
-phones. We give you a short notice for staff to sign (Data Privacy Act).
+needed, and it is protected. Only the manager sees the photos, they are deleted after 60 days
+(our privacy choice; the time records themselves are kept 3 years as the law requires), and we
+store no face templates and track no phones. We give you a short notice for staff to sign (Data Privacy Act).
 
 **What does one minimum-wage worker really cost us a month?**
 About ₱16,100 for 26 days: ₱13,000 basic plus about ₱3,100 for SSS, PhilHealth, Pag-IBIG,
@@ -419,13 +460,15 @@ labor % is honest.
 **What do we pay on Christmas and New Year's Eve?**
 Dec 25 and Dec 30 are regular holidays: 200% if worked, 100% if not (if they worked or were
 on leave the day before). Dec 24 and Dec 31 are special days: 130% if worked, no pay if not
-unless your policy pays. The 13th month is due by 24 December.
+unless your policy pays. Overtime on those days is +30% of the day's rate. The 13th month is
+due by 24 December. (A service business regularly employing fewer than 10 workers is exempt
+from holiday pay under Art. 94; we confirm your count first.)
 
 **Can we deduct shortages or broken plates?**
 Only within the Labor Code limits and with the worker's written consent. Treat cash advances
 as signed loans. Hapag never auto-deducts a drawer shortage.
 
-**A new wage order is coming in November. Does the system handle it?**
+**A new wage order is expected around November. Does the system handle it?**
 Yes. The daily rate is a setting with an effective date, so a cutoff that spans the change
 pays the old rate before and the new rate after.
 
@@ -437,9 +480,10 @@ each kitchen's sales, so none can show labor % per kitchen, and ours works offli
 **Does it compute the full payroll?**
 It prepares it: hours, overtime, night shift, holidays, and the SSS, PhilHealth and Pag-IBIG
 lines, using the Region II rates: ₱500 a day minimum under Wage Order RTWPB 2-24 (since
-5 November 2025), overtime +25%, night shift (10pm to 6am) +10%, regular holiday 200%,
-special day and rest day +30%. A shop with 10 or fewer workers pays less only if the wage board
-actually approved an exemption. You or your bookkeeper review and approve. We do not file
+5 November 2025), overtime +25% on ordinary days and +30% of the day's rate on rest days and
+holidays, night shift (10pm to 6am) +10%, regular holiday 200%, special day and rest day 130%.
+No one is paid below ₱500 unless the business holds a written wage board exemption or a BMBE
+certificate. You or your bookkeeper review and approve. We do not file
 government reports for you.
 
 ### Loyalty, feedback and events
@@ -465,14 +509,15 @@ PWD discounted item, and manual stamps need a manager PIN so staff cannot stamp 
 number.
 
 **Do we do something for birthdays?**
-A free drink or dessert with any dine-in meal in the birthday week, for members who joined at
+A free drink or dessert with any dine-in meal in their birthday month, for members who joined at
 least a week before. We keep only the birthday month, not the full date. The birthday message
 also invites them to hold the party here, which is where many event bookings come from.
 
 **Do we need to register with the National Privacy Commission?**
-Probably not at your size: registration starts at 250 employees or sensitive data on 1,000 or
-more people. Senior and PWD ID numbers count as sensitive, so Hapag stores only what BIR
-requires, masks ID numbers on screen and keeps no ID photos. You still need a privacy notice
+Not at first. Registration is required at 250 employees, or once you hold sensitive data on
+1,000 or more people, and senior and PWD ID numbers count. Hapag stores only what BIR requires,
+masks ID numbers on screen, keeps no ID photos, and counts them so you are warned before you
+reach the line. You still need a privacy notice
 at the counter and one named person responsible. Your accountant or the NPC can confirm.
 
 **How do we stop double-booking the hall?**
@@ -487,8 +532,9 @@ recorded against the event, never to a personal GCash.
 **What will all this earn us?**
 We cannot promise a number. Studies of independent restaurants show about 5 to 9% more revenue
 per extra star (US data, so treat it as a direction). If Juval's sells around ₱840,000 a month,
-a 0.3 star rise would be roughly ₱12,600 to ₱22,700 a month. One extra event or two extra bilao
-orders a month already covers the smaller packages. We measure returning-guest share, reviews
+a 0.3 star rise would be roughly ₱12,600 to ₱22,700 a month. One extra hall event a month can
+cover Tanaw. Bilao alone would need about 5 to 13 extra trays a month in sales, so we do not
+count on that. We measure returning-guest share, reviews
 and rating, and events booked, and show you every month.
 
 **What would we look at every day?**
@@ -540,7 +586,7 @@ worked on one table.
 | "We are fine with Facebook." | "Facebook is where they find you. The website and Google are where they decide. Let's measure for a month and see." |
 | "Our staff will not use it." | "That is why we train on site and come back on your first busy weekend. The screens are big buttons with photos." |
 | "Someone else offered cheaper." | "Compare what is included: three kitchens, stock, offline, staff time, and support here in Cagayan. Happy to go through their list with you." |
-| "What if it breaks on a Sunday?" | "It works offline, so sales never stop. Message me and I answer the same day." |
+| "What if it breaks on a Sunday?" | "The counter keeps selling if the internet drops. Message me and I answer the same day." |
 
 ---
 

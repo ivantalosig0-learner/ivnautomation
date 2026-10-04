@@ -62,7 +62,10 @@ a small extension of it, or a free service we configure.
    categories and variants; add kitchen grouping, bilao prepay (already in contract v1.1)
    and deposits for bookings. Est. 3 to 4 days.
 
-Rough total: about 36 to 55 working days (7 to 11 weeks) of build for items 1 to 9, spread over the roadmap, because most of the system already exists. The
+Rough total: items 1 to 9 come to about 36 to 55 working days. Adding the rest of `HAPAG.md`
+(the SMS sender 3 to 4 days, stock extensions 5 to 10, the schedule board, labor % and service
+charge 4 to 6, birthdays 1), the full build is about 49 to 76 working days (10 to 15 weeks),
+spread over the 6-month roadmap, because the POS, stock and ordering already exist. The
 waiter-device hub (2 to 3 weeks) and BIR accreditation work are extra and only on request.
 
 ## Shared records (the "one table")
