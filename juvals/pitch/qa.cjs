@@ -86,6 +86,24 @@ function inspect(slide) {
       if (b.rects.some((r) => r.right > r0.right + 1 || r.bottom > r0.bottom + 1)) out.push('cut by device screen: ' + label(b.el));
     }
   }
+  /* text running into a card or mockup it does not belong to */
+  const blocks = Array.from(slide.querySelectorAll('.card, .tier, .browser, .phone, .tablet, .nfc-card, .stand, .mosaic figure, .asphalt')).filter(visible);
+  for (const b of boxes) {
+    for (const blk of blocks) {
+      if (blk.contains(b.el)) continue;
+      const br = blk.getBoundingClientRect();
+      if (b.rects.some((r) => Math.min(r.right, br.right) - Math.max(r.left, br.left) > 2 && Math.min(r.bottom, br.bottom) - Math.max(r.top, br.top) > 2)) out.push('text over ' + label(blk).split(' ')[0] + ': ' + label(b.el));
+    }
+  }
+  /* boxes overlapping each other (cards, devices) unless one holds the other */
+  for (let i = 0; i < blocks.length; i++) {
+    for (let j = i + 1; j < blocks.length; j++) {
+      const A = blocks[i], B = blocks[j];
+      if (A.contains(B) || B.contains(A)) continue;
+      const a = A.getBoundingClientRect(), c = B.getBoundingClientRect();
+      if (Math.min(a.right, c.right) - Math.max(a.left, c.left) > 2 && Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top) > 2) out.push('boxes overlap: ' + label(A).split(' ')[0] + ' x ' + label(B).split(' ')[0]);
+    }
+  }
   /* text over text */
   for (let i = 0; i < boxes.length; i++) {
     for (let j = i + 1; j < boxes.length; j++) {

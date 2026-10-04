@@ -1,0 +1,381 @@
+# Presenter reviewer: Juval's and Lucia's
+
+For Ivan, before and during the meeting. Read it once tonight, skim the questions tomorrow
+morning, and keep it open on your phone. Numbers carry their source at the end.
+
+> **The one sentence to remember:** "You already have the food and the place. We connect
+> everything around it, so more people find you, more of them come back, and you can see the
+> whole business from your phone."
+
+---
+
+## 1. Before you go
+
+**Bring**
+
+- Laptop with the deck (`juvals/pitch/index.html`, works offline) or the PowerPoint file.
+  Charger. HDMI adapter if they have a TV.
+- Your phone with the live website open: <https://ivnautomation.xyz/juvals/>
+- The Mogoba POS demo on a tablet or laptop (sample data, Owner PIN 1234) so they can tap a
+  real order, a kitchen ticket and the stock screen.
+- One printed copy of the client PDF to leave behind.
+- A pen and a notebook: write down their answers to the discovery questions in section 3.
+
+**Check the morning of the meeting**
+
+- The website loads on mobile data, not just Wi-Fi.
+- The menu prices on the site still match their printed menu (ask them if anything changed).
+- Your Google search for "restaurant Camalaniugan" and "Juval's" so you know where they appear today.
+- Their current Google rating and review count (it was 4.1 from 27 when we wrote the deck).
+
+**Mindset**
+
+- This is a conversation, not a lecture. Aim for 20 to 25 minutes of slides, then let them talk.
+- Ask before you tell. Their answers decide which package fits.
+- Never promise rankings, a number of customers, or BIR accreditation dates.
+- Prices: only if they ask, and say they are starting points. Do not put them in writing yet
+  unless they request a quotation.
+
+---
+
+## 2. Meeting plan (about 45 minutes)
+
+| Time | What | Goal |
+|---|---|---|
+| 0 to 5 min | Thank them, small talk about the garden and the food | Warmth. Let them speak first. |
+| 5 to 10 | Discovery questions (section 3) | Learn their pain before showing the plan |
+| 10 to 30 | Deck, slides 1 to 16 | Show the vision, one module at a time |
+| 30 to 40 | Questions | Use section 5 |
+| 40 to 45 | Next step and date | Agree on the first step, not on everything |
+
+If time is short, show slides 1, 2, 4, 6, 8, 10, 15, 16 and 20 only.
+
+---
+
+## 3. Discovery questions to ask them first
+
+Write the answers down; they shape the offer.
+
+1. How many guests do you serve on a normal weekday, and on a busy Sunday?
+2. Where do most new guests come from today: Facebook, people passing on the highway, word of mouth?
+3. How do you take orders now: paper, a register, a POS app? Who counts the money at night?
+4. How do you track stock and know when pork, chicken or milk is running low?
+5. How many staff, and how do you record their time in and time out today?
+6. Do you get bilao, catering and event inquiries every week? How do you track them?
+7. Who handles your Facebook page and Google profile today?
+8. Tell me about Lucia's. Is it a separate place, a separate brand, or both?
+9. If you could fix one thing in the business this year, what would it be?
+
+Listen for the biggest pain and lead with the matching module.
+
+---
+
+## 4. Slide by slide
+
+**1. Cover.** "Thank you for making time. This is a plan for Juval's and Lucia's. It is a
+vision, not a contract. We will start small."
+
+**2. What you already have.** Compliment specifics: the garden, the three kitchens, the batil
+patong. "People already drive here for this. What is missing is the system around it."
+
+**3. Website is live.** Open it on your phone and hand it to them. Show the menu search, the
+open-now status, Reserve sending to Messenger. "We built this before asking for anything."
+
+**4. Where guests slip away.** Walk the road left to right. Point at one red box that matches
+what they told you in discovery.
+
+**5. The numbers.** Pick one number to stress. {{R: which stat lands best and why}}
+
+**6. Hapag.** "Hapag means the dining table. Everything sits at the same table: every guest,
+order, peso and hour worked." Explain the three colours: bring guests in, run the restaurant,
+bring them back.
+
+**7. Ordering.** "Guests order from all three kitchens in one cart and pay by GCash or Maya.
+No commission to an app." Mention we already run this at Mogoba.
+
+**8. Reviews and NFC.** Hold up a phone and mime the tap. "Every table, every server. It opens
+your Google review page. We ask every guest, we never pay for reviews, we never hide the
+unhappy ones. That keeps Google happy."
+
+**9. Ads.** "Ads only reach people within a short drive: Aparri, Lal-lo, Buguey, Gonzaga.
+The ad opens a Messenger chat to reserve or order a bilao."
+
+**10. POS.** "One bill, three kitchen tickets, three clear reports." This is often the
+moment owners lean in. Offer the tablet demo here.
+
+**11. Stock.** "Every sale deducts its recipe. You see food cost per kitchen, and what is
+about to expire."
+
+**12. Staff time.** "Tap a card, the time is recorded, overtime and night and holiday rates
+are worked out. You or your bookkeeper approve the payroll."
+
+**13. Loyalty and events.** "No app for the guest. Their mobile number is the stamp card."
+
+**14. Owner dashboard.** "This is what you would open every night, for Juval's and Lucia's."
+
+**15. Flywheel.** "Separate apps never talk to each other. Here, each part feeds the next."
+
+**16. Roadmap.** "We do not switch everything on at once. First two weeks: reviews and Google
+profile. Then ordering and the POS."
+
+**17. Packages (presenter only, not in the PDF).** Show only if they ask about price.
+
+**18. Targets.** "These are our targets, not promises. We agree today's numbers together in
+week one and report every month."
+
+**19. Why us.** Short. Local, already built, works offline, your data stays yours.
+
+**20. Next steps.** Ask for a date to start the first two weeks.
+
+---
+
+## 5. Questions they will likely ask, with answers
+
+### Cost and commitment
+
+**How much is this?**
+{{R: three packages with setup and monthly, from the research}} "Ads money goes straight to
+Facebook from your own card, and payment fees to GCash or Maya. Our fee is separate and fixed."
+
+**Why a monthly fee and not one payment?**
+Hosting, updates, backups, review replies, the monthly report and support cost us every month.
+The monthly fee is what keeps the system running and improving. The setup fee covers the build.
+
+**Can we start with just one part?**
+Yes. Most restaurants start with the website and the review cards, because they are cheap and
+show results within weeks. The POS and payroll can come later.
+
+**Is there a contract? Can we stop?**
+A simple agreement, month to month after an initial period {{R: suggest minimum term, e.g. 3 months}}.
+If you stop, you keep your domain, your Google profile, your Facebook page and an export of
+your data. Nothing is held hostage.
+
+**Who owns the website, the domain and the data?**
+You do. The domain is registered in Juval's name. The Google Business Profile and the
+Facebook page stay owned by you; we are added as managers and you can remove us any time.
+
+**When will we see results?**
+Reviews and Google profile improvements: within the first month. Online orders: after the
+ordering page is live and promoted, usually within one to two months. POS savings show in the
+first full month of stock and sales reports.
+
+**Can you guarantee more customers or a top spot on Google?**
+No one honest can guarantee a ranking or a number of guests. We commit to the work (reviews,
+replies, ads, content, reports) and we show the numbers every month so you can judge.
+
+### Website and online orders
+
+**We already have Facebook. Why a website?**
+Facebook is where people find you; the website is where they decide. It shows the full menu
+of all three kitchens, opening hours and directions, and Google reads it, which helps you
+appear in searches. Facebook posts get buried; the website does not.
+
+**Can we have our own name instead of ivnautomation.xyz?**
+Yes, for example juvals.ph or juvals.com.ph. {{R: domain price per year}} It is registered in
+your name.
+
+**Can we change prices and the menu ourselves?**
+Yes. Once the POS is in, the website menu updates from the same menu. Before that, send us a
+message and we update it the same day.
+
+**Why not just use Foodpanda or GrabFood?**
+{{R: commission rates and availability in Camalaniugan/Aparri}} With your own ordering, the
+guest pays you directly and you keep the full price. You can still use the apps; this is an
+extra channel you own.
+
+**How do online payments work? Do we need a business account?**
+Guests scan your GCash or Maya QR, pay the exact amount and enter the reference number.
+Staff check the money in the GCash or Maya app before cooking. Personal accounts work to
+start; {{R: business account options and fees}}.
+
+**What about fake GCash screenshots?**
+We never trust the screenshot. Staff type the amount they see in the GCash or Maya app; a
+reference number can only be used once; a reused screenshot is flagged; underpaid orders
+cannot be accepted. Big orders need a manager PIN. This is already running at Mogoba.
+
+**Who delivers?**
+Your own rider for nearby towns, or a courier such as Lalamove or a local rider group where
+available. We set delivery areas and a fee per area. Pickup works from day one.
+
+### Google reviews and NFC cards
+
+**What is NFC? Will it work on every phone?**
+It is the same tap used for contactless cards. Most Android phones and iPhones from the last
+several years read it without an app. Every card and stand also has a QR code for phones that
+do not tap. {{R: phone support details}}
+
+**Is it allowed to ask for reviews?**
+Yes. Google allows asking every guest. What it does not allow is paying or giving freebies for
+reviews, or only asking happy guests. We ask everyone, the same way.
+
+**Can we delete bad reviews?**
+Only reviews that break Google's rules (spam, offensive, fake) can be reported for removal.
+For honest bad reviews, a calm, quick reply does more good than the removal would: people
+read the replies.
+
+**Why does each server get a card?**
+So you can see who is asking guests to review. Reward the asking (most reviews collected),
+never the star rating, and never pay guests.
+
+**How much do the cards and stands cost?**
+{{R: NFC card and stand prices in PH}}
+
+**How many reviews can we expect?**
+{{R: projection and assumption}} It depends on how consistently the staff ask.
+
+### Ads and content
+
+**How much should we spend on ads?**
+{{R: three monthly tiers}} You pay Facebook directly from your card. We set up, run and
+report. Start small, keep what works.
+
+**Can't we just boost posts ourselves?**
+You can. The difference: we target only people within a short drive, use ads that open a
+Messenger chat to reserve or order, track which ads bring bookings, and stop the ones that
+do not.
+
+**Do we need TikTok?**
+Not on day one. Short videos of the sizzling sisig and the garden work well on both TikTok
+and Facebook Reels, so we film once a month and post to both.
+
+### POS and the three kitchens
+
+**We already have a register. Why change?**
+Your register prints a total. Hapag also sends each kitchen its own ticket, splits sales by
+Grill, Don Jose and Rosalina, counts stock as you sell, handles senior and PWD discounts the
+legal way, and shows you everything on your phone.
+
+**Is your POS BIR-accredited?**
+{{R: honest BIR status line}} Until it is registered, it prints order slips and you keep
+issuing your BIR-registered invoices exactly as you do now. We do not take risks with BIR.
+
+**What if the internet or power goes out?**
+The POS works fully offline: sales, kitchen tickets and stock keep going, and everything syncs
+when the internet is back. For power, a small UPS or power bank keeps the tablet and printer
+running.
+
+**What hardware do we need? Can we use our own tablet?**
+{{R: hardware list and prices}} An Android tablet you already own can work if it is recent
+enough; we check it first.
+
+**Our staff are not techy.**
+The register is big buttons and photos, the same as a phone app. Training is one or two
+sessions on site, and we come back during the first busy weekend.
+
+**How are senior and PWD discounts handled?**
+The POS follows RA 9994 and RA 10754: 20% of the senior or PWD guest's share, VAT exemption
+when you are VAT-registered, name and ID number captured on the slip.
+
+**Can staff steal by voiding orders?**
+Voids, refunds and discounts need a manager PIN, and every one is logged with who did it and
+why. The drawer is counted blind at closing and the over or short is recorded.
+
+**Can we see sales when we are not there?**
+Yes, on your phone, per kitchen and per branch, and a short message every morning with
+yesterday's numbers.
+
+### Stock and food cost
+
+**Do we have to weigh everything?**
+No. We start with the 20 to 30 dishes that sell most and their main ingredients. That already
+covers most of your food cost. Everything else can come later, or never.
+
+**Will it tell us when to buy?**
+Yes. Each ingredient has a reorder level; the system lists what to buy, grouped by supplier,
+ready to send by Messenger.
+
+### Staff time and payroll
+
+**Do we need a fingerprint machine?**
+No. Staff tap a card or enter a PIN on the counter tablet, and it can take a quick photo to
+stop buddy punching. A fingerprint device is optional if you prefer it.
+
+**Is taking photos or fingerprints legal?**
+Yes, if staff are told in writing what is collected and why, it is kept only as long as
+needed, and it is protected. We give you a short notice for staff to sign (Data Privacy Act).
+
+**Does it compute the full payroll?**
+It prepares it: hours, overtime, night shift, holidays, and the SSS, PhilHealth and Pag-IBIG
+lines, using {{R: Region II minimum wage and current rates}}. You or your bookkeeper review and
+approve. We do not file government reports for you.
+
+### Loyalty, feedback and events
+
+**Do guests need to download an app?**
+No. The mobile number is the stamp card. The cashier types it in.
+
+**Can we text our guests about promos?**
+Only those who agreed to receive messages. We ask for consent when we take the number, and
+anyone can stop the messages any time.
+
+**How do you handle unhappy guests?**
+After the visit, a short "How was it?" message. If a guest is unhappy, the manager gets a
+message right away to call them. Everyone still sees the Google review link; we never block
+anyone from reviewing.
+
+### Lucia's
+
+**Can this also run Lucia's?**
+Yes. Same system, two branches: separate menus, stock and staff, separate or combined reports.
+The owner switches between Juval's, Lucia's or both on the phone.
+
+### About us
+
+**Who is IVNautomation? What if you disappear?**
+A small web development and automation team in Cagayan. You own your domain, pages, data and
+backups; the POS keeps working offline on your own tablet; and you can export everything any
+time. If we ever stop, another developer can take over.
+
+**Can we see it working?**
+Yes. The website is live now. The POS and online ordering run at Mogoba Korean Food House
+in Aparri; I can show the demo right here.
+
+**What do you need from us to start?**
+Manager access to your Facebook page and Google Business Profile, the latest menu and prices,
+a few hours with the cooks to set up recipes, the staff list, and someone at the restaurant
+who will be our contact.
+
+**Is this AI?**
+It is automation that saves your time. Some features, like suggesting replies to reviews,
+use AI, but you approve everything before it goes out.
+
+**Why call it Hapag?**
+Because a restaurant runs around the table. Hapag puts every guest, order, peso and hour
+worked on one table.
+
+---
+
+## 6. If they say ...
+
+| They say | You say |
+|---|---|
+| "It is too expensive." | "Let's start with the part that pays for itself first: reviews and the Google profile. Then decide on the rest once you see the numbers." |
+| "We will think about it." | "Of course. What would you need to see to decide? Can I come back on [date] with the answer?" |
+| "We are fine with Facebook." | "Facebook is where they find you. The website and Google are where they decide. Let's measure for a month and see." |
+| "Our staff will not use it." | "That is why we train on site and come back on your first busy weekend. The screens are big buttons with photos." |
+| "Someone else offered cheaper." | "Compare what is included: three kitchens, stock, offline, staff time, and support here in Cagayan. Happy to go through their list with you." |
+| "What if it breaks on a Sunday?" | "It works offline, so sales never stop. Message me and I answer the same day." |
+
+---
+
+## 7. Things not to say or promise
+
+- No guaranteed ranking, review count or sales increase.
+- No claim that the POS is BIR-accredited until it is registered.
+- No paying or rewarding guests for reviews, no "only ask happy guests".
+- No texting guests who did not agree to receive messages.
+- No prices in the Messenger message or the PDF. Prices only in person, as starting points.
+
+---
+
+## 8. Numbers cheat sheet
+
+{{R: the 10 key numbers with one-line meaning and source URL}}
+
+---
+
+## 9. After the meeting
+
+- Same day: thank-you message on Messenger, with the answers to anything you promised to check.
+- Write down their answers to the discovery questions in `juvals/notes/` (create it).
+- If they agree to start: collect access to Facebook and Google, the menu, the staff list.
