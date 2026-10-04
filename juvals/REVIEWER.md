@@ -318,7 +318,10 @@ sessions on site, and we come back during the first busy weekend.
 
 **How are senior and PWD discounts handled?**
 The POS follows RA 9994 and RA 10754: 20% of the senior or PWD guest's share, VAT exemption
-when you are VAT-registered, name and ID number captured on the slip.
+when you are VAT-registered, name and ID number captured on the slip. The example on the POS
+slide: ₱1,410 bill, four guests, one senior. Her share is ₱352.50, so 20% is ₱70.50 off and the
+bill is ₱1,339.50 (non-VAT). If you are VAT-registered, the VAT comes off her share first
+(₱352.50 / 1.12 = ₱314.73), then 20%, so ₱100.71 off.
 
 **Can staff steal by voiding orders?**
 Voids, refunds and discounts need a manager PIN, and every one is logged with who did it and

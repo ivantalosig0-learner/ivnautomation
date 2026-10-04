@@ -113,7 +113,7 @@ for i, (p, hlab) in enumerate(zip(labor, hours)):
         bars.append('<text x="%.1f" y="108" text-anchor="middle" class="muted" style="font-size:10px">%s</text>' % (x + 10.5, hlab))
 F['LABOR_BARS'] = ''.join(bars)
 F['LABOR_T'] = '%.1f' % (94 - 25 * scale)
-F['DOLE_LINE'] = e(deck['dole'])
+F['DOLE_LINE'] = re.sub(r'(RTWPB \S+?)(?=[).,; ]|$)', r'<span style="white-space:nowrap">\1</span>', e(deck['dole']))
 F['STAFF_NOTES'] = e('Payroll is prepared, not filed: the owner or bookkeeper approves. ' + deck['dole'])
 
 # 13 · loyalty
