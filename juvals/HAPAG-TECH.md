@@ -4,19 +4,19 @@ The technical half of the Hapag blueprint, for us. The business half (what each 
 for the owner, packages, roadmap, KPIs) is in `HAPAG.md`.
 
 **Design rule: reuse before building, and build only what one provincial restaurant with a
-sister business will use every week.** Everything below is either already running at Mogoba,
+sister business will use every week.** Everything below is either already built for Mogoba,
 a small extension of it, or a free service we configure.
 
 ## What already exists (built for Mogoba, Aparri)
 
 | Piece | Where | State |
 |---|---|---|
-| Register app (offline-first, vanilla JS, IndexedDB) | `mogoba-pos/www/` | Running. 22 unit tests, full browser e2e. |
-| One-file build (`dist/mogoba-pos.html`) and installable PWA | `mogoba-pos/tools/build.mjs` | Running |
-| Kitchen queue, held tickets, SC/PWD, manager PIN, audit log | `www/js/core.js`, `views/orders.js` | Running |
-| Stock ledger with lots, expiry, FEFO, recipes, counts, reorder | `www/js/logic.js`, `views/stock.js` | Running |
-| Shift and drawer, X and Z readings, e-wallet totals | `views/drawer.js` | Running |
-| Reports: sales by hour/day, payments, menu engineering, CSV | `views/reports.js` | Running |
+| Register app (offline-first, vanilla JS, IndexedDB) | `mogoba-pos/www/` | Built, demo stage (not yet in daily use). 22 unit tests, full browser e2e. |
+| One-file build (`dist/mogoba-pos.html`) and installable PWA | `mogoba-pos/tools/build.mjs` | Built |
+| Kitchen queue, held tickets, SC/PWD, manager PIN, audit log | `www/js/core.js`, `views/orders.js` | Built |
+| Stock ledger with lots, expiry, FEFO, recipes, counts, reorder | `www/js/logic.js`, `views/stock.js` | Built |
+| Shift and drawer, X and Z readings, e-wallet totals | `views/drawer.js` | Built |
+| Reports: sales by hour/day, payments, menu engineering, CSV | `views/reports.js` | Built |
 | Customer ordering site (menu, cart, GCash/Maya QR, tracking) | `mogoba-pos/order/` | Built and tested (98 checks) |
 | Small Node server (API, store snapshot, orders, sync endpoint) | `mogoba-pos/server/` | Built and tested (39 tests), not yet deployed |
 | Juval's public website | ivnautomation.xyz/juvals (Hetzner VPS) | Live |
@@ -29,10 +29,10 @@ a small extension of it, or a free service we configure.
    a "fire later" time. Order discounts are spread across brands by share, so per-brand sales
    and food cost are honest. Same idea as Toast prep stations and revenue centers. Est. 1 to 2 weeks.
 2. **Printing to three kitchens with no internet.** Browsers cannot talk to network printers,
-   so the counter tablet runs the same web app inside the Capacitor wrapper Mogoba already
-   planned for Bluetooth printing, and sends each station's ESC/POS lines straight to that
+   so the counter tablet runs the same web app inside the Capacitor wrapper planned for
+   Mogoba's Bluetooth printing (not built yet), and sends each station's ESC/POS lines straight to that
    station's LAN printer over the restaurant's own router. One tablet, three printers, no
-   server on site. Router and tablet on a small UPS. Est. 4 to 6 days.
+   server on site. Router and tablet on a small UPS. Est. 5 to 8 days, including the wrapper.
    *Only later, if waiters take orders on their own phones or tablets:* a small always-on hub
    on the router (the existing Mogoba Node server on a mini PC) so several devices share open
    orders offline. Est. 2 to 3 weeks; not in the first build.
@@ -62,7 +62,7 @@ a small extension of it, or a free service we configure.
    categories and variants; add kitchen grouping, bilao prepay (already in contract v1.1)
    and deposits for bookings. Est. 3 to 4 days.
 
-Rough total: about 35 to 53 working days (7 to 11 weeks) of build for items 1 to 9, spread over the roadmap, because most of the system already exists. The
+Rough total: about 36 to 55 working days (7 to 11 weeks) of build for items 1 to 9, spread over the roadmap, because most of the system already exists. The
 waiter-device hub (2 to 3 weeks) and BIR accreditation work are extra and only on request.
 
 ## Shared records (the "one table")

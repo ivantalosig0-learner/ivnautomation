@@ -91,7 +91,7 @@ order, peso and hour worked." Explain the three colours: bring guests in, run th
 bring them back.
 
 **7. Ordering.** "Guests order from all three kitchens in one cart and pay by GCash or Maya.
-No commission to an app." Mention we already run this at Mogoba.
+No commission to an app." Show the same flow in the Mogoba demo we built for Aparri.
 
 **8. Reviews and NFC.** Hold up a phone and mime the tap. "Every table, every server. It opens
 your Google review page. We ask every guest, we never pay for reviews, we never hide the
@@ -148,7 +148,7 @@ show results within weeks. The POS and payroll can come later.
 **How long until everything is running?**
 Reviews, the Google profile and the website upgrades: the first two weeks. Online ordering and
 the events board: within 90 days. The POS, stock and staff clock: by month 6, one kitchen at a
-time, after the staff use each step daily. Most of it already runs at Mogoba, so we are
+time, after the staff use each step daily. Most of it is already built for Mogoba, so we are
 extending, not starting from zero.
 
 **Is there a contract? Can we stop?**
@@ -197,7 +197,7 @@ start; for a cleaner setup, Maya Business and GCash for Business both list QR pa
 **What about fake GCash screenshots?**
 We never trust the screenshot. Staff type the amount they see in the GCash or Maya app; a
 reference number can only be used once; a reused screenshot is flagged; underpaid orders
-cannot be accepted. Big orders need a manager PIN. This is already running at Mogoba.
+cannot be accepted. Big orders need a manager PIN. This is already built in the Mogoba system; I can show it.
 
 **Who delivers?**
 Your own rider for nearby towns, or a courier such as Lalamove or a local rider group where
@@ -486,8 +486,9 @@ backups; the POS keeps working offline on your own tablet; and you can export ev
 time. If we ever stop, another developer can take over.
 
 **Can we see it working?**
-Yes. The website is live now. The POS and online ordering run at Mogoba Korean Food House
-in Aparri; I can show the demo right here.
+Yes. The website is live now. The POS and online ordering are built for Mogoba Korean Food
+House in Aparri and ready to demo; I can show it right here. Be honest if asked: Mogoba is
+not using it day to day yet, it is at the demo stage.
 
 **What do you need from us to start?**
 Manager access to your Facebook page and Google Business Profile, the latest menu and prices,
