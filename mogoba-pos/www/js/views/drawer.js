@@ -177,7 +177,7 @@
 
   function mount(el) {
     const body = h('div.stack');
-    U.mount(el, h('div.page', h('div.page-head', h('h2', 'Drawer')), body));
+    U.mount(el, h('div.page', body));
     async function draw() {
       const past = (await C.shifts()).filter((x) => x.status === 'closed').slice(0, 30);
       const parts = [];

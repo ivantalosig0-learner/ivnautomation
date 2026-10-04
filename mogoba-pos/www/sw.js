@@ -1,6 +1,6 @@
 /* Mogoba POS: offline cache. The whole app is cached on install, served cache-first,
  * and replaced atomically when a new version is deployed (bump VERSION). */
-const VERSION = 'mogoba-pos-9193fc9671';
+const VERSION = 'mogoba-pos-0843ca486b';
 const FILES = [
   "assets/fonts/bhs-ko.woff2",
   "assets/fonts/bhs-latin.woff2",
@@ -66,7 +66,11 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  const url = new URL(req.url);
+  /* Only the app's own files. API calls (the online ordering server shares this origin) and
+   * anything outside the app's folder always go to the network. */
+  if (req.method !== 'GET' || url.origin !== location.origin || req.cache === 'no-store') return;
+  if (!url.pathname.startsWith(new URL(self.registration.scope).pathname) || url.pathname.includes('/api/')) return;
   e.respondWith(
     caches.match(req, { ignoreSearch: true }).then(
       (hit) =>

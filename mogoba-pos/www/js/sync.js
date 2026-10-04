@@ -45,6 +45,7 @@
     const to = setTimeout(() => ctl.abort(), 20000);
     return fetch(url, {
       method: 'POST',
+      cache: 'no-store',
       headers: Object.assign({ 'Content-Type': 'application/json' }, key ? { Authorization: 'Bearer ' + key } : {}),
       body: JSON.stringify(body),
       signal: ctl.signal,

@@ -21,7 +21,7 @@
       h('div.hangul', { 'aria-hidden': 'true' }, h('span', '먹'), h('span.r', '어'), h('span', '봐')),
       h('img', { src: M.asset('logo.png'), alt: 'Mogoba Korean Food House logo', width: 88, height: 88 }),
       h('h1', 'Mogoba', h('br'), 'Korean Food House'),
-      h('p', sub || 'Register, kitchen, stock and reports on one tablet. Works with or without internet.'),
+      h('p', sub || 'Register, kitchen, stock and reports. Works with or without internet.'),
       clock
     );
   }
@@ -29,13 +29,13 @@
   /* ---------- first run ---------- */
   function mountSetup(el, onDone) {
     const card = h('div.lock-card.glass');
-    U.mount(el, h('div.lock', brand('Set up this tablet as Mogoba’s register. Everything is stored on the device and keeps working offline.'), h('section.lock-panel', card)));
+    U.mount(el, h('div.lock', brand('Set up this tablet as Mogoba’s register. Data stays on the device and works offline.'), h('section.lock-panel', card)));
 
     function choose() {
       U.mount(
         card,
         h('h2', 'Set up the register'),
-        h('button.choice', { type: 'button', onclick: () => run(true) }, ui().icon('sparkle', 26), h('div', h('b', 'Explore with sample data'), h('span', 'Two weeks of made-up sales, stock and shifts so every screen has something to show. Remove it from Settings when you are ready.'))),
+        h('button.choice', { type: 'button', onclick: () => run(true) }, ui().icon('sparkle', 26), h('div', h('b', 'Explore with sample data'), h('span', 'Two weeks of made-up sales, stock and shifts. Remove it from Settings when ready.'))),
         h('button.choice', { type: 'button', onclick: owner }, ui().icon('pos', 26), h('div', h('b', 'Start Mogoba for real'), h('span', 'Mogoba’s full menu and recipes, stock at zero, and your own owner PIN.'))),
         h('p.hint', 'You can switch later in Settings.')
       );
@@ -47,7 +47,7 @@
       U.mount(
         card,
         h('div.row-gap', h('button.icon-btn', { type: 'button', 'aria-label': 'Back', onclick: choose }, ui().icon('left')), h('h2', 'Owner account')),
-        h('p.lead', { style: { margin: 0 } }, 'The owner PIN unlocks everything: prices, staff, reports and backups. Add cashiers and managers later in Settings.'),
+        h('p.lead', { style: { margin: 0 } }, 'The owner PIN unlocks prices, staff, reports and backups. Add staff later in Settings.'),
         ui().field('Name', name),
         h('div.form-grid', ui().field('PIN', pin), ui().field('Repeat PIN', pin2)),
         h(

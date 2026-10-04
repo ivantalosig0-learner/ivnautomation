@@ -3,8 +3,11 @@
  *   1. www/sw.js: offline cache list + content-hash version (hosted PWA)
  *   2. dist/mogoba-pos.html: the whole app in ONE file (fonts, photos, logo inlined).
  *      Opens from a phone's Files app, a laptop or a USB stick with no server and no internet.
+ *   3. dist/web/mogoba-pos.html: body-only preview for hosted viewers.
+ *   4. order/: customer site assets synced from www/assets, menu fallback regenerated from seed.js.
  * The Android build (Capacitor) packages www/ as-is. */
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, copyFileSync, existsSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { join, relative, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -93,3 +96,15 @@ const appBytes = files.reduce((t, f) => t + statSync(join(WWW, f)).size, 0);
 console.log('sw.js       ', version, '·', files.length, 'files ·', kb(appBytes));
 console.log('single file  dist/mogoba-pos.html ·', kb(Buffer.byteLength(html)));
 console.log('web preview  dist/web/mogoba-pos.html ·', kb(Buffer.byteLength(preview)));
+
+/* 4. customer site: same photos, fonts and logo as the register, menu from the same seed. */
+const ORDER = join(ROOT, 'order');
+const orderAssets = files.filter((f) => f.startsWith('assets/fonts/') || f.startsWith('assets/food/') || f === 'assets/logo.png');
+const keep = new Set(orderAssets);
+if (existsSync(join(ORDER, 'assets'))) for (const f of walk(join(ORDER, 'assets'))) if (!keep.has(relative(ORDER, f).split('\\').join('/'))) rmSync(f);
+for (const f of orderAssets) {
+  mkdirSync(dirname(join(ORDER, f)), { recursive: true });
+  copyFileSync(join(WWW, f), join(ORDER, f));
+}
+execFileSync(process.execPath, [join(ROOT, 'tools', 'gen-store.mjs')], { stdio: 'inherit' });
+console.log('order site   order/assets ·', orderAssets.length, 'files');

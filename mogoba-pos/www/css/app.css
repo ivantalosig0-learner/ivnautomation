@@ -7,7 +7,10 @@
 @font-face { font-family: "Gothic A1"; src: url(../assets/fonts/ga1-400-latin.woff2) format("woff2"); font-weight: 400; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+20B1, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 @font-face { font-family: "Gothic A1"; src: url(../assets/fonts/ga1-600-latin.woff2) format("woff2"); font-weight: 600 700; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+20B1, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 @font-face { font-family: "Gothic A1"; src: url(../assets/fonts/ga1-800-latin.woff2) format("woff2"); font-weight: 800 900; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+20B1, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
-@font-face { font-family: "Gothic A1"; src: url(../assets/fonts/ga1-600-ko.woff2) format("woff2"); font-weight: 400 900; font-display: swap; unicode-range: U+1100-11FF, U+3130-318F, U+AC00-D7AF; }
+/* One Hangul subset for every weight, declared per Latin weight bucket so Chrome keeps the Latin 800 face. */
+@font-face { font-family: "Gothic A1"; src: url(../assets/fonts/ga1-600-ko.woff2) format("woff2"); font-weight: 400; font-display: swap; unicode-range: U+1100-11FF, U+3130-318F, U+AC00-D7AF; }
+@font-face { font-family: "Gothic A1"; src: url(../assets/fonts/ga1-600-ko.woff2) format("woff2"); font-weight: 600 700; font-display: swap; unicode-range: U+1100-11FF, U+3130-318F, U+AC00-D7AF; }
+@font-face { font-family: "Gothic A1"; src: url(../assets/fonts/ga1-600-ko.woff2) format("woff2"); font-weight: 800 900; font-display: swap; unicode-range: U+1100-11FF, U+3130-318F, U+AC00-D7AF; }
 
 :root {
   --seaweed: #0E0D0C;
@@ -491,9 +494,11 @@ select.input option { background: var(--glass-solid); color: var(--ink); }
 .progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--gochujang), var(--board)); border-radius: 4px; transition: width .2s; }
 
 /* ---------- pages ---------- */
+.show-phone { display: none; }
 .page { display: flex; flex-direction: column; gap: 12px; height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 8px; }
-.page-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 2px 2px 0; }
-.page-head h2 { font-family: var(--font-display); font-weight: 400; font-size: 26px; flex: 1; min-width: 160px; letter-spacing: .01em; }
+.page-head { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; padding: 2px 2px 0; }
+/* The top bar already names the screen; the page heading stays for screen readers only. */
+.page-head h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .panel { padding: 16px; }
 .panel-title { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .panel-title h3 { font-size: 15px; font-weight: 800; flex: 1; }
@@ -595,7 +600,6 @@ button.row:active, button.row:hover { background: var(--soft); }
 @media (max-width: 760px) {
   .kpis { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .kpis .hero, .kpis > .stat:last-child { grid-column: 1 / -1; }
-  .chart .axis-t, .chart .val-t, .chart .quad-t { font-size: 20px; }
   .watch-row { grid-template-columns: minmax(80px, 34%) minmax(0, 1fr) 64px; }
 }
 
@@ -631,6 +635,9 @@ button.stat { text-align: left; width: 100%; color: inherit; }
 .lvl.out > i { background: var(--gochujang); }
 .lvl.accent > i { background: linear-gradient(90deg, #D58E25, var(--board)); }
 .lvl > b { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ink-2); }
+.fc-meter { display: grid; grid-template-columns: 38px 96px; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.fc-ok { color: var(--ok); } .fc-low { color: var(--warn); } .fc-out { color: var(--bad); }
+@media (max-width: 560px) { .fc-meter { grid-template-columns: 38px; } .fc-meter .lvl { display: none; } }
 .bullet { position: relative; height: 22px; border-radius: 5px; overflow: hidden; }
 .bullet .band { position: absolute; left: 0; top: 0; bottom: 0; }
 .bullet .b3 { width: 100%; background: rgba(232, 163, 61, .10); }
@@ -691,6 +698,8 @@ button.stat { text-align: left; width: 100%; color: inherit; }
 .heat-ramp { width: 90px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, rgba(232, 163, 61, .12), rgba(232, 163, 61, .97)); }
 .chart-tip { position: absolute; pointer-events: none; padding: 8px 10px; border-radius: 10px; background: var(--glass-solid); border: 1px solid var(--line-2); box-shadow: var(--shadow); font-size: 12.5px; white-space: nowrap; transform: translate(-50%, -110%); z-index: 3; }
 .chart-tip b { display: block; font-size: 14px; font-variant-numeric: tabular-nums; }
+/* Charts draw in a 640-unit viewBox, so phone text needs larger units to stay readable. */
+@media (max-width: 760px) { .chart .axis-t, .chart .val-t, .chart .quad-t { font-size: 22px; } }
 .hbars { display: flex; flex-direction: column; gap: 10px; }
 .hbar { display: grid; grid-template-columns: minmax(90px, 34%) minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 13.5px; }
 .hbar .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); font-weight: 600; }
@@ -707,7 +716,7 @@ button.stat { text-align: left; width: 100%; color: inherit; }
   .topbar { min-height: 56px; padding: 6px 6px 6px 10px; border-radius: 18px; }
   .topbar .brand { display: flex; }
   .topbar h1 { font-size: 20px; }
-  .topbar .shift-chip, .user-btn .nm, .pill .txt { display: none; }
+  .topbar .shift-chip, .user-btn .nm, .pill .txt, .topbar .pill.quiet { display: none; }
   .pill .ic { display: inline-flex; }
   .pill { padding: 0 12px; height: 36px; }
   .tabbar { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 16px; right: 16px; bottom: max(10px, env(safe-area-inset-bottom)); z-index: 20; padding: 6px; border-radius: 22px; background: var(--glass-strong); -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%); border: 1px solid var(--line-2); box-shadow: var(--shadow); }
@@ -741,10 +750,13 @@ button.stat { text-align: left; width: 100%; color: inherit; }
   .lock-card { padding: 20px; }
   .pinpad { grid-template-columns: repeat(3, 72px); gap: 12px; }
   .pinpad button { width: 72px; height: 72px; }
-  .page-head h2 { font-size: 22px; }
   .toasts { bottom: calc(86px + env(safe-area-inset-bottom)); }
   .change-hero .big { font-size: 52px; }
   .hide-phone { display: none !important; }
+  .show-phone { display: inline !important; }
+  .page-head { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+  .page-head > .btn, .page-head > .icon-btn { width: 100%; justify-content: center; }
+  .page-head > .icon-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); font-weight: 600; }
 }
 @media (min-width: 761px) { .only-phone { display: none !important; } }
 @media (max-width: 1100px) and (min-width: 761px) {

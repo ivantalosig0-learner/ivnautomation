@@ -535,7 +535,7 @@
         h('button.btn', { type: 'button', onclick: () => receiveSheet() }, ui().icon('truck', 20), h('span', 'Receive')),
         h('button.btn', { type: 'button', onclick: () => adjustSheet() }, ui().icon('stock', 20), h('span', 'Add / remove')),
         h('button.btn', { type: 'button', onclick: () => countSheet() }, ui().icon('count', 20), h('span', 'Count')),
-        h('button.icon-btn.boxed', { type: 'button', 'aria-label': 'New stock item', onclick: () => editSheet(null) }, ui().icon('plus'))
+        h('button.icon-btn.boxed', { type: 'button', 'aria-label': 'New stock item', onclick: () => editSheet(null) }, ui().icon('plus'), h('span.show-phone', 'New item'))
       );
     }
     const top = h('div.cards.cards-3');

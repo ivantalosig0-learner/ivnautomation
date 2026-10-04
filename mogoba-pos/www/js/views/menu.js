@@ -145,7 +145,7 @@
         h('div.split.even', h('div.form-grid', h('label.field.span2', h('span', 'Name'), name), ui().field('Korean name', ko), ui().field('Category', cat), ui().field('Price (₱)', price, 'Set per option when it has sizes or flavours'), ui().field('Photo', img)), h('div.stack', active, costEl)),
         h('div.group-label', 'Base recipe, used by every sale'),
         recipeEditor(d.recipe, updCost),
-        h('p.muted', { style: { fontSize: '12.5px' } }, 'Quantities are per serving in each ingredient’s base unit (g, ml or pc). Every sale deducts them from Stock, so keep them close to what the kitchen really portions.'),
+        h('p.muted', { style: { fontSize: '12.5px' } }, 'Per serving, in each ingredient’s base unit (g, ml or pc). Every sale deducts these from stock, so match real portions.'),
         h('div.group-label', 'Sizes / flavours'),
         variantsBox,
         h('div.group-label', 'Add-ons offered'),
@@ -183,9 +183,16 @@
     );
   }
 
+  /* Food cost against the owner's target: green at or under, amber up to 10 points over, red beyond. */
+  function fcMeter(fc) {
+    const target = ((S.settings.sales && S.settings.sales.foodCostTarget) || 40) / 100;
+    const state = fc <= target ? 'ok' : fc <= target + 0.1 ? 'low' : 'out';
+    return h('div.fc-meter', { title: 'Food cost ' + U.pct(fc, 0) + ', target ' + U.pct(target, 0) }, h('span', { class: 'fc-' + state }, U.pct(fc, 0)), ui().level(fc, 0.8, { state, marker: target, thin: true, label: 'Food cost' }));
+  }
+
   function mount(el) {
     const owner = C.can('*') || (S.user && S.user.role === 'owner');
-    const head = h('div.page-head', h('h2', 'Menu'), owner ? h('button.btn.primary', { type: 'button', onclick: () => editor(null) }, ui().icon('plus', 20), 'New item') : null);
+    const head = h('div.page-head', h('h2', 'Menu'), h('span.muted.hide-phone', { style: { fontWeight: 700 } }, 'Bars: food cost vs ' + ((S.settings.sales && S.settings.sales.foodCostTarget) || 40) + '% target'), owner ? h('button.btn.primary', { type: 'button', onclick: () => editor(null) }, ui().icon('plus', 20), 'New item') : null);
     const chips = h('div.tabs');
     const search = h('input.input', { type: 'search', placeholder: 'Search the menu', 'aria-label': 'Search the menu', value: view.q });
     const list = h('div.list');
@@ -212,9 +219,9 @@
               'button.grow',
               { type: 'button', style: { textAlign: 'left', display: 'flex', gap: '12px', alignItems: 'center' }, disabled: !owner, onclick: () => editor(it) },
               it.img ? h('span', { style: { width: '48px', height: '48px', borderRadius: '12px', flex: 'none', backgroundSize: 'cover', backgroundPosition: 'center', backgroundImage: 'url("' + M.asset('food/' + it.img + '.jpg') + '")' } }) : h('span.tile-mono', { class: 'tone-' + cat.tone, style: { width: '48px', height: '48px', borderRadius: '12px', fontSize: '15px' } }, (it.ko || it.name).slice(0, 2)),
-              h('span.grow', h('div.t', it.name, it.active === false ? h('span.badge.muted', { style: { marginLeft: '8px' } }, 'Hidden') : null), h('div.s', (cat.name || '') + ' · ' + (lo === hi ? U.peso(lo, true) : U.peso(lo, true) + ' to ' + U.peso(hi, true)) + (hasRecipe ? ' · food cost ' + U.pct(fc, 0) : '')))
+              h('span.grow', h('div.t', it.name, it.active === false ? h('span.badge.muted', { style: { marginLeft: '8px' } }, 'Hidden') : null), h('div.s', (cat.name || '') + ' · ' + (lo === hi ? U.peso(lo, true) : U.peso(lo, true) + ' to ' + U.peso(hi, true))))
             ),
-            hasRecipe ? null : ui().badge('low', 'No recipe'),
+            hasRecipe ? fcMeter(fc) : ui().badge('low', 'No recipe'),
             owner
               ? h('label.switch', { title: 'On the menu' }, h('input', { type: 'checkbox', checked: it.active !== false, 'aria-label': it.name + ' on the menu', onchange: async (e) => {
                   await C.saveItem(Object.assign({}, it, { active: e.target.checked }));

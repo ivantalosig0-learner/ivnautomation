@@ -326,5 +326,46 @@
     }
   }
 
-  M.demo = { generate };
+  /* Placeholder wallet QR for the sample data: QR-like but not decodable, stamped SAMPLE.
+   * The real GCash and Maya codes are uploaded in Settings → Online ordering. */
+  function sampleQr(seedText, color) {
+    try {
+      const N = 25;
+      const px = 12;
+      const pad = 2 * px;
+      const size = N * px + pad * 2;
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = size;
+      const g = cv.getContext('2d');
+      g.fillStyle = '#fff';
+      g.fillRect(0, 0, size, size);
+      let x = 0;
+      for (const ch of seedText) x = (x * 31 + ch.charCodeAt(0)) >>> 0;
+      const rnd = () => ((x = (x * 1664525 + 1013904223) >>> 0) / 4294967296);
+      const finder = (r, c) => r < 8 && c < 8 || r < 8 && c >= N - 8 || r >= N - 8 && c < 8;
+      g.fillStyle = '#111';
+      for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (!finder(r, c) && rnd() < 0.5) g.fillRect(pad + c * px, pad + r * px, px, px);
+      for (const [r, c] of [[0, 0], [0, N - 7], [N - 7, 0]]) {
+        g.fillRect(pad + c * px, pad + r * px, 7 * px, 7 * px);
+        g.fillStyle = '#fff';
+        g.fillRect(pad + (c + 1) * px, pad + (r + 1) * px, 5 * px, 5 * px);
+        g.fillStyle = '#111';
+        g.fillRect(pad + (c + 2) * px, pad + (r + 2) * px, 3 * px, 3 * px);
+      }
+      const bw = size * 0.62;
+      const bh = size * 0.2;
+      g.fillStyle = color;
+      g.fillRect((size - bw) / 2, (size - bh) / 2, bw, bh);
+      g.fillStyle = '#fff';
+      g.font = '800 ' + Math.round(bh * 0.5) + 'px system-ui, sans-serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText('SAMPLE', size / 2, size / 2);
+      return cv.toDataURL('image/png');
+    } catch (e) {
+      return '';
+    }
+  }
+
+  M.demo = { generate, sampleQr };
 })((window.M = window.M || {}));

@@ -36,7 +36,7 @@
         'div.stack',
         ui().field('Name', name),
         h('div.field', h('span', 'Role'), ui().seg([['cashier', 'Cashier'], ['manager', 'Manager'], ['owner', 'Owner']], role, (v) => (role = v), 'Role')),
-        h('small.muted', 'Cashiers sell and open/close shifts. Managers also approve discounts, voids, refunds and pay-outs, and manage stock. Owners can change everything.'),
+        h('small.muted', 'Cashiers sell and run shifts. Managers also approve discounts, voids and refunds, and manage stock. Owners can change everything.'),
         ui().field('PIN', pin),
         u ? sw('Active', 'Inactive staff cannot sign in', active, (v) => (active = v)) : null
       )
@@ -113,7 +113,7 @@
     const demo = S.meta.demo;
     const ok = await ui().confirm({
       title: demo ? 'Remove the sample data?' : 'Erase everything on this device?',
-      message: demo ? 'Sample sales, stock movements and demo staff are deleted. You keep Mogoba’s menu and recipes and set up your owner PIN. Stock starts at zero. Count it before opening.' : 'All sales, stock history, staff and settings on this device are deleted. This cannot be undone. Download a backup first.',
+      message: demo ? 'Sample sales, stock history and demo staff are deleted. The menu and recipes stay. Stock starts at zero, so count it before opening.' : 'All sales, stock history, staff and settings on this device are deleted. This cannot be undone. Download a backup first.',
       ok: demo ? 'Remove sample data' : 'Erase everything',
       danger: true,
     });
@@ -250,7 +250,7 @@
 
   function mount(el) {
     const body = h('div.stack');
-    U.mount(el, h('div.page', h('div.page-head', h('h2', 'Settings')), body));
+    U.mount(el, h('div.page', body));
     async function draw() {
       const st = S.settings;
       const b = st.business;
@@ -266,7 +266,7 @@
       const parts = [];
       const owner = C.can('*');
       if (S.meta.demo && owner)
-        parts.push(h('div.banner', ui().icon('sparkle'), h('div.grow', h('b', 'You are exploring with sample data'), h('div.s', 'Two weeks of made-up sales so every screen has something to show. Remove it before Mogoba starts trading on this device.')), h('button.btn.sm', { type: 'button', onclick: startFresh }, 'Remove sample data')));
+        parts.push(h('div.banner', ui().icon('sparkle'), h('div.grow', h('b', 'You are exploring with sample data'), h('div.s', 'Two weeks of made-up sales. Remove it before Mogoba starts trading on this device.')), h('button.btn.sm', { type: 'button', onclick: startFresh }, 'Remove sample data')));
 
       if (owner) parts.push(
         panel(
@@ -289,7 +289,7 @@
               })()
             )
           ),
-          sw('VAT-registered', 'Prices include 12% VAT. Receipts show VATable / VAT-exempt sales and SC/PWD orders get the VAT exemption.', !!b.vat, (v) => save({ business: { vat: v } })),
+          sw('VAT-registered', 'Prices include 12% VAT. Receipts split VATable and VAT-exempt sales; SC/PWD orders are VAT-exempt.', !!b.vat, (v) => save({ business: { vat: v } })),
           h('div.banner', ui().icon('alert'), h('div', h('b', 'This register is not BIR-accredited yet.'), h('div.s', 'Keep issuing your BIR-registered invoices. Receipts here print as order slips until the system gets a Permit to Use.')))
         )
       );
@@ -299,7 +299,7 @@
           'Register',
           null,
           h('div.form-grid', inp(st.device.name, 'Device name', (v) => save({ device: { name: v || 'Counter 1' } })), inp(st.device.prefix, 'Receipt prefix', (v) => save({ device: { prefix: (v || 'A').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3) || 'A' } }), { maxlength: 3 })),
-          h('small.muted', 'Give every tablet its own prefix (A, B…) so receipt numbers never collide when you add a second register.'),
+          h('small.muted', 'One letter per tablet (A, B…) keeps receipt numbers unique across registers.'),
           h(
             'div.field',
             h('span', 'Lock the screen after'),
@@ -373,7 +373,7 @@
         panel(
           'Online sync',
           syncInfo,
-          h('p.muted', { style: { fontSize: '13.5px' } }, 'The register works offline. With sync on, every sale, refund, stock change and shift goes to the server when there is internet.'),
+          h('p.muted', { style: { fontSize: '13.5px' } }, 'With sync on, every sale, stock change and shift is copied to the server whenever there is internet.'),
           sw('Sync to the server', S.meta.demo ? 'Remove the sample data first' : null, !!st.sync.enabled && !S.meta.demo, async (v) => {
             if (S.meta.demo) return ui().toast('Remove the sample data before turning on sync.', 'err');
             await save({ sync: { enabled: v } }, false);

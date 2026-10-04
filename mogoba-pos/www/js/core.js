@@ -388,6 +388,11 @@
     const meta = { deviceId: U.uid(), seq: 0, zSeq: 0, queueDay: '', queueN: 0, demo: !!opts.demo, createdAt: now, lastBackup: 0, schema: 1 };
     const settings = M.seed.SETTINGS();
     settings.online.enabled = !!opts.demo;
+    if (opts.demo) {
+      const pay = settings.online.payments;
+      pay.gcash = Object.assign({}, pay.gcash, { accountName: 'Mogoba Korean Food House', number: '0917 000 0000', qr: M.demo.sampleQr('gcash', '#0A5BD8') });
+      pay.maya = Object.assign({}, pay.maya, { accountName: 'Mogoba Korean Food House', number: '0917 000 0000', qr: M.demo.sampleQr('maya', '#0B8A4C') });
+    }
     const users = opts.demo
       ? [makeUser('Owner', 'owner', '1234', 0), makeUser('Mark', 'manager', '2580', 1), makeUser('Joy', 'cashier', '0000', 2)]
       : [makeUser(opts.owner.name, 'owner', opts.owner.pin, 0)];

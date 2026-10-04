@@ -227,7 +227,7 @@
           'div.gate-card.glass',
           h('div.empty-mark', '먹어봐'),
           h('h2', 'Open the shift to start selling'),
-          h('p.lead', { style: { margin: 0 } }, 'Count the cash in the drawer first. Every sale, refund and pay-out is tracked against it until you close the shift.'),
+          h('p.lead', { style: { margin: 0 } }, 'Count the cash in the drawer. Sales, refunds and pay-outs are tracked against it until close.'),
           h('button.btn.primary.lg.block', { type: 'button', onclick: () => M.drawerView.openShiftFlow() }, ui().icon('drawer'), 'Open shift')
         )
       );

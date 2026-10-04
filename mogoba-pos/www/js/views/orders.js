@@ -199,10 +199,9 @@
     const body = h('div.stack');
     const search = h('input.input', { type: 'search', placeholder: 'Order no., name or table', 'aria-label': 'Search orders', value: view.q });
     const dayIn = h('input.input', { type: 'date', value: view.day, max: U.dayKey(), 'aria-label': 'Day', style: { maxWidth: '190px' } });
-    const head = h('div.page-head', h('h2', 'Orders'));
     const tabsBox = h('div');
     const tools = h('div.row-gap', h('div.search.grow', ui().icon('search', 20), search));
-    U.mount(el, h('div.page', head, h('div.panel.glass.stack', tabsBox, tools, body)));
+    U.mount(el, h('div.page', h('div.panel.glass.stack', tabsBox, tools, body)));
     let past = [];
 
     search.addEventListener('input', () => {

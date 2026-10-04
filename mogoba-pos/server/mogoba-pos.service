@@ -1,0 +1,39 @@
+# Mogoba online ordering server under systemd.
+# Install: copy to /etc/systemd/system/, put settings in /etc/mogoba-pos.env (chmod 600),
+# then: systemctl daemon-reload && systemctl enable --now mogoba-pos
+[Unit]
+Description=Mogoba online ordering server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mogoba
+Group=mogoba
+WorkingDirectory=/opt/mogoba-pos
+Environment=NODE_ENV=production
+Environment=DATA_DIR=/var/lib/mogoba-pos
+EnvironmentFile=/etc/mogoba-pos.env
+ExecStart=/usr/bin/node /opt/mogoba-pos/server/server.mjs
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=10
+
+# The state directory is created and owned for the service user; everything else is read-only.
+StateDirectory=mogoba-pos
+StateDirectoryMode=0700
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictSUIDSGID=true
+LockPersonality=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

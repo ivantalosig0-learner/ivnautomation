@@ -53,7 +53,7 @@
     const ctl = new AbortController();
     const to = setTimeout(() => ctl.abort(), 15000);
     try {
-      const res = await fetch(base() + path, { method, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (cfg().key || '') }, body: body ? JSON.stringify(body) : undefined, signal: ctl.signal });
+      const res = await fetch(base() + path, { method, cache: 'no-store', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (cfg().key || '') }, body: body ? JSON.stringify(body) : undefined, signal: ctl.signal });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error || 'Server answered ' + res.status);
       return j;
@@ -82,9 +82,15 @@
         }
         return out;
       }
-      const j = await api('GET', '/pos/orders?since=' + state.since);
-      state.since = j.now || state.since;
-      return j.orders || [];
+      /* The server pages large polls (screenshots are heavy) and says more: true. */
+      let out = [];
+      for (let page = 0; page < 10; page++) {
+        const j = await api('GET', '/pos/orders?since=' + state.since);
+        state.since = j.now || state.since;
+        out = out.concat(j.orders || []);
+        if (!j.more) break;
+      }
+      return out;
     },
     async status(o, patch) {
       if (isDemo()) {
@@ -167,6 +173,14 @@
   const publishSoon = U.debounce(() => publish(false), 1500);
 
   /* ---------- picking up orders ---------- */
+  /* The server stops sending the payment screenshot once an order leaves pending; keep the copy
+   * this register already has so the order can still be checked later. */
+  function keepProof(prev, o) {
+    const old = prev && prev.payment && prev.payment.proof;
+    if (old && o.payment && !o.payment.proof) o.payment = Object.assign({}, o.payment, { proof: old });
+    return o;
+  }
+
   function chime() {
     try {
       const A = window.AudioContext || window.webkitAudioContext;
@@ -195,7 +209,7 @@
       let fresh = 0;
       for (const o of list) {
         const prev = state.orders[o.code];
-        state.orders[o.code] = o;
+        state.orders[o.code] = keepProof(prev, o);
         if (o.status === 'pending' && !state.seen.has(o.code)) {
           state.seen.add(o.code);
           if (!prev && state.status !== 'off') fresh++;
@@ -224,6 +238,13 @@
     clearInterval(state.timer);
     clearInterval(state.nag);
     state.status = 'off';
+    /* Switching between demo and server starts a fresh inbox. */
+    const where = isDemo() ? 'demo' : base();
+    if (state.where !== where) {
+      state.where = where;
+      state.orders = {};
+      state.since = 0;
+    }
     if (!enabled()) return M.bus.emit('online');
     publish(true);
     refresh();
@@ -285,7 +306,7 @@
     const allowed = NEXT[o.status] || [];
     if (!allowed.includes(status)) throw new Error('Cannot move an order from ' + LABEL[o.status] + ' to ' + LABEL[status] + '.');
     const next = await T.status(o, Object.assign({ status }, extra || {}));
-    state.orders[o.code] = next;
+    state.orders[o.code] = keepProof(o, next);
     M.bus.emit('online');
     return next;
   }
@@ -300,8 +321,11 @@
       source: 'online',
       onlineCode: o.code,
     };
+    /* A retry after a failed status update must not record the sale twice. */
+    const prior = S.today.find((x) => x.onlineCode === o.code && x.status !== 'voided') || S.open.find((x) => x.onlineCode === o.code);
     let posOrderId = '';
-    if (pay.method === 'gcash' || pay.method === 'maya') {
+    if (prior) posOrderId = prior.id;
+    else if (pay.method === 'gcash' || pay.method === 'maya') {
       if (!S.shift) throw new Error('Open a shift before accepting paid online orders.');
       const sale = await C.recordSale(cart, [{ method: pay.method, amount: o.total, tendered: o.total, change: 0, ref: pay.ref || '' }]);
       posOrderId = sale.id;
@@ -310,7 +334,7 @@
       posOrderId = t.id;
     }
     const extra = { verified: pay.method !== 'cash', etaAt: Date.now() + (etaMin || cfg().prepMinutes || 20) * 60000, posOrderId };
-    if (check) extra.payment = Object.assign({}, pay, { verified: true, amountReceived: check.amount, verifiedBy: check.by, verifiedAt: Date.now() });
+    if (check) extra.payment = { amountReceived: check.amount, verifiedBy: check.by, verifiedAt: Date.now() };
     return setStatus(o, 'accepted', extra);
   }
 

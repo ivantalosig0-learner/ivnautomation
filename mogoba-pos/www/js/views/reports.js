@@ -9,7 +9,7 @@
   const ui = () => M.ui;
 
   const view = { range: 'today' };
-  const RANGES = [['today', 'Today'], ['yesterday', 'Yesterday'], ['7d', '7 days'], ['30d', '30 days'], ['month', 'This month']];
+  const RANGES = [['today', 'Today'], ['yesterday', 'Yesterday'], ['7d', '7 days'], ['30d', '30 days'], ['month', 'Month']];
 
   function bounds(r) {
     const t = U.dayKey();

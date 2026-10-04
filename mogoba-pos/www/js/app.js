@@ -62,7 +62,7 @@
             if (!settled) return done(true);
             if (e && e.name === 'AbortError') {
               M.ui.closeAll();
-              fatal('Opened somewhere else', 'Mogoba POS was opened in another tab or window, so this one stopped to keep the stock and cash counts exact.', h('button.btn.primary.lg.block', { type: 'button', onclick: () => location.reload() }, 'Use it here instead'));
+              fatal('Opened somewhere else', 'Mogoba POS is open in another tab. This one stopped so stock and cash stay exact.', h('button.btn.primary.lg.block', { type: 'button', onclick: () => location.reload() }, 'Use it here instead'));
             }
           });
       } catch (e) {
@@ -195,7 +195,9 @@
     const st = M.sync.status;
     const map = { demo: ['', 'Sample data', 'sparkle'], local: ['', 'On this device', 'device'], offline: ['warn', 'Offline · ' + st.pending + ' queued', 'cloudOff'], syncing: ['ok', 'Syncing…', 'cloud'], error: ['bad', 'Sync retrying', 'cloudOff'], pending: ['warn', st.pending + ' to sync', 'cloud'], ok: ['ok', 'Synced', 'cloud'] };
     const [cls, txt, icon] = map[st.state] || map.local;
-    return h('button.pill', { type: 'button', class: cls, title: txt, 'aria-label': 'Sync status: ' + txt, onclick: () => (C.can('*') ? go('settings') : ui().toast(txt)) }, h('i'), ui().icon(icon, 16), h('span.txt', txt));
+    /* On a phone the bar only shows sync when it needs attention. */
+    const quiet = ['demo', 'local', 'ok', 'syncing'].includes(st.state) ? ' quiet' : '';
+    return h('button.pill', { type: 'button', class: cls + quiet, title: txt, 'aria-label': 'Sync status: ' + txt, onclick: () => (C.can('*') ? go('settings') : ui().toast(txt)) }, h('i'), ui().icon(icon, 16), h('span.txt', txt));
   }
 
   function drawTop() {
