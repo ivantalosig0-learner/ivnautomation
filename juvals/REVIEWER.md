@@ -374,8 +374,10 @@ needed, and it is protected. We give you a short notice for staff to sign (Data 
 
 **Does it compute the full payroll?**
 It prepares it: hours, overtime, night shift, holidays, and the SSS, PhilHealth and Pag-IBIG
-lines, using {{R: Region II minimum wage and current rates}}. You or your bookkeeper review and
-approve. We do not file government reports for you.
+lines, using the Region II rates: ₱500 a day minimum under Wage Order RTWPB 2-24 (since
+5 November 2025), overtime +25%, night shift (10pm to 6am) +10%, regular holiday 200%,
+special day and rest day +30%. A shop with 10 or fewer workers pays less only if the wage board
+actually approved an exemption. You or your bookkeeper review and approve. We do not file government reports for you.
 
 ### Loyalty, feedback and events
 
