@@ -76,7 +76,7 @@ cal = ''.join('<b>%s</b><span>%s</span>' % (e(c['when']), e(c['what'])) for c in
 page = page.replace('<p class="small">[[CALENDAR]]</p>', '<div class="cal">%s</div>' % cal)
 F['ADS_BUDGET'] = e(re.sub(r'^\s*ad (money|budget)[^:]*:\s*', '', deck['adBudget'], flags=re.I))
 F['ADS_SRC'] = 'Sources: ' + links([deck['adSources']])
-F['ADS_NOTES'] = e('Ad money is paid by Juval\'s straight to Meta; our fee is separate. ' + deck['adBudget'])
+F['ADS_NOTES'] = e('Ad money is paid by Juval\'s directly to Meta, TikTok and the creators; our fee is separate. ' + deck['adBudget'])
 
 # 10 · POS
 F['POS_BIR'] = e(deck['posBir'])

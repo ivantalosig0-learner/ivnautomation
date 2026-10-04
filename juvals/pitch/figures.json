@@ -1,0 +1,200 @@
+{
+ "leaks": {
+  "discover": "Few fresh reviews or photos on Google Maps, so highway searchers scroll past.",
+  "decide": "27 reviews at 4.1 stars, while 31% of people only pick places rated 4.5 and up.",
+  "order": "Bilao and event orders sit in Messenger threads, with no deposit record or hall calendar.",
+  "review": "No routine to ask or reply. Replying alone brought 12% more reviews in one study."
+ },
+ "stats": [
+  {
+   "big": "5 to 9%",
+   "text": "more revenue for each extra star, for independent restaurants (US Yelp study)",
+   "source": "https://www.harvardmagazine.com/2011/10/hbs-study-finds-positive-yelp-reviews-lead-to-increased-business"
+  },
+  {
+   "big": "31%",
+   "text": "of consumers only use businesses rated 4.5 stars or higher, up from 17% a year before (US)",
+   "source": "https://www.brightlocal.com/research/local-consumer-review-survey/"
+  },
+  {
+   "big": "1 in 4",
+   "text": "pesos of a typical delivery app order go to commission (20 to 33% by plan). A business QR costs about 1%",
+   "source": "https://klikit.io/en/learn/food-delivery-commission-fees-philippines-guide"
+  },
+  {
+   "big": "95.8M",
+   "text": "people in the Philippines reachable by Facebook ads, 82% of the population",
+   "source": "https://datareportal.com/reports/digital-2026-philippines"
+  }
+ ],
+ "webProof": "On a ₱1,000 bilao, a delivery app keeps ₱200 to ₱330. Your own QR costs about ₱10.",
+ "reviews": {
+  "now": 27,
+  "m3": 72,
+  "m6": 117,
+  "m12": 207,
+  "assumption": "Base case: a stand on every table and a polite ask at every bill, about 15 new reviews a month.",
+  "source": "Our estimate, from the reviews research."
+ },
+ "calendar": [
+  {
+   "when": "Oct",
+   "what": "Undas bilao pre-orders, ads from 12 Oct"
+  },
+  {
+   "when": "Nov to Dec",
+   "what": "Christmas parties, Noche Buena and Media Noche bilao"
+  },
+  {
+   "when": "Feb",
+   "what": "Valentine's dinners in the garden"
+  },
+  {
+   "when": "Mar to Apr",
+   "what": "Holy Week travelers, graduation parties"
+  },
+  {
+   "when": "May",
+   "what": "Aparri fiesta 1 to 12 May, Mother's Day"
+  },
+  {
+   "when": "Jun to Aug",
+   "what": "Aggao nac Cagayan, Camalaniugan fiesta 17 Aug"
+  }
+ ],
+ "adBudget": "₱5,600 always on, about ₱16,560 in growth months, about ₱38,720 in peak months. Ads, 12% VAT and local creators, paid directly by you.",
+ "adSources": "https://datareportal.com/reports/digital-2026-philippines ; https://modernchameleon.com/how-much-are-facebook-ads-in-the-philippines-the-2026-reality-check/ ; https://www.spiralytics.com/blog/guide-tiktok-ads-philippines ; https://www.pwc.com/ph/en/tax/tax-publications/taxwise-or-otherwise/2025/soon-taking-effect-the-12-vat-on-digital-services.html",
+ "posBir": "Until Hapag is BIR-accredited, it prints order slips and you keep your registered invoices.",
+ "dole": "Region II minimum ₱500 a day (RTWPB 2-24). Overtime +25%, night +10%, regular holiday 200%, special day 130%.",
+ "roadmap": [
+  {
+   "when": "Next 2 weeks",
+   "items": [
+    "Google profile cleaned up",
+    "Review stands and cards on every table",
+    "Own domain, juvals.ph",
+    "Undas ads from 12 Oct"
+   ]
+  },
+  {
+   "when": "By day 90",
+   "items": [
+    "Events board with deposits",
+    "Stamp card and feedback by mobile number",
+    "Staff time clock before December payroll",
+    "Bilao pre-orders paid by QR"
+   ]
+  },
+  {
+   "when": "By month 6",
+   "items": [
+    "POS for three kitchens, one at a time",
+    "Stock and weekly food cost",
+    "Owner dashboard and morning message",
+    "Online pickup orders"
+   ]
+  },
+  {
+   "when": "By month 12",
+   "items": [
+    "Lucia's on the same system",
+    "BIR accreditation, if you want it",
+    "About 200 reviews, near 4.5 stars",
+    "Next steps chosen from real data"
+   ]
+  }
+ ],
+ "tiers": [
+  {
+   "name": "Tanaw",
+   "setup": "₱10,000",
+   "monthly": "₱5,000",
+   "forWho": "Be found and trusted. Nothing new for staff to learn.",
+   "includes": [
+    "Own domain and faster website",
+    "Google profile care",
+    "Review stands and NFC cards",
+    "Reply to every review",
+    "8 posts a month and a report"
+   ]
+  },
+  {
+   "name": "Suki",
+   "setup": "₱30,000",
+   "monthly": "₱9,000",
+   "forWho": "Bring guests back and book more events.",
+   "includes": [
+    "Everything in Tanaw",
+    "Stamp card and birthdays",
+    "Feedback with owner alerts",
+    "Events board with deposits",
+    "Messenger ads and scorecard"
+   ]
+  },
+  {
+   "name": "Hapag Buo",
+   "setup": "₱60,000",
+   "monthly": "₱14,000",
+   "forWho": "Run three kitchens and staff on one system.",
+   "includes": [
+    "Everything in Suki",
+    "POS with a ticket per kitchen",
+    "Stock and weekly food cost",
+    "Time clock and payroll prep",
+    "Owner dashboard, Lucia's added"
+   ]
+  }
+ ],
+ "hardware": "Hardware at cost, about ₱35,000 to ₱60,000: tablet ₱7,990, kitchen printers ₱1,190 to ₱10,880 each, cash drawer, small UPS.",
+ "kpis": [
+  {
+   "measure": "Google reviews",
+   "today": "27",
+   "m6": "117",
+   "m12": "207",
+   "why": "47% skip places with under 20 reviews",
+   "estimate": true
+  },
+  {
+   "measure": "Google rating",
+   "today": "4.1",
+   "m6": "4.3",
+   "m12": "4.5",
+   "why": "31% only pick places rated 4.5 or higher",
+   "estimate": true
+  },
+  {
+   "measure": "Events booked with a deposit",
+   "today": "Not tracked",
+   "m6": "All",
+   "m12": "All",
+   "why": "No double-booked hall, fewer no-shows",
+   "estimate": true
+  },
+  {
+   "measure": "Cost per Messenger chat from ads",
+   "today": "Not tracked",
+   "m6": "₱20 to ₱60",
+   "m12": "₱15 to ₱50",
+   "why": "Shows which ad peso works",
+   "estimate": true
+  },
+  {
+   "measure": "Weekly food cost per kitchen",
+   "today": "Not measured",
+   "m6": "Measured",
+   "m12": "28 to 35%",
+   "why": "Philippine target range; above 40% needs fixing",
+   "estimate": false
+  },
+  {
+   "measure": "Sales from returning guests",
+   "today": "Not measured",
+   "m6": "Baseline",
+   "m12": "Above baseline",
+   "why": "Shows the stamp card works",
+   "estimate": true
+  }
+ ],
+ "kpiSources": "https://www.brightlocal.com/research/local-consumer-review-survey/ ; https://klikit.io/en/learn/restaurant-profit-margins-philippines-2026 ; https://modernchameleon.com/how-much-are-facebook-ads-in-the-philippines-the-2026-reality-check/"
+}
