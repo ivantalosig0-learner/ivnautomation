@@ -19,6 +19,7 @@ is documentation and disaster-recovery source, not a deployment artifact.
 | `database/` | `leads` schema DDL |
 | `website/` | kqualitycleaningservices.com.au static site |
 | `docs/` | Infrastructure docker-compose (secrets via env vars, not included) |
+| `mogoba-pos/` | Offline-first POS, inventory and sales tracking for Mogoba Korean Food House (separate client project) |
 
 ## Restore notes
 

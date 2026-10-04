@@ -1,0 +1,12 @@
+{
+  "name": "mogoba-pos",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline-first POS, inventory and sales tracking for Mogoba Korean Food House.",
+  "scripts": {
+    "start": "npx http-server www -p 8123 -c-1",
+    "build": "node tools/build.mjs",
+    "test": "node --test tests/logic.test.js",
+    "e2e": "node tests/e2e.js http://127.0.0.1:8123/"
+  }
+}

@@ -125,6 +125,7 @@ gateway/ AI Gateway FastAPI source (no .env)
 database/ schema.sql — full `leads` schema DDL
 website/ public marketing site (kqualitycleaningservices.com.au)
 docs/ infra docker-compose (env-var references only)
+mogoba-pos/ offline-first POS + inventory for Mogoba Korean Food House (separate client project — see mogoba-pos/README.md)
 
 ---
 
