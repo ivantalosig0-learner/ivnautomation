@@ -162,7 +162,7 @@
         }
         ctx.user = chance(0.85) ? cashier : mark;
         const b = B.buildSale(ctx, cart, pays, at);
-        b.order.kitchen = isToday && i >= times.length - 4 ? (chance(0.5) ? 'prep' : 'ready') : 'done';
+        b.order.kitchen = 'done';
         apply(b);
         ctx.meta = b.meta;
         ctx.shift = b.shift;
@@ -246,6 +246,11 @@
       if (onProgress) onProgress((d + 1) / (DAYS + 1));
     }
     if (ctx.shift) out.shifts.push(ctx.shift);
+    /* the last few of today's orders are still in the kitchen */
+    out.orders
+      .filter((o) => o.day === today && o.status === 'paid')
+      .slice(-3)
+      .forEach((o, i) => (o.kitchen = i === 0 ? 'ready' : 'prep'));
 
     const meta = Object.assign({}, ctx.meta, { demo: true, lastBackup: Date.now() });
     await M.db.write(['orders', 'moves', 'ings', 'shifts', 'cash', 'counts', 'audit', 'kv'], (t) => {
