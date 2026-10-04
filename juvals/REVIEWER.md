@@ -106,7 +106,7 @@ moment owners lean in. Offer the tablet demo here.
 **11. Stock.** "Every sale deducts its recipe. You see food cost per kitchen, and what is
 about to expire."
 
-**12. Staff time.** "Tap a card, the time is recorded, overtime and night and holiday rates
+**12. Staff time.** "Enter a PIN, a photo is taken, the time is recorded, overtime and night and holiday rates
 are worked out. You or your bookkeeper approve the payroll."
 
 **13. Loyalty and events.** "No app for the guest. Their mobile number is the stamp card."
@@ -144,6 +144,12 @@ The monthly fee is what keeps the system running and improving. The setup fee co
 **Can we start with just one part?**
 Yes. Most restaurants start with the website and the review cards, because they are cheap and
 show results within weeks. The POS and payroll can come later.
+
+**How long until everything is running?**
+Reviews, the Google profile and the website upgrades: the first two weeks. Online ordering and
+the events board: within 90 days. The POS, stock and staff clock: by month 6, one kitchen at a
+time, after the staff use each step daily. Most of it already runs at Mogoba, so we are
+extending, not starting from zero.
 
 **Is there a contract? Can we stop?**
 A simple agreement, month to month after an initial period of three months.
@@ -365,19 +371,47 @@ ready to send by Messenger.
 ### Staff time and payroll
 
 **Do we need a fingerprint machine?**
-No. Staff tap a card or enter a PIN on the counter tablet, and it can take a quick photo to
-stop buddy punching. A fingerprint device is optional if you prefer it.
+No. Staff enter a 4-digit PIN on the counter tablet and it takes a quick photo, which stops
+buddy punching at no hardware cost. If you prefer tapping a card, we add a small USB card
+reader (under ₱1,000; the Galaxy Tab A11 has no NFC of its own) and ₱10 card stickers.
+Fingerprint machines are possible later, but PIN plus photo is usually enough.
 
 **Is taking photos or fingerprints legal?**
 Yes, if staff are told in writing what is collected and why, it is kept only as long as
-needed, and it is protected. We give you a short notice for staff to sign (Data Privacy Act).
+needed, and it is protected. Only the manager sees the photos, they are deleted after the
+payroll dispute window (we suggest 60 days), and we store no face templates and track no
+phones. We give you a short notice for staff to sign (Data Privacy Act).
+
+**What does one minimum-wage worker really cost us a month?**
+About ₱16,100 for 26 days: ₱13,000 basic plus about ₱3,100 for SSS, PhilHealth, Pag-IBIG,
+13th month and leave, before holiday premiums. The owner dashboard uses this loaded cost so
+labor % is honest.
+
+**What do we pay on Christmas and New Year's Eve?**
+Dec 25 and Dec 30 are regular holidays: 200% if worked, 100% if not (if they worked or were
+on leave the day before). Dec 24 and Dec 31 are special days: 130% if worked, no pay if not
+unless your policy pays. The 13th month is due by 24 December.
+
+**Can we deduct shortages or broken plates?**
+Only within the Labor Code limits and with the worker's written consent. Treat cash advances
+as signed loans. Hapag never auto-deducts a drawer shortage.
+
+**A new wage order is coming in November. Does the system handle it?**
+Yes. The daily rate is a setting with an effective date, so a cutoff that spans the change
+pays the old rate before and the new rate after.
+
+**Why not Sprout, PayrollHero or Jibble?**
+You can use them. Sprout Payroll Starter is about ₱15,000 a month on a one-year contract;
+PayrollHero about ₱7,500 a month for 20 staff; Jibble has a free clock-in. None of them sees
+each kitchen's sales, so none can show labor % per kitchen, and ours works offline.
 
 **Does it compute the full payroll?**
 It prepares it: hours, overtime, night shift, holidays, and the SSS, PhilHealth and Pag-IBIG
 lines, using the Region II rates: ₱500 a day minimum under Wage Order RTWPB 2-24 (since
 5 November 2025), overtime +25%, night shift (10pm to 6am) +10%, regular holiday 200%,
 special day and rest day +30%. A shop with 10 or fewer workers pays less only if the wage board
-actually approved an exemption. You or your bookkeeper review and approve. We do not file government reports for you.
+actually approved an exemption. You or your bookkeeper review and approve. We do not file
+government reports for you.
 
 ### Loyalty, feedback and events
 
@@ -393,11 +427,53 @@ After the visit, a short "How was it?" message. If a guest is unhappy, the manag
 message right away to call them. Everyone still sees the Google review link; we never block
 anyone from reviewing.
 
+**How does the stamp card work? Won't free items eat our margin?**
+One stamp per ₱300 paid, across Juval's Grill, Don Jose, Rosalina and Lucia's. Ten stamps
+(₱3,000 spent) earns a pizza or a small pancit bilao; a free Rosalina drink at five stamps is
+the early win. The reward's food cost is about 4.5% of what that guest already spent, and only
+regulars reach it. Stamps are earned on the amount actually paid, never stack on a senior or
+PWD discounted item, and manual stamps need a manager PIN so staff cannot stamp their own
+number.
+
+**Do we do something for birthdays?**
+A free drink or dessert with any dine-in meal in the birthday week, for members who joined at
+least a week before. We keep only the birthday month, not the full date. The birthday message
+also invites them to hold the party here, which is where many event bookings come from.
+
+**Do we need to register with the National Privacy Commission?**
+Probably not at your size: registration starts at 250 employees or sensitive data on 1,000 or
+more people. Senior and PWD ID numbers count as sensitive, so Hapag stores only what BIR
+requires, masks ID numbers on screen and keeps no ID photos. You still need a privacy notice
+at the counter and one named person responsible. Your accountant or the NPC can confirm.
+
+**How do we stop double-booking the hall?**
+One events board instead of many Messenger threads. A date is held for 3 days and is only
+confirmed when the deposit is recorded; the calendar blocks a second booking on that date.
+
+**How much deposit should we ask?**
+We suggest 50% to confirm, the final headcount 3 days before, and the balance on the day.
+That is common practice, but you set the policy. Deposits go to the business QR and are
+recorded against the event, never to a personal GCash.
+
+**What will all this earn us?**
+We cannot promise a number. Studies of independent restaurants show about 5 to 9% more revenue
+per extra star (US data, so treat it as a direction). If Juval's sells around ₱840,000 a month,
+a 0.3 star rise would be roughly ₱12,600 to ₱22,700 a month. One extra event or two extra bilao
+orders a month already covers the smaller packages. We measure returning-guest share, reviews
+and rating, and events booked, and show you every month.
+
+**What would we look at every day?**
+One morning message: yesterday by kitchen against the same day last week, regulars returning,
+reviews waiting for a reply, events this week. Food cost and labor once a week.
+
 ### Lucia's
 
 **Can this also run Lucia's?**
 Yes. Same system, two branches: separate menus, stock and staff, separate or combined reports.
-The owner switches between Juval's, Lucia's or both on the phone.
+The owner switches between Juval's, Lucia's or both on the phone. Guests can collect stamps at
+both if the privacy notice says so. Staff who work at both have each shift tagged by branch,
+so labor lands on the right business; whether the two count as one employer is a question
+for your accountant.
 
 ### About us
 

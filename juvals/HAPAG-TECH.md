@@ -28,17 +28,24 @@ a small extension of it, or a free service we configure.
    lines ("1 of 3"), plus a full runner slip at the cashier. Scheduled bilao and event orders get
    a "fire later" time. Order discounts are spread across brands by share, so per-brand sales
    and food cost are honest. Same idea as Toast prep stations and revenue centers. Est. 1 to 2 weeks.
-2. **Local hub (offline for several devices).** One always-on device on the restaurant's own
-   router (the cashier tablet, a mini PC or an old laptop) runs the existing Mogoba Node server
-   on the local network. Order tablets, kitchen printers and any screen talk to it with no
-   internet; the owner's phone view and online orders catch up when the internet returns.
-   Router and hub on a small UPS. Est. 2 to 3 weeks.
+2. **Printing to three kitchens with no internet.** Browsers cannot talk to network printers,
+   so the counter tablet runs the same web app inside the Capacitor wrapper Mogoba already
+   planned for Bluetooth printing, and sends each station's ESC/POS lines straight to that
+   station's LAN printer over the restaurant's own router. One tablet, three printers, no
+   server on site. Router and tablet on a small UPS. Est. 4 to 6 days.
+   *Only later, if waiters take orders on their own phones or tablets:* a small always-on hub
+   on the router (the existing Mogoba Node server on a mini PC) so several devices share open
+   orders offline. Est. 2 to 3 weeks; not in the first build.
 3. **Branches.** A `branch` field on device, menu, stock, staff and orders (Juval's, Lucia's).
    Each branch runs its own tablet offline; the server merges events by branch. The owner
    dashboard switches Juval's, Lucia's, or both. Est. 4 to 6 days.
-4. **Staff time clock.** A clock-in screen on the POS tablet (PIN or NFC staff card, optional
-   photo), shifts per kitchen, a weekly timesheet with regular, overtime, night and holiday
-   hours, and a CSV for the bookkeeper. No payroll filing. Est. 5 to 7 days.
+4. **Staff time clock.** A clock-in screen on the POS tablet: 4-digit PIN plus an automatic
+   front-camera photo (the Galaxy Tab A11 has no NFC, so a card tap needs a USB
+   keyboard-style reader, under ₱1,000), shifts per kitchen, a weekly timesheet with
+   regular, overtime, night and holiday hours, and a CSV for the bookkeeper. Daily rate stored with an effective date (a new
+   Region II wage order is expected in November 2026), a yearly holiday table the manager can
+   edit, a 7th-straight-day and unapproved overtime flag, simple payslips and a 13th month
+   accrual. No payroll filing. Est. 7 to 9 days.
 5. **Guests and consent.** A guest record keyed by mobile number with consent date and
    source, visits, stamps and birthday month. Stamp card at the register; birthday list each
    month. Est. 3 to 5 days.
@@ -55,8 +62,8 @@ a small extension of it, or a free service we configure.
    categories and variants; add kitchen grouping, bilao prepay (already in contract v1.1)
    and deposits for bookings. Est. 3 to 4 days.
 
-Rough total: 6 to 8 weeks of build spread over the roadmap, because most of the system
-already exists.
+Rough total: about 35 to 53 working days (7 to 11 weeks) of build for items 1 to 9, spread over the roadmap, because most of the system already exists. The
+waiter-device hub (2 to 3 weeks) and BIR accreditation work are extra and only on request.
 
 ## Shared records (the "one table")
 
@@ -66,7 +73,7 @@ Plain words, no new database product:
 - **Order**: the POS order as today, plus kitchen per line, branch, source (counter, online,
   event), guest mobile if given, server.
 - **Item and recipe**: as today, plus kitchen.
-- **Staff**: as today (PIN, role), plus branch, kitchen, NFC card id, rate.
+- **Staff**: as today (PIN, role), plus branch, kitchen, card id (optional), daily rate with effective date, rest day, managerial yes or no.
 - **Time entry**: staff, clock in, clock out, branch, photo reference (optional).
 - **Stock lot**: as today.
 - **Event**: guest, date, guests count, package, status, deposit payments.
@@ -126,8 +133,9 @@ branch. Nothing needs a cloud database subscription.
 - BIR e-invoicing transmission (later regulation; micro taxpayers exempt).
 - Payment gateway checkout (PayMongo, Maya Checkout) until manual QR checks take more than about
   15 minutes of staff time a day. Business QR at about 1% is enough to start.
-- Biometric fingerprint hardware. PIN or NFC card plus an optional photo is enough.
-- Native Android apps. The web app installs on the tablet and works offline.
+- Biometric fingerprint or face-template hardware, GPS tracking and a staff app. PIN plus a photo at the counter tablet is enough.
+- A separate native app. The one web app runs in the browser for staff screens and inside the thin
+  Capacitor wrapper on the counter tablet only for printing.
 - BIR CAS/CRM-POS accreditation work before the owners decide they want the POS as their
   official invoicing system. Until then the POS prints order slips and they keep their
   BIR-registered invoices.
@@ -139,6 +147,7 @@ branch. Nothing needs a cloud database subscription.
 | Internet drops | The register and time clock work offline and sync later. |
 | A tablet breaks or is stolen | Data is synced to the server; a new tablet restores in minutes. Daily backups. |
 | Two tablets in one branch | Each device numbers its receipts with its own prefix; the server merges by event id. |
+| A kitchen printer is off or out of paper | The tablet shows the failed station ticket and reprints it; the runner slip at the cashier lists every line, so nothing is lost. |
 | Staff misuse (voids, discounts) | Manager PIN and audit log, blind drawer counts. |
 | Scope creep | Each stage starts only when the previous stage is used every day by the staff. |
 | Dependence on us | Owners own domain, pages and data exports; code and backups can be handed over. |
