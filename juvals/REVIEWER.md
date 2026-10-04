@@ -146,7 +146,7 @@ Yes. Most restaurants start with the website and the review cards, because they 
 show results within weeks. The POS and payroll can come later.
 
 **Is there a contract? Can we stop?**
-A simple agreement, month to month after an initial period {{R: suggest minimum term, e.g. 3 months}}.
+A simple agreement, month to month after an initial period of three months.
 If you stop, you keep your domain, your Google profile, your Facebook page and an export of
 your data. Nothing is held hostage.
 
@@ -171,7 +171,7 @@ of all three kitchens, opening hours and directions, and Google reads it, which 
 appear in searches. Facebook posts get buried; the website does not.
 
 **Can we have our own name instead of ivnautomation.xyz?**
-Yes, for example juvals.ph or juvals.com.ph. {{R: domain price per year}} It is registered in
+Yes, for example juvals.ph or juvals.com.ph. About ₱2,500 to ₱2,900 a year for .ph or .com.ph, or under ₱1,000 for a .com. It is registered in
 your name.
 
 **Can we change prices and the menu ourselves?**
@@ -179,14 +179,14 @@ Yes. Once the POS is in, the website menu updates from the same menu. Before tha
 message and we update it the same day.
 
 **Why not just use Foodpanda or GrabFood?**
-{{R: commission rates and availability in Camalaniugan/Aparri}} With your own ordering, the
+GrabFood does not operate anywhere in Cagayan Valley, and Foodpanda's Aparri page lists a single restaurant; whether its riders reach Dacal la Fugu is untested. Their commission is commonly estimated at 25 to 30% per order (not published officially). On a ₱1,500 family order that is about ₱375 to ₱450; a business QR payment costs about ₱15. With your own ordering, the
 guest pays you directly and you keep the full price. You can still use the apps; this is an
 extra channel you own.
 
 **How do online payments work? Do we need a business account?**
 Guests scan your GCash or Maya QR, pay the exact amount and enter the reference number.
 Staff check the money in the GCash or Maya app before cooking. Personal accounts work to
-start; {{R: business account options and fees}}.
+start; for a cleaner setup, Maya Business and GCash for Business both list QR payments at about 1.0% (₱10 on ₱1,000). They need DTI and BIR Form 2303 registration, and GCash for Business also wants a fully verified GCash account at least 12 months old.
 
 **What about fake GCash screenshots?**
 We never trust the screenshot. Staff type the amount they see in the GCash or Maya app; a
@@ -197,12 +197,27 @@ cannot be accepted. Big orders need a manager PIN. This is already running at Mo
 Your own rider for nearby towns, or a courier such as Lalamove or a local rider group where
 available. We set delivery areas and a fee per area. Pickup works from day one.
 
+**Can we ask for a deposit for parties and big bilao orders?**
+Yes, and Manila restaurants do it to stop no-shows. Written on the form: for example 50% down
+for hall bookings and large bilao orders, with a 48-hour cancellation window. Paid by QR and
+checked in the app. Never for ordinary tables.
+
+**Do senior and PWD discounts apply to online orders?**
+Yes. A 2022 joint circular extends the 20% and VAT exemption to online, phone and SMS orders.
+The guest declares it when ordering and shows the ID at pickup or in chat. We record the name
+and ID number only, never a photo of the ID.
+
+**Does the website say who we are?**
+Yes, and it must: the Internet Transactions Act asks online sellers to show the registered
+business name, address and contact, and clear prices and refund rules. We put these in the
+footer and on the order page.
+
 ### Google reviews and NFC cards
 
 **What is NFC? Will it work on every phone?**
 It is the same tap used for contactless cards. Most Android phones and iPhones from the last
 several years read it without an app. Every card and stand also has a QR code for phones that
-do not tap. {{R: phone support details}}
+do not tap. iPhone XS and newer read it with no app (a banner appears to tap). On Android, NFC must be switched on and many budget models sold here have no NFC at all.
 
 **Is it allowed to ask for reviews?**
 Yes. Google allows asking every guest. What it does not allow is paying or giving freebies for
@@ -213,20 +228,36 @@ Only reviews that break Google's rules (spam, offensive, fake) can be reported f
 For honest bad reviews, a calm, quick reply does more good than the removal would: people
 read the replies.
 
+**Can we give a free lemonade or a discount for a review?**
+No, not even for any review regardless of stars. Google bans incentives; the penalty can block
+new reviews, hide existing ones, or put a public warning on the profile.
+
+**Can our family and staff post reviews to get us started?**
+No. Reviews from owners, staff, relatives or former employees are a conflict of interest and
+the most common thing Google's filters remove. Google removed 292 million reviews in 2025.
+
+**Should Don Jose and Rosalina have their own Google pages?**
+Not now. Google wants one profile per business; separate ones only for parts that run as
+distinct businesses with their own counter and signage. List all three kitchens on the Juval's
+profile. Lucia's, being a separate place, gets its own profile.
+
+**Why not get many reviews at one big event?**
+Sudden bursts look like manipulation to Google. A steady flow every week ranks better and is safer.
+
 **Why does each server get a card?**
 So you can see who is asking guests to review. Reward the asking (most reviews collected),
 never the star rating, and never pay guests.
 
 **How much do the cards and stands cost?**
-{{R: NFC card and stand prices in PH}}
+Cheap. An NFC review card costs around ₱140 online, NFC stickers about ₱10 each, and a locally printed acrylic table stand about ₱100 to ₱250. For 20 tables, two counter stands and six server cards: roughly ₱3,500 to ₱7,500 one time. We write and lock each chip so nobody can change where it points.
 
 **How many reviews can we expect?**
-{{R: projection and assumption}} It depends on how consistently the staff ask.
+Our base case, if staff offer the card at every bill: about 72 reviews by month 3, about 117 by month 6 and about 200 by month 12, assuming around 100 guests a day. If new reviews average 4.6 stars, the rating reaches about 4.5 around month 7. These are estimates; we measure from week one. It depends on how consistently the staff ask.
 
 ### Ads and content
 
 **How much should we spend on ads?**
-{{R: three monthly tiers}} You pay Facebook directly from your card. We set up, run and
+Three levels, all paid to Facebook (and TikTok) directly, including the 12% VAT on ad spend: about ₱5,600 a month to stay visible, about ₱16,500 in normal growth months, and about ₱38,700 only in peak months like December, Holy Week and fiesta season. You pay Facebook directly from your card. We set up, run and
 report. Start small, keep what works.
 
 **Can't we just boost posts ourselves?**
@@ -238,6 +269,23 @@ do not.
 Not on day one. Short videos of the sizzling sisig and the garden work well on both TikTok
 and Facebook Reels, so we film once a month and post to both.
 
+**Is VAT added on ads?**
+Yes. Since June 2025, 12% VAT applies to Facebook, Google and TikTok ad spend (RA 12023). The
+budgets we quote already include it.
+
+**Can we run a share-and-tag raffle?**
+No. Facebook bans "share to enter" and "tag friends to enter", and raffles need a DTI sales
+promotion permit. Plain promos and good photos work better anyway.
+
+**Will the new Camalaniugan to Aparri bridge bring customers?**
+Possibly. It opened in January 2026 and is reported to carry over 6,000 travellers a day.
+Whether that traffic passes Juval's we will see from a simple "how did you hear about us?"
+at the counter and a travellers ad set.
+
+**Should we hire a big agency instead?**
+Not at this size. An agency retainer often costs more per month than the whole ad budget. The
+setup is a few days of work, then a monthly rhythm we run with you.
+
 ### POS and the three kitchens
 
 **We already have a register. Why change?**
@@ -246,7 +294,7 @@ Grill, Don Jose and Rosalina, counts stock as you sell, handles senior and PWD d
 legal way, and shows you everything on your phone.
 
 **Is your POS BIR-accredited?**
-{{R: honest BIR status line}} Until it is registered, it prints order slips and you keep
+Not yet. Today it runs the kitchen, stock and reports, and prints order slips marked "not an invoice". Your invoices still come from your registered booklets or machine. When you want Hapag to be your official invoicing machine, we apply for BIR accreditation as the developer (the application is free under RMO 24-2023) and register each terminal for a Permit to Use. Until it is registered, it prints order slips and you keep
 issuing your BIR-registered invoices exactly as you do now. We do not take risks with BIR.
 
 **What if the internet or power goes out?**
@@ -255,7 +303,7 @@ when the internet is back. For power, a small UPS or power bank keeps the tablet
 running.
 
 **What hardware do we need? Can we use our own tablet?**
-{{R: hardware list and prices}} An Android tablet you already own can work if it is recent
+A Samsung Galaxy Tab A11 (about ₱8,000) for the counter, an 80 mm printer for the cashier, a heat-tolerant printer at the grill (about ₱8,000 to ₱11,000 for LAN models), small printers for the oven and the café (₱1,200 to ₱3,800), and a cash drawer (₱1,900 to ₱4,500). About ₱35,000 to ₱60,000 in all, bought at cost, compared with UTAK's ₱49,999 bundle. An Android tablet you already own can work if it is recent
 enough; we check it first.
 
 **Our staff are not techy.**
@@ -273,6 +321,36 @@ why. The drawer is counted blind at closing and the over or short is recorded.
 **Can we see sales when we are not there?**
 Yes, on your phone, per kitchen and per branch, and a short message every morning with
 yesterday's numbers.
+
+**Why not just buy UTAK or StoreHub?**
+They are proven, at about ₱1,500 to ₱4,500 a month plus ₱30,000 to ₱50,000 in hardware.
+Neither is built around three kitchens in one order with per-brand reports, and neither has
+support here in Cagayan. If BIR accreditation today is the deciding factor, StoreHub Starter
+is a fair choice, and we would still do your website, reviews and ads.
+
+**Do we need e-invoicing by December 2026?**
+Probably not. Under RR 11-2025, POS users are in a later group and micro businesses (under
+₱3M yearly sales) are exempt. Ask your accountant whether online orders put you in the
+e-commerce group.
+
+**Can one cashier sell all three brands on one bill?**
+Yes. One bill under your registered business name, while the reports split sales by Grill,
+Don Jose and Rosalina.
+
+**Do we give the senior discount on a whole bilao or group bill?**
+No, only on the senior's or PWD's own share. For bilao, online and phone orders the rule uses
+the most expensive single meal with a drink as the base. The system works it out and logs the ID.
+
+**Can they get the senior discount on top of a promo?**
+Not under current law. They get whichever is better. A bill to allow both is only pending.
+
+**If we add a service charge, who gets it?**
+All of it goes to non-managerial staff, shared equally by hours worked, at least every two
+weeks (RA 11360). Hapag keeps it out of your sales and prints the split.
+
+**Printers or screens in the kitchen?**
+Printers first: cheaper, handle heat, no training. A screen at the café counter later if you
+want drink timing.
 
 ### Stock and food cost
 

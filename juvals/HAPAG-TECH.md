@@ -23,28 +23,35 @@ a small extension of it, or a free service we configure.
 
 ## What Juval's needs on top (small extensions, not rewrites)
 
-1. **Kitchen routing.** Each menu item gets a `kitchen` field (grill, pizza, cafe). One order,
-   one bill; the POS prints or shows one ticket per kitchen with only its lines. Reports split
-   sales by kitchen. Est. 3 to 4 days.
-2. **Branches.** A `branch` field on device, menu, stock, staff and orders (Juval's, Lucia's).
+1. **Kitchen routing.** Each menu item and add-on gets a `station` (Grill kitchen, Don Jose
+   oven, Rosalina bar) and a `brand` tag. One order, one bill; each station prints only its own
+   lines ("1 of 3"), plus a full runner slip at the cashier. Scheduled bilao and event orders get
+   a "fire later" time. Order discounts are spread across brands by share, so per-brand sales
+   and food cost are honest. Same idea as Toast prep stations and revenue centers. Est. 1 to 2 weeks.
+2. **Local hub (offline for several devices).** One always-on device on the restaurant's own
+   router (the cashier tablet, a mini PC or an old laptop) runs the existing Mogoba Node server
+   on the local network. Order tablets, kitchen printers and any screen talk to it with no
+   internet; the owner's phone view and online orders catch up when the internet returns.
+   Router and hub on a small UPS. Est. 2 to 3 weeks.
+3. **Branches.** A `branch` field on device, menu, stock, staff and orders (Juval's, Lucia's).
    Each branch runs its own tablet offline; the server merges events by branch. The owner
    dashboard switches Juval's, Lucia's, or both. Est. 4 to 6 days.
-3. **Staff time clock.** A clock-in screen on the POS tablet (PIN or NFC staff card, optional
+4. **Staff time clock.** A clock-in screen on the POS tablet (PIN or NFC staff card, optional
    photo), shifts per kitchen, a weekly timesheet with regular, overtime, night and holiday
    hours, and a CSV for the bookkeeper. No payroll filing. Est. 5 to 7 days.
-4. **Guests and consent.** A guest record keyed by mobile number with consent date and
+5. **Guests and consent.** A guest record keyed by mobile number with consent date and
    source, visits, stamps and birthday month. Stamp card at the register; birthday list each
    month. Est. 3 to 5 days.
-5. **Feedback and review hooks.** Receipt footer with the review QR; an optional 1 to 5
+6. **Feedback and review hooks.** Receipt footer with the review QR; an optional 1 to 5
    feedback page on the receipt QR that always shows the Google link; owner alert on 1 or 2
    stars; one review request message after events and bilao orders to consenting guests.
    Est. 2 to 4 days.
-6. **Events board.** Inquiry, quoted, deposit, done; deposits recorded as payments; bilao
+7. **Events board.** Inquiry, quoted, deposit, done; deposits recorded as payments; bilao
    pre-order capacity per day. Est. 3 to 4 days.
-7. **Owner dashboard.** A phone page on the server: today by kitchen and branch, labor %,
+8. **Owner dashboard.** A phone page on the server: today by kitchen and branch, labor %,
    food cost %, reviews waiting for a reply, online orders and bookings waiting, plus a
    morning summary message. Est. 4 to 5 days.
-8. **Website ordering for three kitchens.** The Mogoba ordering site already supports
+9. **Website ordering for three kitchens.** The Mogoba ordering site already supports
    categories and variants; add kitchen grouping, bilao prepay (already in contract v1.1)
    and deposits for bookings. Est. 3 to 4 days.
 
@@ -80,15 +87,45 @@ branch. Nothing needs a cloud database subscription.
 - **Free services we configure, not build**: Google Business Profile, Meta Business Suite
   inbox and Ads Manager, TikTok, Semaphore SMS (pay per text) for consenting guests only.
 
+## BIR: what the software must never do
+
+- Hapag is not a BIR-accredited POS yet. Until it is, it prints kitchen tickets and a bill
+  marked "not an invoice", and Juval's keeps issuing invoices from its registered booklets or
+  machine (RR 7-2024 and RMC 77-2024: order slips are only supplementary documents).
+- Section 264-A of the Tax Code punishes software that is designed for, *or capable of*,
+  hiding, modifying or deleting sales records (₱500,000 to ₱10,000,000 and prison). So before
+  Hapag records any taxable sale: no sale delete, no editing a closed sale, voids and refunds
+  only as append-only entries with a reason and PIN, and a restore can never roll back sales
+  history. The Mogoba backup-restore and wipe paths must be locked for production use.
+- Accreditation path, when the owners want Hapag as their invoicing machine: IVNautomation
+  applies as the developer under RMO 24-2023 (free; demo within 3 working days; certificate
+  within 20 working days after the demo), after building the 13 required features (accumulated
+  grand total, MIN, invoice series, e-journal, Z counter, reprint control, backend reports, sales
+  data transmission and the rest). Then each terminal gets a Permit to Use from the RDO. One
+  accreditation also covers Mogoba and future clients.
+- E-invoicing (EIS): POS users are in a later group under RR 11-2025 and micro taxpayers are
+  exempt, so nothing to build now. The owners' accountant should confirm whether online orders
+  put Juval's in the e-commerce group.
+- Senior and PWD: the 20% applies only to the cardholder's own share. Hapag needs a
+  most-expensive-meal (MEMC) base mode for bilao, online and phone orders (RMC 71-2022,
+  DOJ Opinion 45-2024), on top of the per-person pro-rata mode Mogoba already has.
+- Service charge (only if they charge one): 100% to non-managerial staff, equally by hours
+  worked, at least every two weeks (RA 11360, DO 242-2024). Hapag keeps it out of revenue.
+
 ## What we deliberately do not build (over-engineering for now)
 
 - A customer mobile app or loyalty app. The mobile number is the card.
 - A Messenger chatbot through the Meta API (needs app review, adds little over saved replies).
-- Integrations with Foodpanda or GrabFood.
+- Integrations with Foodpanda or GrabFood. GrabFood does not operate in Cagayan, and Foodpanda
+  lists one restaurant in Aparri; key the odd app order in by hand.
 - Paid reputation suites (Birdeye, Podium, Yext) and AI auto-posting of review replies.
 - A full payroll engine that files SSS, PhilHealth, Pag-IBIG or BIR returns. We prepare the
   numbers; the bookkeeper files.
-- Kitchen display screens on day one. Printers first; screens only if tickets get lost.
+- Kitchen display screens on day one. Printers first (an impact printer at the hot grill);
+  one small screen at the Rosalina counter later if they want drink timing.
+- BIR e-invoicing transmission (later regulation; micro taxpayers exempt).
+- Payment gateway checkout (PayMongo, Maya Checkout) until manual QR checks take more than about
+  15 minutes of staff time a day. Business QR at about 1% is enough to start.
 - Biometric fingerprint hardware. PIN or NFC card plus an optional photo is enough.
 - Native Android apps. The web app installs on the tablet and works offline.
 - BIR CAS/CRM-POS accreditation work before the owners decide they want the POS as their
