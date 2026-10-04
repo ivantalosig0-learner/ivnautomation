@@ -54,9 +54,10 @@ F['WEB_PROOF'] = e(deck['webProof'])
 # 8 · review projection, drawn to scale
 r = deck['reviews']
 vals = [r['now'], r['m3'], r['m6'], r['m12']]
-step = 10 ** max(1, int(math.log10(max(vals))) - 0)
-top = math.ceil(max(vals) * 1.08 / (step / 2)) * (step / 2)
-top = int(math.ceil(top / 3.0) * 3)  # three even gridlines
+# three even gridlines at round numbers (e.g. 75, 150, 225), with 8% headroom
+mag = 10 ** int(math.log10(max(vals) * 1.08 / 3))
+top = next(3 * n * mag for n in (1, 1.5, 2, 2.5, 3, 4, 5, 6, 7.5, 8, 10) if 3 * n * mag >= max(vals) * 1.08)
+top = int(top)
 xs = [60, 217, 363, 500]
 y = lambda v: 225 - (v / top) * 195
 F['REV_Y1'], F['REV_Y2'], F['REV_Y3'] = (str(int(top / 3)), str(int(2 * top / 3)), str(int(top)))
