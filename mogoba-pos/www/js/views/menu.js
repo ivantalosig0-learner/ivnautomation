@@ -9,6 +9,7 @@
   const ui = () => M.ui;
 
   const view = { cat: 'all', q: '' };
+  const PHOTO_NAMES = { 'gimbap-dosirak': 'Gimbap dosirak', gimbap: 'Gimbap', honeybutter: 'Honey butter chicken', classic: 'Classic fried chicken', spicy: 'Spicy chicken', prinkle: 'Prinkle chicken', yangnyeom: 'Yangnyeom chicken', dosirak: 'Dosirak box', tteokbokki: 'Tteokbokki', ramyeon: 'Ramyeon', kimchi: 'Kimchi', fishcake: 'Fish cake', suyuk: 'Suyuk (pork)', bihon: 'Bihon', milktea: 'Milk tea' };
   const IMAGES = ['', 'gimbap-dosirak', 'gimbap', 'honeybutter', 'classic', 'spicy', 'prinkle', 'yangnyeom', 'dosirak', 'tteokbokki', 'ramyeon', 'kimchi', 'fishcake', 'suyuk', 'bihon', 'milktea'];
 
   const unitCost = (rows) => (rows || []).reduce((t, r) => t + (S.ings[r.ing] ? S.ings[r.ing].cost * r.qty : 0), 0);
@@ -86,7 +87,7 @@
       d.price = U.toCents(price.value) || 0;
       updCost();
     });
-    const img = h('select.input', { 'aria-label': 'Photo', onchange: (e) => (d.img = e.target.value) }, IMAGES.map((x) => h('option', { value: x, selected: (d.img || '') === x }, x ? x.replace(/-/g, ' ') : 'No photo (Korean name tile)')));
+    const img = h('select.input', { 'aria-label': 'Photo', onchange: (e) => (d.img = e.target.value) }, IMAGES.map((x) => h('option', { value: x, selected: (d.img || '') === x }, x ? PHOTO_NAMES[x] || x : 'No photo (Korean name tile)')));
     const active = h('label.switch', h('input', { type: 'checkbox', checked: d.active !== false, onchange: (e) => (d.active = e.target.checked) }), h('span.track'), h('span.txt', h('b', 'On the menu'), h('small', 'Turn off to hide it from the register')));
     const variantsBox = h('div.stack');
     const drawVariants = () => {

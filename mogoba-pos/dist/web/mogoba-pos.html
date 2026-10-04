@@ -250,8 +250,9 @@ select.input option { background: var(--glass-solid); color: var(--ink); }
 .chip { white-space: nowrap; }
 .tabs > .chip, .cats > .cat { flex: none; }
 .chip .count { font-size: 12px; opacity: .8; }
-.seg { display: flex; padding: 4px; gap: 4px; background: var(--field); border-radius: 14px; border: 1px solid var(--line); }
-.seg button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; border-radius: 10px; font-weight: 700; color: var(--ink-2); font-size: 14px; padding: 0 10px; white-space: nowrap; }
+.seg { display: flex; padding: 4px; gap: 4px; background: var(--field); border-radius: 14px; border: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.seg::-webkit-scrollbar { display: none; }
+.seg button { flex: 1 1 0; min-width: max-content; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; border-radius: 10px; font-weight: 700; color: var(--ink-2); font-size: 14px; padding: 0 10px; white-space: nowrap; }
 .seg button[aria-pressed="true"] { background: var(--seg-on-bg); color: var(--seg-on-ink); box-shadow: 0 4px 14px -6px rgba(0, 0, 0, .5); }
 .badge { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 11.5px; font-weight: 800; letter-spacing: .02em; white-space: nowrap; }
 .badge.ok { background: var(--ok-bg); color: var(--ok); }
@@ -608,7 +609,7 @@ button.row:active, button.row:hover { background: var(--soft); }
 /* ---------- stock ---------- */
 .recv-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, .8fr) minmax(0, .9fr) minmax(0, 1.1fr) auto; gap: 8px; align-items: end; }
 .quick-exp { display: inline-flex; gap: 4px; margin-left: 8px; }
-.quick-exp button { font-size: 11.5px; font-weight: 800; padding: 1px 6px; border-radius: 6px; background: var(--soft); border: 1px solid var(--line); color: var(--ink-2); }
+.quick-exp button { min-height: 32px; font-size: 12.5px; font-weight: 800; padding: 0 10px; border-radius: 8px; background: var(--soft); border: 1px solid var(--line); color: var(--ink-2); }
 .adj-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; gap: 8px; align-items: end; }
 .adj-row.with-exp { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.2fr) auto; }
 .cards-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
@@ -618,9 +619,11 @@ button.stat { text-align: left; width: 100%; color: inherit; }
 .stat-inline .big { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .stock-level { width: 140px; }
 .exp-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
-.exp-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--soft); border: 1px solid var(--line); text-align: left; min-height: 52px; }
-.exp-item .grow { display: flex; flex-direction: column; min-width: 0; }
+.exp-item { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 10px 12px; border-radius: 12px; background: var(--soft); border: 1px solid var(--line); text-align: left; min-height: 52px; min-width: 0; }
 .exp-item b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.exp-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.stock-row .exp-slot { width: 130px; display: flex; justify-content: flex-end; flex: none; }
+.stock-row .st-slot { min-width: 76px; display: flex; justify-content: center; flex: none; }
 .exp-item .muted { font-size: 12.5px; }
 @media (max-width: 760px) {
   .recv-row, .adj-row, .adj-row.with-exp { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding-bottom: 10px; border-bottom: 1px solid var(--line); }
@@ -758,7 +761,12 @@ button.stat { text-align: left; width: 100%; color: inherit; }
   .show-phone { display: inline !important; }
   .page-head { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
   .page-head > .btn, .page-head > .icon-btn { width: 100%; justify-content: center; }
-  .page-head > .icon-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); font-weight: 600; }
+  .page-head > .icon-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); font-weight: 600; grid-column: 1 / -1; }
+  .stock-row .exp-slot { width: auto; }
+  .kq-row { flex-wrap: wrap; }
+  .kq-row > button.grow { flex: 1 1 calc(100% - 130px); }
+  .kq-row > .btn { flex: 1 0 100%; }
+  .stock-row .st-slot { min-width: 0; }
 }
 @media (min-width: 761px) { .only-phone { display: none !important; } }
 @media (max-width: 1100px) and (min-width: 761px) {
@@ -1015,7 +1023,9 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
       .map((r) =>
         r
           .map((v) => {
-            const s = v == null ? '' : String(v);
+            let s = v == null ? '' : String(v);
+            /* Spreadsheets run cells that start with = + - @ as formulas; customer text could. */
+            if (/^[=+\-@\t\r]/.test(s) && !/^-?\d+(\.\d+)?$/.test(s)) s = "'" + s;
             return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
           })
           .join(',')
@@ -1423,6 +1433,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
       cogs: 0,
       vat: 0,
       voids: { count: 0, amount: 0 },
+      voidWaste: 0,
       byHour: new Array(24).fill(0),
       byHourCount: new Array(24).fill(0),
       byDay: {},
@@ -1438,6 +1449,12 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
       if (o.status === 'voided') {
         r.voids.count++;
         r.voids.amount += o.totals.total;
+        /* Voided after the kitchen made it: the stock is gone, so its cost is waste. */
+        if (o.voidInfo && !o.voidInfo.restock) {
+          let lost = o.cogs || 0;
+          for (const rf of o.refunds || []) if (rf.restock) lost -= rf.cogs || 0;
+          r.voidWaste += Math.max(0, lost);
+        }
         continue;
       }
       const t = o.totals;
@@ -1448,7 +1465,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
       r.discounts += t.discountTotal;
       r.refunds += refunded;
       r.net += net;
-      r.vat += t.vat || 0;
+      r.vat += t.total > 0 ? Math.round(((t.vat || 0) * net) / t.total) : 0;
       let cogs = o.cogs || 0;
       for (const rf of o.refunds || []) if (rf.restock) cogs -= rf.cogs || 0;
       r.cogs += cogs;
@@ -2299,6 +2316,19 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
     t.put('audit', { id: U.uid(), at: Date.now(), by: who(S.user), approver: who(approver), action, detail: detail || '' });
   }
 
+  /* One business write at a time. Builders read the in-memory state (shift totals, receipt
+   * numbers, stock), which only updates after a commit, so two quick taps must not overlap. */
+  let chain = Promise.resolve();
+  function exclusive(fn) {
+    const run = chain.then(() => fn());
+    chain = run.then(
+      () => {},
+      () => {}
+    );
+    return run;
+  }
+  const serial = (f) => (...a) => exclusive(() => f(...a));
+
   async function commit(stores, fn) {
     const all = Array.from(new Set(stores.concat(['outbox', 'audit'])));
     const after = await DB.write(all, fn);
@@ -2546,19 +2576,33 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
     cartChanged();
   }
 
-  async function clearCart(approver) {
+  /* why = {reason, wasted} when the kitchen already had it: prepared food goes to waste. */
+  async function clearCart(approver, why) {
     const c = S.cart;
     const sent = c.lines.some((l) => l.sent);
-    if (c.held) {
-      await commit(['orders'], (t) => {
-        t.del('orders', c.id);
-        audit(t, 'ticket.delete', (c.table || c.customer || 'Ticket') + ' · ' + c.lines.length + ' lines', approver);
+    const at = Date.now();
+    let st = { moves: [], ings: {} };
+    if (sent && why && why.wasted) {
+      const use = {};
+      for (const l of c.lines.filter((x) => x.sent)) {
+        const u = L.unitRecipe(l, menu());
+        for (const k in u) use[k] = (use[k] || 0) + u[k] * l.qty;
+      }
+      st = stockMoves(ctx(), use, -1, 'waste', c.id, at, 'Voided after kitchen: ' + why.reason);
+    }
+    const detail = (c.table || c.customer || 'Ticket') + ' · ' + c.lines.length + ' lines' + (why ? ' · ' + why.reason + (why.wasted ? ' · wasted' : '') : '');
+    if (c.held || sent) {
+      await commit(['orders', 'moves', 'ings'], (t) => {
+        if (c.held) t.del('orders', c.id);
+        for (const m of st.moves) t.put('moves', m);
+        for (const k in st.ings) t.put('ings', st.ings[k]);
+        if (st.moves.length) outbox(t, 'stock.moves', { moves: st.moves }, at);
+        audit(t, c.held ? 'ticket.delete' : 'ticket.clear', detail, approver);
         return () => {
+          applyIngs(st.ings);
           S.open = S.open.filter((o) => o.id !== c.id);
         };
       });
-    } else if (sent) {
-      await commit([], (t) => audit(t, 'ticket.clear', c.lines.length + ' lines', approver));
     }
     S.cart = newCart();
     await DB.write(['kv'], (t) => t.del('kv', 'draft'));
@@ -2659,6 +2703,9 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
 
   async function voidOrder(order, opts) {
     const at = Date.now();
+    /* Build from the saved copy, not the one the screen was showing. */
+    order = (await DB.get('orders', order.id)) || order;
+    if (order.status === 'voided') throw new Error('Order #' + order.queue + ' is already voided.');
     const b = buildVoid(ctx(), order, opts, at);
     await commit(['orders', 'moves', 'ings', 'shifts'], (t) => {
       t.put('orders', b.order);
@@ -2678,7 +2725,9 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
 
   async function refundOrder(order, opts) {
     const at = Date.now();
+    order = (await DB.get('orders', order.id)) || order;
     const b = buildRefund(ctx(), order, opts, at);
+    if (!b.refund.lines.length) throw new Error('Those items were already refunded.');
     await commit(['orders', 'moves', 'ings', 'shifts'], (t) => {
       t.put('orders', b.order);
       for (const m of b.moves) t.put('moves', m);
@@ -2771,10 +2820,26 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
     M.bus.emit('stock');
     return b;
   }
-  const receive = (rows, note) => stockOp('receive', buildReceive(ctx(), rows, note || {}, Date.now()), rows.length + ' items' + (note && note.supplier ? ' from ' + note.supplier : ''));
-  const waste = (rows, reason) => stockOp('waste', buildWaste(ctx(), rows, reason, Date.now()), rows.length + ' items · ' + reason);
-  const count = (rows, note) => stockOp('count', buildCount(ctx(), rows, note, Date.now()), rows.length + ' items counted');
-  const adjust = (rows, reason) => stockOp('adjust', buildAdjust(ctx(), rows, reason, Date.now()), rows.map((r) => (r.qty > 0 ? '+' : '') + U.trim(r.qty) + ' ' + (S.ings[r.ing] ? S.ings[r.ing].name : r.ing)).join(', ') + ' · ' + reason);
+  const receive = serial((rows, note) => stockOp('receive', buildReceive(ctx(), rows, note || {}, Date.now()), rows.length + ' items' + (note && note.supplier ? ' from ' + note.supplier : '')));
+  const waste = serial((rows, reason) => stockOp('waste', buildWaste(ctx(), rows, reason, Date.now()), rows.length + ' items · ' + reason));
+  const count = serial((rows, note) => stockOp('count', buildCount(ctx(), rows, note, Date.now()), rows.length + ' items counted'));
+  const adjust = serial((rows, reason) => stockOp('adjust', buildAdjust(ctx(), rows, reason, Date.now()), rows.map((r) => (r.qty > 0 ? '+' : '') + U.trim(r.qty) + ' ' + (S.ings[r.ing] ? S.ings[r.ing].name : r.ing)).join(', ') + ' · ' + reason));
+
+  /* Correct a lot's use-by date (misread label, supplier's real date). Quantity is untouched;
+   * a zero-quantity movement keeps the change in the item's history. */
+  function buildLotExpiry(ctx, ingId, lotId, exp, at) {
+    const cur = ctx.ings[ingId];
+    if (!cur) throw new Error('That item is gone.');
+    const lots = L.lotsOf(cur);
+    const old = lots.find((l) => l.id === lotId);
+    if (!old) throw new Error('That lot was used up. Reopen the item.');
+    if (exp && !/^\d{4}-\d{2}-\d{2}$/.test(exp)) throw new Error('Pick a date.');
+    const ing = Object.assign({}, cur, { lots: L.sortLots(lots.map((l) => (l.id === lotId ? Object.assign({}, l, { exp: exp || '' }) : l))), updatedAt: at });
+    const day = (d) => (d ? U.fmtDay(d) : 'no date');
+    const move = { id: U.uid(), ing: ingId, qty: 0, type: 'adjust', ref: lotId, at, day: U.dayKey(at), cost: cur.cost, by: ctx.user ? ctx.user.id : '', note: 'Use-by changed: ' + day(old.exp) + ' to ' + day(exp), exp: exp || '' };
+    return { moves: [move], ings: { [ingId]: ing } };
+  }
+  const setLotExpiry = serial((ingId, lotId, exp) => stockOp('adjust', buildLotExpiry(ctx(), ingId, lotId, exp, Date.now()), (S.ings[ingId] ? S.ings[ingId].name : ingId) + ' · use-by ' + (exp || 'none')));
 
   async function saveIngredient(ing) {
     const isNew = !ing.id;
@@ -2964,26 +3029,27 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
     addMore,
     setQty,
     patchLine,
-    removeSent,
+    removeSent: serial(removeSent),
     setCart,
-    clearCart,
-    holdCart,
-    resume,
-    completeSale,
-    recordSale,
-    createTicket,
-    voidOrder,
-    refundOrder,
-    setKitchen,
+    clearCart: serial(clearCart),
+    holdCart: serial(holdCart),
+    resume: serial(resume),
+    completeSale: serial(completeSale),
+    recordSale: serial(recordSale),
+    createTicket: serial(createTicket),
+    voidOrder: serial(voidOrder),
+    refundOrder: serial(refundOrder),
+    setKitchen: serial(setKitchen),
     discLabel,
-    openShift,
-    cashMove,
-    closeShift,
+    openShift: serial(openShift),
+    cashMove: serial(cashMove),
+    closeShift: serial(closeShift),
     drawer,
     receive,
     waste,
     count,
     adjust,
+    setLotExpiry,
     saveIngredient,
     usedIn,
     saveItem,
@@ -3000,7 +3066,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
     auditLog,
     usage,
     verifyStock,
-    build: { buildSale, buildVoid, buildRefund, buildReceive, buildWaste, buildAdjust, buildCount, buildOpenShift, buildCloseShift, buildCash, emptyTot },
+    build: { buildSale, buildVoid, buildRefund, buildReceive, buildWaste, buildAdjust, buildCount, buildLotExpiry, buildOpenShift, buildCloseShift, buildCash, emptyTot },
   };
 })((window.M = window.M || {}));
 
@@ -3390,10 +3456,22 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
   let busy = false;
   let timer = null;
   let started = false;
+  let tick = null;
+  let stopped = false;
 
+  /* The sync server is the online ordering server unless set apart. A base ending in /api
+   * gets /sync added, so the same address works in both settings. */
+  function target() {
+    const c = (S.settings && S.settings.sync) || {};
+    const o = (S.settings && S.settings.online) || {};
+    const server = o.mode === 'server';
+    let url = String(c.url || (server && o.url) || '').trim().replace(/\/+$/, '');
+    if (/\/api$/.test(url)) url += '/sync';
+    return { url, key: c.key || (server ? o.key : '') || '' };
+  }
   function enabled() {
     const c = S.settings && S.settings.sync;
-    return !!(c && c.enabled && c.url && S.meta && !S.meta.demo);
+    return !!(c && c.enabled && target().url && S.meta && !S.meta.demo);
   }
 
   function compute() {
@@ -3434,11 +3512,12 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
 
   async function run() {
     clearTimeout(timer);
+    if (stopped) return;
     if (busy || !enabled() || !navigator.onLine) return refresh();
     busy = true;
     compute();
     M.bus.emit('sync', st);
-    const cfg = S.settings.sync;
+    const cfg = target();
     try {
       for (let guard = 0; guard < 40; guard++) {
         const batch = await M.db.outboxBatch(50);
@@ -3495,11 +3574,16 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
         run();
       });
       addEventListener('offline', refresh);
-      setInterval(() => {
+      tick = setInterval(() => {
         if (enabled() && !busy && !st.backoff) run();
         else refresh();
       }, 30000);
       run();
+    },
+    stop() {
+      clearInterval(tick);
+      clearTimeout(timer);
+      stopped = true;
     },
   };
 })((window.M = window.M || {}));
@@ -3752,6 +3836,8 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
   const state = { orders: {}, since: 0, status: 'off', error: '', seen: new Set(), acked: new Set(), timer: null, nag: null, lastHash: '' };
   const FORMAT = { gcash: [/^\d{13}$/, '13 digits'], maya: [/^[0-9A-F]{12}$/, '12 letters and digits'] };
   const VERIFY_PIN_FROM = 100000;
+  const FULL = 'This device is out of storage for online orders.';
+  const busy = new Set();
 
   const cfg = () => (S.settings && S.settings.online) || {};
   const enabled = () => !!cfg().enabled;
@@ -3789,43 +3875,50 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
   }
   const T = {
     publish(snap) {
-      if (isDemo()) return Promise.resolve(lsSet(BR + 'store', snap));
+      if (isDemo()) return lsSet(BR + 'store', snap) ? Promise.resolve(true) : Promise.reject(new Error(FULL));
       return api('PUT', '/pos/store', snap);
     },
     async list() {
       if (isDemo()) {
         const out = [];
+        const old = Date.now() - 2 * 864e5;
         try {
-          for (let i = 0; i < localStorage.length; i++) {
+          for (let i = localStorage.length - 1; i >= 0; i--) {
             const k = localStorage.key(i);
             if (k && k.indexOf(BR + 'order.') === 0) {
               const o = lsGet(k);
-              if (o && o.code) out.push(o);
+              /* Finished demo orders older than two days are cleared so storage never fills. */
+              if (o && o.code && !NEXT[o.status] && o.status !== 'pending' && o.updatedAt < old) localStorage.removeItem(k);
+              else if (o && o.code) out.push(o);
             }
           }
         } catch (e) {
           /* storage blocked */
         }
-        return out;
+        return { orders: out, since: 0 };
       }
-      /* The server pages large polls (screenshots are heavy) and says more: true. */
+      /* The server pages large polls (screenshots are heavy) and says more: true. The cursor
+       * only moves once every page is in hand, so a failed page is fetched again next time. */
+      let since = state.since;
       let out = [];
       for (let page = 0; page < 10; page++) {
-        const j = await api('GET', '/pos/orders?since=' + state.since);
-        state.since = j.now || state.since;
+        const j = await api('GET', '/pos/orders?since=' + since);
+        since = j.now || since;
         out = out.concat(j.orders || []);
         if (!j.more) break;
       }
-      return out;
+      return { orders: out, since };
     },
     async status(o, patch) {
       if (isDemo()) {
         const cur = lsGet(BR + 'order.' + o.code) || o;
+        const moving = patch.status !== cur.status;
+        if (moving && !(NEXT[cur.status] || []).includes(patch.status)) throw new Error(cur.code + ' is now ' + LABEL[cur.status] + '.');
         const at = Date.now();
-        const next = Object.assign({}, cur, patch, { updatedAt: at, timeline: (cur.timeline || []).concat([{ status: patch.status, at, by: 'register' }]) });
+        const next = Object.assign({}, cur, patch, { updatedAt: at, timeline: (cur.timeline || []).concat(moving ? [{ status: patch.status, at, by: 'register' }] : []) });
         next.payment = Object.assign({}, cur.payment, patch.payment || {}, patch.verified != null ? { verified: patch.verified } : {});
         delete next.verified;
-        lsSet(BR + 'order.' + o.code, next);
+        if (!lsSet(BR + 'order.' + o.code, next)) throw new Error(FULL);
         return next;
       }
       const j = await api('POST', '/pos/orders/' + encodeURIComponent(o.code) + '/status', patch);
@@ -3929,11 +4022,12 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
   }
 
   async function refresh() {
-    if (!enabled() || !S.user) return;
+    if (!enabled() || !S.ready || refresh.busy) return;
+    refresh.busy = true;
     try {
-      const list = await T.list();
+      const got = await T.list();
       let fresh = 0;
-      for (const o of list) {
+      for (const o of got.orders) {
         const prev = state.orders[o.code];
         state.orders[o.code] = keepProof(prev, o);
         if (o.status === 'pending' && !state.seen.has(o.code)) {
@@ -3941,6 +4035,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
           if (!prev && state.status !== 'off') fresh++;
         }
       }
+      state.since = got.since;
       state.status = 'ok';
       state.error = '';
       if (fresh) {
@@ -3950,6 +4045,8 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
     } catch (e) {
       state.status = 'error';
       state.error = e.name === 'AbortError' ? 'The server took too long to answer' : e.message;
+    } finally {
+      refresh.busy = false;
     }
     M.bus.emit('online');
   }
@@ -3976,8 +4073,13 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
     refresh();
     state.timer = setInterval(refresh, isDemo() ? 4000 : 10000);
     state.nag = setInterval(() => {
-      if (S.user && unacked().length) chime();
+      if (unacked().length) chime();
     }, 15000);
+  }
+  function stop() {
+    clearInterval(state.timer);
+    clearInterval(state.nag);
+    state.timer = state.nag = null;
   }
 
   addEventListener('storage', (e) => {
@@ -3988,7 +4090,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
   M.bus.on('change', publishSoon);
   M.bus.on('settings', () => {
     state.lastHash = '';
-    if (S.user) start();
+    if (S.ready) start();
   });
 
   const list = () => Object.values(state.orders).sort((a, b) => b.createdAt - a.createdAt);
@@ -4022,9 +4124,10 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
       unit: l.unit,
       qty: l.qty,
       note: l.note || '',
-      sent: false,
+      /* The kitchen starts on it once accepted, so removing a line later needs approval. */
+      sent: true,
     }));
-    if (o.deliveryFee > 0) lines.push({ id: U.uid(), itemId: null, name: 'Delivery fee', cat: 'custom', variantId: '', variantName: '', mods: [], unit: o.deliveryFee, qty: 1, note: '', sent: false });
+    if (o.deliveryFee > 0) lines.push({ id: U.uid(), itemId: null, name: 'Delivery fee', cat: 'custom', variantId: '', variantName: '', mods: [], unit: o.deliveryFee, qty: 1, note: '', sent: true });
     return lines;
   }
 
@@ -4037,7 +4140,33 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
     return next;
   }
 
+  /* Accept on the server (or demo bridge) first: if the customer cancelled in the meantime it
+   * refuses, and nothing is recorded here. Then record the sale or ticket once, and send its id. */
   async function accept(o, etaMin, check) {
+    if (busy.has(o.code)) return null;
+    busy.add(o.code);
+    try {
+      const pay = o.payment || {};
+      const paid = pay.method === 'gcash' || pay.method === 'maya';
+      if (paid && !S.shift) throw new Error('Open a shift before accepting paid online orders.');
+      let cur = o;
+      if (o.status === 'pending') {
+        const extra = { verified: paid, etaAt: Date.now() + (etaMin || cfg().prepMinutes || 20) * 60000 };
+        if (check) extra.payment = { amountReceived: check.amount, verifiedBy: check.by, verifiedAt: Date.now() };
+        cur = await setStatus(o, 'accepted', extra);
+      }
+      const posOrderId = await recordLocal(cur);
+      if (cur.posOrderId === posOrderId) return cur;
+      const next = await T.status(cur, { status: cur.status, posOrderId });
+      state.orders[o.code] = keepProof(cur, next);
+      M.bus.emit('online');
+      return next;
+    } finally {
+      busy.delete(o.code);
+    }
+  }
+
+  async function recordLocal(o) {
     const pay = o.payment || {};
     const cart = {
       type: o.fulfillment.type === 'delivery' ? 'delivery' : 'take',
@@ -4047,34 +4176,30 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
       source: 'online',
       onlineCode: o.code,
     };
-    /* A retry after a failed status update must not record the sale twice. */
+    /* A retry must not record the sale twice. */
     const prior = S.today.find((x) => x.onlineCode === o.code && x.status !== 'voided') || S.open.find((x) => x.onlineCode === o.code);
-    let posOrderId = '';
-    if (prior) posOrderId = prior.id;
-    else if (pay.method === 'gcash' || pay.method === 'maya') {
-      if (!S.shift) throw new Error('Open a shift before accepting paid online orders.');
+    if (prior) return prior.id;
+    if (pay.method === 'gcash' || pay.method === 'maya') {
+      if (!S.shift) throw new Error('Open a shift to record this paid order.');
       const sale = await C.recordSale(cart, [{ method: pay.method, amount: o.total, tendered: o.total, change: 0, ref: pay.ref || '' }]);
-      posOrderId = sale.id;
-    } else {
-      const t = await C.createTicket(Object.assign(cart, { table: '', customer: o.customer.name + ' · ' + o.code }));
-      posOrderId = t.id;
+      return sale.id;
     }
-    const extra = { verified: pay.method !== 'cash', etaAt: Date.now() + (etaMin || cfg().prepMinutes || 20) * 60000, posOrderId };
-    if (check) extra.payment = { amountReceived: check.amount, verifiedBy: check.by, verifiedAt: Date.now() };
-    return setStatus(o, 'accepted', extra);
+    const t = await C.createTicket(Object.assign(cart, { table: '', customer: o.customer.name + ' · ' + o.code }));
+    return t.id;
   }
 
   /* Staff confirm the money is really in the wallet app before cooking. */
   function verifySheet(o, eta, done) {
     const pay = o.payment || {};
     let amount = 0;
-    const s = ui().sheet({ title: 'Verify payment · ' + o.code, cls: 'narrow', icon: 'drawer' });
+    const s = ui().sheet({ title: 'Verify ' + o.code, cls: 'narrow', icon: 'drawer' });
     const warn = h('div.stack-sm');
     const okBtn = h('button.btn.go.lg.block', { type: 'button', disabled: true }, 'Verify and accept');
     const kp = ui().keypad((v) => {
       amount = v;
       const diff = amount - o.total;
       okBtn.disabled = !(amount > 0) || diff < 0;
+      okBtn.textContent = amount > 0 && diff < 0 ? 'Underpaid by ' + U.peso(-diff) : 'Verify and accept';
       U.mount(
         warn,
         amount > 0 && diff < 0 ? h('div.oo-warn', ui().icon('alert', 16), 'Underpaid by ' + U.peso(-diff) + '. Reject it or ask for the rest.') : null,
@@ -4104,22 +4229,30 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
         dupProof ? h('div.oo-warn', ui().icon('alert', 16), 'Same screenshot as ' + dupProof.code + '.') : null
       ),
       h('p.lead', { style: { margin: '0 0 10px' } }, 'Find this payment in the ' + (C.PAY[pay.method] || '') + ' app and type the amount you received.'),
-      kp.el,
-      warn
+      warn,
+      kp.el
     );
+    let working = false;
     okBtn.onclick = async () => {
-      let by = S.user;
-      if (o.total >= VERIFY_PIN_FROM || dup || dupProof) {
-        by = await ui().approve('refund', 'Approve payment', 'Large or flagged payments need a manager PIN.');
-        if (!by) return;
-      }
+      if (working) return;
+      working = true;
+      okBtn.disabled = true;
       try {
+        let by = S.user;
+        if (o.total >= VERIFY_PIN_FROM || dup || dupProof) {
+          by = await ui().approve('refund', 'Approve payment', 'Large or flagged payments need a manager PIN.');
+          if (!by) return;
+        }
         await accept(o, eta, { amount, by: by.name });
         s.close();
         ui().toast(o.code + ' accepted.', 'ok');
         done();
       } catch (e) {
         ui().toast(e.message, 'err');
+        refresh();
+      } finally {
+        working = false;
+        okBtn.disabled = !(amount >= o.total);
       }
     };
     s.setFoot(h('button.btn.danger', { type: 'button', onclick: () => (s.close(), reject(o, done)) }, 'Reject'), okBtn);
@@ -4137,12 +4270,20 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
     const f = o.fulfillment || {};
     const when = f.time && f.time !== 'asap' ? 'for ' + U.fmtTime(+f.time) : 'ASAP';
     const actions = h('div.oo-actions');
+    /* One tap at a time: every action button on the card is off until the first one finishes. */
     const act = async (fn) => {
+      if (actions.dataset.busy) return;
+      actions.dataset.busy = '1';
+      actions.querySelectorAll('button').forEach((b) => (b.disabled = true));
       try {
         await fn();
-        redraw();
       } catch (e) {
         ui().toast(e.message, 'err');
+        refresh();
+      } finally {
+        delete actions.dataset.busy;
+        actions.querySelectorAll('button').forEach((b) => (b.disabled = false));
+        redraw();
       }
     };
     if (o.status === 'pending') {
@@ -4153,6 +4294,9 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
       );
     } else if (NEXT[o.status]) {
       const nx = NEXT[o.status].filter((x) => x !== 'cancelled' && !(x === 'out_for_delivery' && f.type !== 'delivery'));
+      /* Accepted but the sale or ticket did not save on this register (for example a dropped
+       * connection mid-way): record it now. */
+      if (!o.posOrderId) actions.append(h('div.oo-warn', ui().icon('alert', 16), 'Not on the register yet. ', h('button.link', { type: 'button', onclick: () => act(() => accept(o)) }, pay.method === 'cash' ? 'Open ticket' : 'Record sale')));
       actions.append(h('div.row-gap', nx.map((x) => h('button.btn', { type: 'button', class: x === 'completed' ? 'go' : '', onclick: () => act(() => setStatus(o, x)) }, { preparing: 'Start preparing', ready: f.type === 'delivery' ? 'Ready for rider' : 'Ready for pickup', out_for_delivery: 'Out for delivery', completed: f.type === 'delivery' ? 'Delivered' : 'Picked up' }[x] || LABEL[x]))));
     }
     return h(
@@ -4282,7 +4426,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
     M.bus.emit('orders:tab', 'online');
   }
 
-  M.online = { start, refresh, publish, snapshot, list, pendingCount, panel, inbox, accept, setStatus, siteUrl, state, LABEL, duplicateRef, duplicateProof, refFormatOk };
+  M.online = { start, stop, refresh, publish, snapshot, list, pendingCount, panel, inbox, accept, setStatus, siteUrl, state, LABEL, duplicateRef, duplicateProof, refFormatOk };
 })((window.M = window.M || {}));
 
 /* js/ui.js */
@@ -4912,6 +5056,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
   const C = M.core;
   const S = M.state;
   const h = U.h;
+  const pl = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
   const ui = () => M.ui;
 
   const OPEN_H = 9;
@@ -5047,8 +5192,13 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
       if (low.length) items.push({ level: 'warn', title: low.length + ' running low', sub: low.slice(0, 3).map((i) => i.name).join(', '), count: low.length, go: () => M.stockView.reorderSheet() });
       const exp = M.stockView.expiringLots();
       const expired = exp.filter((x) => x.state === 'expired');
-      if (exp.length) items.push({ level: expired.length ? 'bad' : 'warn', title: expired.length ? expired.length + ' expired lots' : exp.length + ' lots expire soon', sub: exp.slice(0, 3).map((x) => x.ing.name).join(', '), count: exp.length, go: () => M.app.go('stock') });
-      if (S.open.length) items.push({ level: 'ok', title: S.open.length + ' open tickets', sub: S.open.slice(0, 3).map((o) => (o.table ? 'T' + o.table : o.customer)).join(', '), count: S.open.length, go: () => M.app.go('register') });
+      if (exp.length) items.push({ level: expired.length ? 'bad' : 'warn', title: expired.length ? pl(expired.length, 'expired lot') : pl(exp.length, 'lot') + ' expiring soon', sub: (expired.length ? expired : exp).slice(0, 3).map((x) => x.ing.name).join(', '), count: expired.length || exp.length, go: () => M.app.go('stock') });
+      if (S.open.length) items.push({ level: 'ok', title: pl(S.open.length, 'open ticket'), sub: S.open.slice(0, 3).map((o) => (o.table ? 'T' + o.table : o.customer)).join(', '), count: S.open.length, go: () => M.app.go('register') });
+      /* Business days, hours and expiry are Manila time; a tablet set to another zone or a
+       * clock that ran backwards would file sales under the wrong day. */
+      if (new Date().getTimezoneOffset() !== -480) items.push({ level: 'bad', title: 'Tablet time zone is not Manila', sub: 'Set it to Asia/Manila in the tablet settings' });
+      const lastPaid = S.today.reduce((m, o) => Math.max(m, o.paidAt || 0), 0);
+      if (lastPaid - now > 10 * 60000) items.push({ level: 'bad', title: 'Tablet clock is behind', sub: 'The last sale is dated ' + U.fmtTime(lastPaid) + '. Check the date and time' });
       if (!S.shift) items.push({ level: 'warn', title: 'No open shift', sub: 'Open one to take payments', go: () => M.drawerView.openShiftFlow() });
       if (!S.meta.demo && C.can('*') && now - (S.meta.lastBackup || 0) > 3 * 864e5) items.push({ level: 'warn', title: 'Backup is overdue', sub: S.meta.lastBackup ? 'Last ' + U.ago(S.meta.lastBackup) : 'Never backed up', go: () => M.app.go('settings') });
 
@@ -5533,7 +5683,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
   }
 
   /* ---------- reason picker for taking back things the kitchen started ---------- */
-  function askVoidReason(title, withWaste) {
+  function askVoidReason(title, withWaste, okLabel, lead) {
     return new Promise((res) => {
       let done = false;
       let reason = '';
@@ -5543,7 +5693,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
       inp.addEventListener('input', () => (reason = inp.value));
       const reasons = ['Customer changed their mind', 'Entered by mistake', 'Kitchen mistake', 'Took too long'];
       s.setBody(
-        h('p.lead', 'This item was already sent to the kitchen. The removal is logged with your name.'),
+        h('p.lead', lead || 'This item was already sent to the kitchen. The removal is logged with your name.'),
         h('div.chips', reasons.map((r) => h('button.chip', { type: 'button', onclick: () => ((inp.value = r), (reason = r)) }, r))),
         h('div', { style: { marginTop: '10px' } }, inp),
         withWaste
@@ -5566,7 +5716,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
               s.close();
             },
           },
-          'Remove item'
+          okLabel || 'Remove item'
         )
       );
     });
@@ -5874,7 +6024,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
           'div.pay-due',
           h('span.lbl', payments.length ? 'Still to pay' : 'Amount due'),
           h('span.big', { class: remaining <= 0 ? 'done' : '' }, U.peso(Math.max(0, remaining))),
-          payments.length ? h('span.muted', 'of ' + U.peso(total)) : h('span.muted', C.TYPES[c.type] + (c.table ? ' · Table ' + c.table : '') + ' · ' + C.cartTotals().items + ' items')
+          payments.length ? h('span.muted', 'of ' + U.peso(total)) : h('span.muted', C.TYPES[c.type] + (c.table ? ' · Table ' + c.table : '') + ' · ' + C.cartTotals().items + (C.cartTotals().items === 1 ? ' item' : ' items'))
         ),
         payments.length
           ? h(
@@ -6076,11 +6226,14 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
         act('trash', c.held ? 'Delete this ticket' : 'Clear order', c.lines.some((l) => l.sent) ? 'Needs a manager: the kitchen has it' : 'Start over', async () => {
           if (!c.lines.length && !c.held) return s.close();
           let ap = null;
+          let why = null;
           if (c.lines.some((l) => l.sent)) {
             ap = await ui().approve('void', 'Approve clearing', 'This ticket was sent to the kitchen.');
             if (!ap) return;
+            why = await askVoidReason(c.held ? 'Why delete this ticket?' : 'Why clear this order?', true, c.held ? 'Delete ticket' : 'Clear order', 'The kitchen already has it. This is logged with your name.');
+            if (!why) return;
           } else if (!(await ui().confirm({ title: 'Clear this order?', message: 'All ' + c.lines.length + ' items will be removed.', ok: 'Clear order', danger: true }))) return;
-          await C.clearCart(ap);
+          await C.clearCart(ap, why);
           s.close();
           ui().closeAll();
         }, true)
@@ -6393,7 +6546,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
             'div.list',
             list.map((o) =>
               h(
-                'div.row',
+                'div.row.kq-row',
                 h('span.q-no', '#' + o.queue),
                 h('span.wait', { class: waitClass(o.paidAt), title: 'Minutes waiting' }, Math.max(0, Math.round((Date.now() - o.paidAt) / 60000)) + "'"),
                 h('button.grow', { type: 'button', style: { textAlign: 'left' }, onclick: () => open(o) }, h('div.t', summary(o)), h('div.s', U.fmtTime(o.paidAt) + ' · ' + C.TYPES[o.type] + (o.table ? ' T' + o.table : '') + (o.customer ? ' · ' + o.customer : ''))),
@@ -6469,6 +6622,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
     const u = usage[ing.id];
     return u > 0 ? Math.max(0, ing.onHand) / u : null;
   };
+  const coverDays = (dl) => (dl < 1 ? 'under 1 day' : (dl < 3 ? U.trim(Math.floor(dl * 10) / 10) : Math.floor(dl)) + (dl >= 1 && dl < 2 ? ' day' : ' days'));
   const coverText = (dl) => (dl < 1 ? 'under 1 day' : (dl < 3 ? U.trim(Math.floor(dl * 10) / 10) : Math.floor(dl)) + ' d cover');
   const expiryDefault = (ing) => (ing && ing.shelfLife ? U.addDays(today(), ing.shelfLife) : '');
 
@@ -6551,7 +6705,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
           c.addEventListener('input', () => ((r.cost = c.value), recalc()));
           const e = dateIn(r.exp, 'Expiry date');
           e.addEventListener('change', () => (r.exp = e.value));
-          const quick = h('span.quick-exp', [1, 3, 7].map((d) => h('button', { type: 'button', 'aria-label': 'Expires in ' + d + ' days', onclick: () => ((r.exp = U.addDays(today(), d)), (e.value = r.exp)) }, '+' + d + 'd')));
+          const quick = h('span.quick-exp', [1, 3, 7].map((d) => h('button', { type: 'button', 'aria-label': d === 1 ? 'Expires tomorrow' : 'Expires in ' + d + ' days', onclick: () => ((r.exp = U.addDays(today(), d)), (e.value = r.exp)) }, '+' + d + 'd')));
           return h(
             'div.recv-row',
             h('label.field', h('span', 'Item'), sel),
@@ -6601,12 +6755,39 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
     );
   }
 
+  /* ---------- correct a lot's use-by date ---------- */
+  function lotDateSheet(ing, lot, done) {
+    const s = ui().sheet({ title: 'Use-by date', cls: 'narrow', icon: 'clock' });
+    const e = dateIn(lot.exp, 'Use-by date');
+    s.setBody(
+      h('p.lead', { style: { margin: '0 0 12px' } }, ing.name + ' · ' + U.fmtQty(lot.qty, ing.unit)),
+      h('label.field', h('span', 'Use by'), e),
+      h('span.quick-exp', { style: { marginTop: '10px' } }, [1, 3, 7].map((d) => h('button', { type: 'button', onclick: () => (e.value = U.addDays(today(), d)) }, d === 1 ? 'Tomorrow' : 'In ' + d + ' days')))
+    );
+    s.setFoot(
+      h('button.btn', { type: 'button', onclick: () => (e.value = '') }, 'No date'),
+      h('button.btn.primary', {
+        type: 'button',
+        onclick: async () => {
+          try {
+            await C.setLotExpiry(ing.id, lot.id, e.value);
+            s.close();
+            ui().toast('Use-by date saved.', 'ok');
+            done();
+          } catch (err) {
+            ui().toast(err.message, 'err');
+          }
+        },
+      }, 'Save')
+    );
+  }
+
   /* ---------- add or remove ---------- */
   function adjustSheet(ingId, startDir) {
     let dir = startDir || 'remove';
     let reason = '';
     let note = '';
-    const rows = [{ ing: ingId || '', qty: '', exp: '' }];
+    const rows = [{ ing: ingId || '', qty: '', exp: expiryDefault(S.ings[ingId]) }];
     const s = ui().sheet({ title: 'Add or remove stock', icon: 'stock' });
     function draw() {
       const reasons = REASONS[dir];
@@ -6916,7 +7097,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
           h(
             'dl.kv',
             h('dt', 'Cover'),
-            h('dd', dl == null ? '-' : coverText(dl)),
+            h('dd', dl == null ? '-' : coverDays(dl)),
             h('dt', 'Avg cost'),
             h('dd', U.peso(Math.round(perBuy(ing))) + ' / ' + ing.buyUnit),
             h('dt', 'Value'),
@@ -6938,6 +7119,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
                     { style: { minHeight: '48px', padding: '8px 2px' } },
                     h('div.grow', h('div.t', U.fmtQty(l.qty, ing.unit)), h('div.s', l.exp ? 'Use by ' + U.fmtDay(l.exp) : 'No date')),
                     l.exp ? ui().expiryChip(L.daysUntil(l.exp, t), state) : null,
+                    canEdit ? h('button.btn.sm', { type: 'button', 'aria-label': 'Change use-by date', onclick: () => lotDateSheet(ing, l, () => (s.close(), detailSheet(ing.id))) }, ui().icon('edit', 16), 'Date') : null,
                     canEdit && state === 'expired' ? h('button.btn.sm.danger', { type: 'button', onclick: async () => (await writeOff([{ ing, lot: l }]), s.close()) }, 'Write off') : null
                   );
                 })
@@ -6973,6 +7155,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
         h('button.btn', { type: 'button', onclick: () => receiveSheet() }, ui().icon('truck', 20), h('span', 'Receive')),
         h('button.btn', { type: 'button', onclick: () => adjustSheet() }, ui().icon('stock', 20), h('span', 'Add / remove')),
         h('button.btn', { type: 'button', onclick: () => countSheet() }, ui().icon('count', 20), h('span', 'Count')),
+        h('button.btn', { type: 'button', onclick: () => reorderSheet() }, ui().icon('list', 20), h('span', 'Reorder')),
         h('button.icon-btn.boxed', { type: 'button', 'aria-label': 'New stock item', onclick: () => editSheet(null) }, ui().icon('plus'), h('span.show-phone', 'New item'))
       );
     }
@@ -7024,8 +7207,8 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
                   h(
                     'button.exp-item',
                     { type: 'button', onclick: () => detailSheet(x.ing) },
-                    h('span.grow', h('b', x.ing.name), h('span.muted', U.fmtQty(x.lot.qty, x.ing.unit))),
-                    ui().expiryChip(x.days, x.state)
+                    h('b', x.ing.name),
+                    h('span.exp-meta', h('span.muted', U.fmtQty(x.lot.qty, x.ing.unit)), ui().expiryChip(x.days, x.state))
                   )
                 )
               )
@@ -7061,8 +7244,8 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
             h('div.grow', h('div.t', ing.name), h('div.s', ing.group + (dl != null ? ' · ' + coverText(dl) : ''))),
             h('div.stock-level.hide-phone', ui().level(ing.onHand, Math.max(ing.par, ing.onHand), { state: st, marker: ing.reorder, thin: true, label: ing.name + ' against par' })),
             h('span.amt', { style: { minWidth: '84px' } }, U.fmtQty(ing.onHand, ing.unit)),
-            n && n.state !== 'ok' ? ui().expiryChip(n.days, n.state) : null,
-            ui().badge(ui().STOCK_BADGE[st][0], ui().STOCK_BADGE[st][1])
+            h('span.exp-slot', n && n.state !== 'ok' ? ui().expiryChip(n.days, n.state) : null),
+            h('span.st-slot', ui().badge(ui().STOCK_BADGE[st][0], ui().STOCK_BADGE[st][1]))
           );
         })
       );
@@ -7305,7 +7488,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
                 h('dt', 'Expected'),
                 h('dd.big', U.peso(d.expected))
               ),
-              cash.length ? h('div', h('div.group-label', 'Cash in / out'), h('div.list', cash.map((c) => h('div.row', { style: { minHeight: '48px', padding: '8px 2px' } }, ui().icon(c.type === 'in' ? 'in' : 'out', 20), h('div.grow', h('div.t', c.reason), h('div.s', U.fmtTime(c.at) + ' · ' + (c.by ? c.by.name : '') + (c.approver && c.approver.id !== (c.by && c.by.id) ? ' · ok ' + c.approver.name : ''))), h('span.amt', (c.type === 'in' ? '+' : '−') + U.peso(c.amount)))))) : null
+              cash.length ? h('div', h('div.group-label', 'Cash in / out'), h('div.list', cash.map((c) => h('div.row', { style: { minHeight: '48px', padding: '8px 2px' } }, ui().icon(c.type === 'in' ? 'in' : 'out', 20), h('div.grow', h('div.t', c.reason), h('div.s', U.fmtTime(c.at) + ' · ' + (c.by ? c.by.name : '') + (c.approver && c.approver.id !== (c.by && c.by.id) ? ' · approved by ' + c.approver.name : ''))), h('span.amt', (c.type === 'in' ? '+' : '−') + U.peso(c.amount)))))) : null
             ),
             h(
               'div.panel.glass.stack',
@@ -7422,7 +7605,10 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
       body.style.opacity = '.55';
       const [from, to] = bounds(view.range);
       const [pf, pt] = prevBounds(from, to);
-      const [orders, prevOrders, moves, counts] = await Promise.all([C.ordersBetween(from, to), C.ordersBetween(pf, pt), C.movesBetween(from, to), C.countsBetween(from, to)]);
+      const [orders, prevAll, moves, counts] = await Promise.all([C.ordersBetween(from, to), C.ordersBetween(pf, pt), C.movesBetween(from, to), C.countsBetween(from, to)]);
+      /* A range that ends today is still running: compare with the previous one up to the same moment. */
+      const cut = to === U.dayKey() ? Date.now() - (U.daysBetween(from, to) + 1) * 864e5 : Infinity;
+      const prevOrders = prevAll.filter((o) => !(o.paidAt > cut));
       if (my !== token) return;
       body.style.opacity = '';
       const menu = C.menu();
@@ -7573,7 +7759,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
                     .concat(refunds.flatMap((o) => o.refunds.map((x) => ({ at: x.at, o, t: 'Refund', amt: x.amount, why: x.reason, who: x.approver }))))
                     .sort((a, b) => b.at - a.at)
                     .slice(0, 20)
-                    .map((x) => h('button.row', { type: 'button', style: { minHeight: '52px' }, onclick: () => M.ordersView.detail(x.o) }, h('div.grow', h('div.t', x.t + ' · ' + x.o.no), h('div.s', U.fmtDateTime(x.at) + ' · ' + x.why + (x.who ? ' · ok ' + x.who.name : ''))), h('span.amt', U.peso(x.amt))))
+                    .map((x) => h('button.row', { type: 'button', style: { minHeight: '52px' }, onclick: () => M.ordersView.detail(x.o) }, h('div.grow', h('div.t', x.t + ' · ' + x.o.no), h('div.s', U.fmtDateTime(x.at) + ' · ' + x.why + (x.who ? ' · approved by ' + x.who.name : ''))), h('span.amt', U.peso(x.amt))))
                 )
               : h('p.muted', { style: { marginTop: '8px' } }, 'None in this period.')
           )
@@ -7591,6 +7777,10 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
           waste[key] = (waste[key] || 0) + v;
           wasteTotal += v;
         } else if (m.type === 'receive') received += m.qty * (m.cost || 0);
+      }
+      if (r.voidWaste > 0) {
+        waste['Voided orders, already made'] = r.voidWaste;
+        wasteTotal += r.voidWaste;
       }
       const variance = counts.reduce((t, c) => t + c.value, 0);
       parts.push(
@@ -7642,6 +7832,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
   const ui = () => M.ui;
 
   const view = { cat: 'all', q: '' };
+  const PHOTO_NAMES = { 'gimbap-dosirak': 'Gimbap dosirak', gimbap: 'Gimbap', honeybutter: 'Honey butter chicken', classic: 'Classic fried chicken', spicy: 'Spicy chicken', prinkle: 'Prinkle chicken', yangnyeom: 'Yangnyeom chicken', dosirak: 'Dosirak box', tteokbokki: 'Tteokbokki', ramyeon: 'Ramyeon', kimchi: 'Kimchi', fishcake: 'Fish cake', suyuk: 'Suyuk (pork)', bihon: 'Bihon', milktea: 'Milk tea' };
   const IMAGES = ['', 'gimbap-dosirak', 'gimbap', 'honeybutter', 'classic', 'spicy', 'prinkle', 'yangnyeom', 'dosirak', 'tteokbokki', 'ramyeon', 'kimchi', 'fishcake', 'suyuk', 'bihon', 'milktea'];
 
   const unitCost = (rows) => (rows || []).reduce((t, r) => t + (S.ings[r.ing] ? S.ings[r.ing].cost * r.qty : 0), 0);
@@ -7719,7 +7910,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
       d.price = U.toCents(price.value) || 0;
       updCost();
     });
-    const img = h('select.input', { 'aria-label': 'Photo', onchange: (e) => (d.img = e.target.value) }, IMAGES.map((x) => h('option', { value: x, selected: (d.img || '') === x }, x ? x.replace(/-/g, ' ') : 'No photo (Korean name tile)')));
+    const img = h('select.input', { 'aria-label': 'Photo', onchange: (e) => (d.img = e.target.value) }, IMAGES.map((x) => h('option', { value: x, selected: (d.img || '') === x }, x ? PHOTO_NAMES[x] || x : 'No photo (Korean name tile)')));
     const active = h('label.switch', h('input', { type: 'checkbox', checked: d.active !== false, onchange: (e) => (d.active = e.target.checked) }), h('span.track'), h('span.txt', h('b', 'On the menu'), h('small', 'Turn off to hide it from the register')));
     const variantsBox = h('div.stack');
     const drawVariants = () => {
@@ -7954,6 +8145,13 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
 
   async function backup() {
     const data = await M.db.dump();
+    /* Server keys stay on this device: a backup file gets passed around. */
+    for (const row of data.stores.kv || []) {
+      if (row.k !== 'settings' || !row.v) continue;
+      row.v = JSON.parse(JSON.stringify(row.v));
+      if (row.v.online) row.v.online.key = '';
+      if (row.v.sync) row.v.sync.key = '';
+    }
     U.download('mogoba-backup-' + U.dayKey() + '-' + U.pad(new Date().getHours()) + U.pad(new Date().getMinutes()) + '.json', JSON.stringify(data));
     await C.saveMeta({ lastBackup: Date.now() });
     ui().toast('Backup downloaded. Keep a copy off this device (Drive, Messenger, laptop).', 'ok', 4500);
@@ -7977,6 +8175,13 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
       const n = (data.stores.orders || []).length;
       if (!(await ui().confirm({ title: 'Replace everything on this device?', message: 'The backup from ' + U.fmtDateTime(data.exportedAt) + ' (' + n + ' orders) replaces all current data here. Download a backup of the current data first if you might need it.', ok: 'Restore backup', danger: true }))) return;
       try {
+        /* Keep this device's server keys when the backup has none. */
+        const cur = S.settings || {};
+        for (const row of data.stores.kv || []) {
+          if (row.k !== 'settings' || !row.v) continue;
+          if (row.v.online && !row.v.online.key && cur.online) row.v.online.key = cur.online.key || '';
+          if (row.v.sync && !row.v.sync.key && cur.sync) row.v.sync.key = cur.sync.key || '';
+        }
         await M.db.restore(data);
         ui().toast('Restored. Reloading…', 'ok');
         setTimeout(() => location.reload(), 700);
@@ -8243,9 +8448,9 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
       }
 
       const syncInfo = { demo: 'Off while sample data is loaded', local: 'Off. Everything stays on this device', offline: 'Offline, ' + pending + ' changes waiting', syncing: 'Sending…', error: 'Retrying: ' + (sy.error || 'server error'), pending: pending + ' changes waiting', ok: 'Up to date' + (sy.lastOk ? ' · ' + U.ago(sy.lastOk) : '') }[sy.state];
-      const url = h('input.input', { value: st.sync.url, placeholder: 'https://…', 'aria-label': 'Sync address', type: 'url', disabled: S.meta.demo });
+      const url = h('input.input', { value: st.sync.url, placeholder: (st.online && st.online.url) || 'https://…/mogoba/api', 'aria-label': 'Server address', type: 'url', disabled: S.meta.demo });
       url.addEventListener('change', () => save({ sync: { url: url.value.trim() } }));
-      const key = h('input.input', { value: st.sync.key, placeholder: 'Access key', 'aria-label': 'Access key', type: 'password', autocomplete: 'off', disabled: S.meta.demo });
+      const key = h('input.input', { value: st.sync.key, placeholder: st.online && st.online.key ? 'Same as online ordering' : 'Register key', 'aria-label': 'Register key', type: 'password', autocomplete: 'off', disabled: S.meta.demo });
       key.addEventListener('change', () => save({ sync: { key: key.value.trim() } }));
       if (owner) parts.push(
         panel(
@@ -8257,7 +8462,8 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
             await save({ sync: { enabled: v } }, false);
             M.sync.kick();
           }),
-          h('div.form-grid', ui().field('Server address', url), ui().field('Access key', key)),
+          h('div.form-grid', ui().field('Server address', url), ui().field('Register key', key)),
+          h('small.muted', 'Leave both empty to use the online ordering server.'),
           h('div.row-gap', h('button.btn', { type: 'button', disabled: S.meta.demo || !st.sync.enabled, onclick: () => M.sync.run() }, ui().icon('cloud', 20), 'Sync now'), h('span.muted', { style: { fontSize: '13px' } }, pending + ' change' + (pending === 1 ? '' : 's') + ' in the outbox'))
         )
       );
@@ -8335,7 +8541,9 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
         h('h2', 'Set up the register'),
         h('button.choice', { type: 'button', onclick: () => run(true) }, ui().icon('sparkle', 26), h('div', h('b', 'Explore with sample data'), h('span', 'Two weeks of made-up sales, stock and shifts. Remove it from Settings when ready.'))),
         h('button.choice', { type: 'button', onclick: owner }, ui().icon('pos', 26), h('div', h('b', 'Start Mogoba for real'), h('span', 'Mogoba’s full menu and recipes, stock at zero, and your own owner PIN.'))),
-        h('p.hint', 'You can switch later in Settings.')
+        h('p.hint', 'You can switch later in Settings.'),
+        /* Public preview hosts share one storage origin with every other page they serve. */
+        /githack\.com$|githubusercontent\.com$/.test(location.hostname) ? h('p.hint', { style: { color: 'var(--warn)' } }, 'Preview link: for trying the app only. Run real sales from Mogoba’s own server or the installed app.') : null
       );
     }
     function owner() {
@@ -8495,6 +8703,12 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
           .catch((e) => {
             if (!settled) return done(true);
             if (e && e.name === 'AbortError') {
+              /* Another tab owns the register now: this one must stop selling, polling and saving. */
+              App.lost = true;
+              S.user = null;
+              S.ready = false;
+              if (M.online) M.online.stop();
+              M.sync.stop();
               M.ui.closeAll();
               fatal('Opened somewhere else', 'Mogoba POS is open in another tab. This one stopped so stock and cash stay exact.', h('button.btn.primary.lg.block', { type: 'button', onclick: () => location.reload() }, 'Use it here instead'));
             }
@@ -8546,11 +8760,15 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
   }
 
   function showLock() {
+    if (App.lost) return;
     ui().closeAll();
     if (App.cleanup) App.cleanup();
     App.cleanup = null;
     App.route = null;
     M.lock.mountLock(root(), enter);
+    /* Online orders and sync keep running behind the lock screen, so the shop stays open. */
+    M.sync.start();
+    if (M.online && !M.online.state.timer) M.online.start();
   }
 
   /* ---------- shell ---------- */
@@ -8664,6 +8882,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
   }
 
   function lockNow() {
+    if (App.lost) return;
     C.persistCart();
     C.logout();
     showLock();
@@ -8727,7 +8946,7 @@ window.M = { ENV: 'preview', ASSETS: {"food/bihon.jpg":"data:image/jpeg;base64,/
   /* ---------- background duties ---------- */
   ['pointerdown', 'keydown'].forEach((ev) => addEventListener(ev, () => (App.last = Date.now()), { passive: true, capture: true }));
   setInterval(async () => {
-    if (!S.user || !S.settings) return;
+    if (App.lost || !S.user || !S.settings) return;
     const min = S.settings.sales.autoLockMin;
     if (min > 0 && Date.now() - App.last > min * 60000 && !document.querySelector('.sheet')) lockNow();
     const d = U.dayKey();

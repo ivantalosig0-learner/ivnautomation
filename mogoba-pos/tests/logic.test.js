@@ -165,6 +165,23 @@ test('aggregate: net, refunds, voids, item allocation', () => {
   assert.equal(r.byHour[12], 24000);
   assert.equal(r.cogs, 1600);
   assert.equal(r.byCat.dosirak, 24000);
+  assert.equal(r.voidWaste, 0, 'a void with no voidInfo is not waste');
+});
+
+test('aggregate: food voided after the kitchen is waste, VAT follows refunds', () => {
+  const vatOrder = { id: 'v', status: 'paid', type: 'dine', day: '2026-10-04', paidAt: new Date(2026, 9, 4, 12).getTime(), lines: [line('p', 11200, 1)], refunds: [], cogs: 3000 };
+  vatOrder.totals = L.totals(vatOrder, { vat: true });
+  vatOrder.payments = [{ method: 'cash', amount: vatOrder.totals.total }];
+  assert.equal(vatOrder.totals.vat, 1200);
+  vatOrder.refunds.push({ amount: 11200, method: 'cash', lines: [{ lineId: 'p', qty: 1 }], restock: true, cogs: 3000 });
+  const made = { id: 'm', status: 'voided', type: 'dine', day: '2026-10-04', lines: [line('q', 5000, 1)], refunds: [], cogs: 2000, voidInfo: { restock: false } };
+  made.totals = L.totals(made, {});
+  const back = Object.assign({}, made, { id: 'n', voidInfo: { restock: true } });
+  const r = L.aggregate([vatOrder, made, back], menu);
+  assert.equal(r.net, 0);
+  assert.equal(r.vat, 0, 'a fully refunded sale owes no VAT');
+  assert.equal(r.profit, 0);
+  assert.equal(r.voidWaste, 2000, 'only the void that was not restocked counts');
 });
 
 test('lots: first-expiry-first-out, undated last, short reported', () => {

@@ -39,7 +39,7 @@ Sample PINs: Owner `1234` · Mark, manager `2580` · Joy, cashier `0000`.
 - **Orders**: kitchen queue with wait timers, online inbox, today, past days, reprint,
   partial refunds, voids with restock or waste.
 - **Stock**: recipe-based depletion, append-only movement ledger, **lots with expiry dates**
-  used first-expiring-first, receiving with expiry and cost, **add or remove** with reasons
+  used first-expiring-first and correctable when a label was misread, receiving with expiry and cost, **add or remove** with reasons
   (expired, spoiled, staff meal, transfer in, found, correction), blind counts with variance,
   level bars against par, days of cover, "use first" list, reorder list by supplier.
 - **Menu**: item editor, recipes, food cost per item against the target.

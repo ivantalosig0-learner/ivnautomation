@@ -76,6 +76,13 @@
 
   async function backup() {
     const data = await M.db.dump();
+    /* Server keys stay on this device: a backup file gets passed around. */
+    for (const row of data.stores.kv || []) {
+      if (row.k !== 'settings' || !row.v) continue;
+      row.v = JSON.parse(JSON.stringify(row.v));
+      if (row.v.online) row.v.online.key = '';
+      if (row.v.sync) row.v.sync.key = '';
+    }
     U.download('mogoba-backup-' + U.dayKey() + '-' + U.pad(new Date().getHours()) + U.pad(new Date().getMinutes()) + '.json', JSON.stringify(data));
     await C.saveMeta({ lastBackup: Date.now() });
     ui().toast('Backup downloaded. Keep a copy off this device (Drive, Messenger, laptop).', 'ok', 4500);
@@ -99,6 +106,13 @@
       const n = (data.stores.orders || []).length;
       if (!(await ui().confirm({ title: 'Replace everything on this device?', message: 'The backup from ' + U.fmtDateTime(data.exportedAt) + ' (' + n + ' orders) replaces all current data here. Download a backup of the current data first if you might need it.', ok: 'Restore backup', danger: true }))) return;
       try {
+        /* Keep this device's server keys when the backup has none. */
+        const cur = S.settings || {};
+        for (const row of data.stores.kv || []) {
+          if (row.k !== 'settings' || !row.v) continue;
+          if (row.v.online && !row.v.online.key && cur.online) row.v.online.key = cur.online.key || '';
+          if (row.v.sync && !row.v.sync.key && cur.sync) row.v.sync.key = cur.sync.key || '';
+        }
         await M.db.restore(data);
         ui().toast('Restored. Reloading…', 'ok');
         setTimeout(() => location.reload(), 700);
@@ -365,9 +379,9 @@
       }
 
       const syncInfo = { demo: 'Off while sample data is loaded', local: 'Off. Everything stays on this device', offline: 'Offline, ' + pending + ' changes waiting', syncing: 'Sending…', error: 'Retrying: ' + (sy.error || 'server error'), pending: pending + ' changes waiting', ok: 'Up to date' + (sy.lastOk ? ' · ' + U.ago(sy.lastOk) : '') }[sy.state];
-      const url = h('input.input', { value: st.sync.url, placeholder: 'https://…', 'aria-label': 'Sync address', type: 'url', disabled: S.meta.demo });
+      const url = h('input.input', { value: st.sync.url, placeholder: (st.online && st.online.url) || 'https://…/mogoba/api', 'aria-label': 'Server address', type: 'url', disabled: S.meta.demo });
       url.addEventListener('change', () => save({ sync: { url: url.value.trim() } }));
-      const key = h('input.input', { value: st.sync.key, placeholder: 'Access key', 'aria-label': 'Access key', type: 'password', autocomplete: 'off', disabled: S.meta.demo });
+      const key = h('input.input', { value: st.sync.key, placeholder: st.online && st.online.key ? 'Same as online ordering' : 'Register key', 'aria-label': 'Register key', type: 'password', autocomplete: 'off', disabled: S.meta.demo });
       key.addEventListener('change', () => save({ sync: { key: key.value.trim() } }));
       if (owner) parts.push(
         panel(
@@ -379,7 +393,8 @@
             await save({ sync: { enabled: v } }, false);
             M.sync.kick();
           }),
-          h('div.form-grid', ui().field('Server address', url), ui().field('Access key', key)),
+          h('div.form-grid', ui().field('Server address', url), ui().field('Register key', key)),
+          h('small.muted', 'Leave both empty to use the online ordering server.'),
           h('div.row-gap', h('button.btn', { type: 'button', disabled: S.meta.demo || !st.sync.enabled, onclick: () => M.sync.run() }, ui().icon('cloud', 20), 'Sync now'), h('span.muted', { style: { fontSize: '13px' } }, pending + ' change' + (pending === 1 ? '' : 's') + ' in the outbox'))
         )
       );

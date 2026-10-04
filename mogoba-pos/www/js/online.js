@@ -26,6 +26,8 @@
   const state = { orders: {}, since: 0, status: 'off', error: '', seen: new Set(), acked: new Set(), timer: null, nag: null, lastHash: '' };
   const FORMAT = { gcash: [/^\d{13}$/, '13 digits'], maya: [/^[0-9A-F]{12}$/, '12 letters and digits'] };
   const VERIFY_PIN_FROM = 100000;
+  const FULL = 'This device is out of storage for online orders.';
+  const busy = new Set();
 
   const cfg = () => (S.settings && S.settings.online) || {};
   const enabled = () => !!cfg().enabled;
@@ -63,43 +65,50 @@
   }
   const T = {
     publish(snap) {
-      if (isDemo()) return Promise.resolve(lsSet(BR + 'store', snap));
+      if (isDemo()) return lsSet(BR + 'store', snap) ? Promise.resolve(true) : Promise.reject(new Error(FULL));
       return api('PUT', '/pos/store', snap);
     },
     async list() {
       if (isDemo()) {
         const out = [];
+        const old = Date.now() - 2 * 864e5;
         try {
-          for (let i = 0; i < localStorage.length; i++) {
+          for (let i = localStorage.length - 1; i >= 0; i--) {
             const k = localStorage.key(i);
             if (k && k.indexOf(BR + 'order.') === 0) {
               const o = lsGet(k);
-              if (o && o.code) out.push(o);
+              /* Finished demo orders older than two days are cleared so storage never fills. */
+              if (o && o.code && !NEXT[o.status] && o.status !== 'pending' && o.updatedAt < old) localStorage.removeItem(k);
+              else if (o && o.code) out.push(o);
             }
           }
         } catch (e) {
           /* storage blocked */
         }
-        return out;
+        return { orders: out, since: 0 };
       }
-      /* The server pages large polls (screenshots are heavy) and says more: true. */
+      /* The server pages large polls (screenshots are heavy) and says more: true. The cursor
+       * only moves once every page is in hand, so a failed page is fetched again next time. */
+      let since = state.since;
       let out = [];
       for (let page = 0; page < 10; page++) {
-        const j = await api('GET', '/pos/orders?since=' + state.since);
-        state.since = j.now || state.since;
+        const j = await api('GET', '/pos/orders?since=' + since);
+        since = j.now || since;
         out = out.concat(j.orders || []);
         if (!j.more) break;
       }
-      return out;
+      return { orders: out, since };
     },
     async status(o, patch) {
       if (isDemo()) {
         const cur = lsGet(BR + 'order.' + o.code) || o;
+        const moving = patch.status !== cur.status;
+        if (moving && !(NEXT[cur.status] || []).includes(patch.status)) throw new Error(cur.code + ' is now ' + LABEL[cur.status] + '.');
         const at = Date.now();
-        const next = Object.assign({}, cur, patch, { updatedAt: at, timeline: (cur.timeline || []).concat([{ status: patch.status, at, by: 'register' }]) });
+        const next = Object.assign({}, cur, patch, { updatedAt: at, timeline: (cur.timeline || []).concat(moving ? [{ status: patch.status, at, by: 'register' }] : []) });
         next.payment = Object.assign({}, cur.payment, patch.payment || {}, patch.verified != null ? { verified: patch.verified } : {});
         delete next.verified;
-        lsSet(BR + 'order.' + o.code, next);
+        if (!lsSet(BR + 'order.' + o.code, next)) throw new Error(FULL);
         return next;
       }
       const j = await api('POST', '/pos/orders/' + encodeURIComponent(o.code) + '/status', patch);
@@ -203,11 +212,12 @@
   }
 
   async function refresh() {
-    if (!enabled() || !S.user) return;
+    if (!enabled() || !S.ready || refresh.busy) return;
+    refresh.busy = true;
     try {
-      const list = await T.list();
+      const got = await T.list();
       let fresh = 0;
-      for (const o of list) {
+      for (const o of got.orders) {
         const prev = state.orders[o.code];
         state.orders[o.code] = keepProof(prev, o);
         if (o.status === 'pending' && !state.seen.has(o.code)) {
@@ -215,6 +225,7 @@
           if (!prev && state.status !== 'off') fresh++;
         }
       }
+      state.since = got.since;
       state.status = 'ok';
       state.error = '';
       if (fresh) {
@@ -224,6 +235,8 @@
     } catch (e) {
       state.status = 'error';
       state.error = e.name === 'AbortError' ? 'The server took too long to answer' : e.message;
+    } finally {
+      refresh.busy = false;
     }
     M.bus.emit('online');
   }
@@ -250,8 +263,13 @@
     refresh();
     state.timer = setInterval(refresh, isDemo() ? 4000 : 10000);
     state.nag = setInterval(() => {
-      if (S.user && unacked().length) chime();
+      if (unacked().length) chime();
     }, 15000);
+  }
+  function stop() {
+    clearInterval(state.timer);
+    clearInterval(state.nag);
+    state.timer = state.nag = null;
   }
 
   addEventListener('storage', (e) => {
@@ -262,7 +280,7 @@
   M.bus.on('change', publishSoon);
   M.bus.on('settings', () => {
     state.lastHash = '';
-    if (S.user) start();
+    if (S.ready) start();
   });
 
   const list = () => Object.values(state.orders).sort((a, b) => b.createdAt - a.createdAt);
@@ -296,9 +314,10 @@
       unit: l.unit,
       qty: l.qty,
       note: l.note || '',
-      sent: false,
+      /* The kitchen starts on it once accepted, so removing a line later needs approval. */
+      sent: true,
     }));
-    if (o.deliveryFee > 0) lines.push({ id: U.uid(), itemId: null, name: 'Delivery fee', cat: 'custom', variantId: '', variantName: '', mods: [], unit: o.deliveryFee, qty: 1, note: '', sent: false });
+    if (o.deliveryFee > 0) lines.push({ id: U.uid(), itemId: null, name: 'Delivery fee', cat: 'custom', variantId: '', variantName: '', mods: [], unit: o.deliveryFee, qty: 1, note: '', sent: true });
     return lines;
   }
 
@@ -311,7 +330,33 @@
     return next;
   }
 
+  /* Accept on the server (or demo bridge) first: if the customer cancelled in the meantime it
+   * refuses, and nothing is recorded here. Then record the sale or ticket once, and send its id. */
   async function accept(o, etaMin, check) {
+    if (busy.has(o.code)) return null;
+    busy.add(o.code);
+    try {
+      const pay = o.payment || {};
+      const paid = pay.method === 'gcash' || pay.method === 'maya';
+      if (paid && !S.shift) throw new Error('Open a shift before accepting paid online orders.');
+      let cur = o;
+      if (o.status === 'pending') {
+        const extra = { verified: paid, etaAt: Date.now() + (etaMin || cfg().prepMinutes || 20) * 60000 };
+        if (check) extra.payment = { amountReceived: check.amount, verifiedBy: check.by, verifiedAt: Date.now() };
+        cur = await setStatus(o, 'accepted', extra);
+      }
+      const posOrderId = await recordLocal(cur);
+      if (cur.posOrderId === posOrderId) return cur;
+      const next = await T.status(cur, { status: cur.status, posOrderId });
+      state.orders[o.code] = keepProof(cur, next);
+      M.bus.emit('online');
+      return next;
+    } finally {
+      busy.delete(o.code);
+    }
+  }
+
+  async function recordLocal(o) {
     const pay = o.payment || {};
     const cart = {
       type: o.fulfillment.type === 'delivery' ? 'delivery' : 'take',
@@ -321,34 +366,30 @@
       source: 'online',
       onlineCode: o.code,
     };
-    /* A retry after a failed status update must not record the sale twice. */
+    /* A retry must not record the sale twice. */
     const prior = S.today.find((x) => x.onlineCode === o.code && x.status !== 'voided') || S.open.find((x) => x.onlineCode === o.code);
-    let posOrderId = '';
-    if (prior) posOrderId = prior.id;
-    else if (pay.method === 'gcash' || pay.method === 'maya') {
-      if (!S.shift) throw new Error('Open a shift before accepting paid online orders.');
+    if (prior) return prior.id;
+    if (pay.method === 'gcash' || pay.method === 'maya') {
+      if (!S.shift) throw new Error('Open a shift to record this paid order.');
       const sale = await C.recordSale(cart, [{ method: pay.method, amount: o.total, tendered: o.total, change: 0, ref: pay.ref || '' }]);
-      posOrderId = sale.id;
-    } else {
-      const t = await C.createTicket(Object.assign(cart, { table: '', customer: o.customer.name + ' · ' + o.code }));
-      posOrderId = t.id;
+      return sale.id;
     }
-    const extra = { verified: pay.method !== 'cash', etaAt: Date.now() + (etaMin || cfg().prepMinutes || 20) * 60000, posOrderId };
-    if (check) extra.payment = { amountReceived: check.amount, verifiedBy: check.by, verifiedAt: Date.now() };
-    return setStatus(o, 'accepted', extra);
+    const t = await C.createTicket(Object.assign(cart, { table: '', customer: o.customer.name + ' · ' + o.code }));
+    return t.id;
   }
 
   /* Staff confirm the money is really in the wallet app before cooking. */
   function verifySheet(o, eta, done) {
     const pay = o.payment || {};
     let amount = 0;
-    const s = ui().sheet({ title: 'Verify payment · ' + o.code, cls: 'narrow', icon: 'drawer' });
+    const s = ui().sheet({ title: 'Verify ' + o.code, cls: 'narrow', icon: 'drawer' });
     const warn = h('div.stack-sm');
     const okBtn = h('button.btn.go.lg.block', { type: 'button', disabled: true }, 'Verify and accept');
     const kp = ui().keypad((v) => {
       amount = v;
       const diff = amount - o.total;
       okBtn.disabled = !(amount > 0) || diff < 0;
+      okBtn.textContent = amount > 0 && diff < 0 ? 'Underpaid by ' + U.peso(-diff) : 'Verify and accept';
       U.mount(
         warn,
         amount > 0 && diff < 0 ? h('div.oo-warn', ui().icon('alert', 16), 'Underpaid by ' + U.peso(-diff) + '. Reject it or ask for the rest.') : null,
@@ -378,22 +419,30 @@
         dupProof ? h('div.oo-warn', ui().icon('alert', 16), 'Same screenshot as ' + dupProof.code + '.') : null
       ),
       h('p.lead', { style: { margin: '0 0 10px' } }, 'Find this payment in the ' + (C.PAY[pay.method] || '') + ' app and type the amount you received.'),
-      kp.el,
-      warn
+      warn,
+      kp.el
     );
+    let working = false;
     okBtn.onclick = async () => {
-      let by = S.user;
-      if (o.total >= VERIFY_PIN_FROM || dup || dupProof) {
-        by = await ui().approve('refund', 'Approve payment', 'Large or flagged payments need a manager PIN.');
-        if (!by) return;
-      }
+      if (working) return;
+      working = true;
+      okBtn.disabled = true;
       try {
+        let by = S.user;
+        if (o.total >= VERIFY_PIN_FROM || dup || dupProof) {
+          by = await ui().approve('refund', 'Approve payment', 'Large or flagged payments need a manager PIN.');
+          if (!by) return;
+        }
         await accept(o, eta, { amount, by: by.name });
         s.close();
         ui().toast(o.code + ' accepted.', 'ok');
         done();
       } catch (e) {
         ui().toast(e.message, 'err');
+        refresh();
+      } finally {
+        working = false;
+        okBtn.disabled = !(amount >= o.total);
       }
     };
     s.setFoot(h('button.btn.danger', { type: 'button', onclick: () => (s.close(), reject(o, done)) }, 'Reject'), okBtn);
@@ -411,12 +460,20 @@
     const f = o.fulfillment || {};
     const when = f.time && f.time !== 'asap' ? 'for ' + U.fmtTime(+f.time) : 'ASAP';
     const actions = h('div.oo-actions');
+    /* One tap at a time: every action button on the card is off until the first one finishes. */
     const act = async (fn) => {
+      if (actions.dataset.busy) return;
+      actions.dataset.busy = '1';
+      actions.querySelectorAll('button').forEach((b) => (b.disabled = true));
       try {
         await fn();
-        redraw();
       } catch (e) {
         ui().toast(e.message, 'err');
+        refresh();
+      } finally {
+        delete actions.dataset.busy;
+        actions.querySelectorAll('button').forEach((b) => (b.disabled = false));
+        redraw();
       }
     };
     if (o.status === 'pending') {
@@ -427,6 +484,9 @@
       );
     } else if (NEXT[o.status]) {
       const nx = NEXT[o.status].filter((x) => x !== 'cancelled' && !(x === 'out_for_delivery' && f.type !== 'delivery'));
+      /* Accepted but the sale or ticket did not save on this register (for example a dropped
+       * connection mid-way): record it now. */
+      if (!o.posOrderId) actions.append(h('div.oo-warn', ui().icon('alert', 16), 'Not on the register yet. ', h('button.link', { type: 'button', onclick: () => act(() => accept(o)) }, pay.method === 'cash' ? 'Open ticket' : 'Record sale')));
       actions.append(h('div.row-gap', nx.map((x) => h('button.btn', { type: 'button', class: x === 'completed' ? 'go' : '', onclick: () => act(() => setStatus(o, x)) }, { preparing: 'Start preparing', ready: f.type === 'delivery' ? 'Ready for rider' : 'Ready for pickup', out_for_delivery: 'Out for delivery', completed: f.type === 'delivery' ? 'Delivered' : 'Picked up' }[x] || LABEL[x]))));
     }
     return h(
@@ -556,5 +616,5 @@
     M.bus.emit('orders:tab', 'online');
   }
 
-  M.online = { start, refresh, publish, snapshot, list, pendingCount, panel, inbox, accept, setStatus, siteUrl, state, LABEL, duplicateRef, duplicateProof, refFormatOk };
+  M.online = { start, stop, refresh, publish, snapshot, list, pendingCount, panel, inbox, accept, setStatus, siteUrl, state, LABEL, duplicateRef, duplicateProof, refFormatOk };
 })((window.M = window.M || {}));

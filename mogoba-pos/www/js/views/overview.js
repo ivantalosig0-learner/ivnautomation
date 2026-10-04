@@ -7,6 +7,7 @@
   const C = M.core;
   const S = M.state;
   const h = U.h;
+  const pl = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
   const ui = () => M.ui;
 
   const OPEN_H = 9;
@@ -142,8 +143,13 @@
       if (low.length) items.push({ level: 'warn', title: low.length + ' running low', sub: low.slice(0, 3).map((i) => i.name).join(', '), count: low.length, go: () => M.stockView.reorderSheet() });
       const exp = M.stockView.expiringLots();
       const expired = exp.filter((x) => x.state === 'expired');
-      if (exp.length) items.push({ level: expired.length ? 'bad' : 'warn', title: expired.length ? expired.length + ' expired lots' : exp.length + ' lots expire soon', sub: exp.slice(0, 3).map((x) => x.ing.name).join(', '), count: exp.length, go: () => M.app.go('stock') });
-      if (S.open.length) items.push({ level: 'ok', title: S.open.length + ' open tickets', sub: S.open.slice(0, 3).map((o) => (o.table ? 'T' + o.table : o.customer)).join(', '), count: S.open.length, go: () => M.app.go('register') });
+      if (exp.length) items.push({ level: expired.length ? 'bad' : 'warn', title: expired.length ? pl(expired.length, 'expired lot') : pl(exp.length, 'lot') + ' expiring soon', sub: (expired.length ? expired : exp).slice(0, 3).map((x) => x.ing.name).join(', '), count: expired.length || exp.length, go: () => M.app.go('stock') });
+      if (S.open.length) items.push({ level: 'ok', title: pl(S.open.length, 'open ticket'), sub: S.open.slice(0, 3).map((o) => (o.table ? 'T' + o.table : o.customer)).join(', '), count: S.open.length, go: () => M.app.go('register') });
+      /* Business days, hours and expiry are Manila time; a tablet set to another zone or a
+       * clock that ran backwards would file sales under the wrong day. */
+      if (new Date().getTimezoneOffset() !== -480) items.push({ level: 'bad', title: 'Tablet time zone is not Manila', sub: 'Set it to Asia/Manila in the tablet settings' });
+      const lastPaid = S.today.reduce((m, o) => Math.max(m, o.paidAt || 0), 0);
+      if (lastPaid - now > 10 * 60000) items.push({ level: 'bad', title: 'Tablet clock is behind', sub: 'The last sale is dated ' + U.fmtTime(lastPaid) + '. Check the date and time' });
       if (!S.shift) items.push({ level: 'warn', title: 'No open shift', sub: 'Open one to take payments', go: () => M.drawerView.openShiftFlow() });
       if (!S.meta.demo && C.can('*') && now - (S.meta.lastBackup || 0) > 3 * 864e5) items.push({ level: 'warn', title: 'Backup is overdue', sub: S.meta.lastBackup ? 'Last ' + U.ago(S.meta.lastBackup) : 'Never backed up', go: () => M.app.go('settings') });
 

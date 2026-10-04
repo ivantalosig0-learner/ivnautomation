@@ -64,7 +64,10 @@
       body.style.opacity = '.55';
       const [from, to] = bounds(view.range);
       const [pf, pt] = prevBounds(from, to);
-      const [orders, prevOrders, moves, counts] = await Promise.all([C.ordersBetween(from, to), C.ordersBetween(pf, pt), C.movesBetween(from, to), C.countsBetween(from, to)]);
+      const [orders, prevAll, moves, counts] = await Promise.all([C.ordersBetween(from, to), C.ordersBetween(pf, pt), C.movesBetween(from, to), C.countsBetween(from, to)]);
+      /* A range that ends today is still running: compare with the previous one up to the same moment. */
+      const cut = to === U.dayKey() ? Date.now() - (U.daysBetween(from, to) + 1) * 864e5 : Infinity;
+      const prevOrders = prevAll.filter((o) => !(o.paidAt > cut));
       if (my !== token) return;
       body.style.opacity = '';
       const menu = C.menu();
@@ -215,7 +218,7 @@
                     .concat(refunds.flatMap((o) => o.refunds.map((x) => ({ at: x.at, o, t: 'Refund', amt: x.amount, why: x.reason, who: x.approver }))))
                     .sort((a, b) => b.at - a.at)
                     .slice(0, 20)
-                    .map((x) => h('button.row', { type: 'button', style: { minHeight: '52px' }, onclick: () => M.ordersView.detail(x.o) }, h('div.grow', h('div.t', x.t + ' · ' + x.o.no), h('div.s', U.fmtDateTime(x.at) + ' · ' + x.why + (x.who ? ' · ok ' + x.who.name : ''))), h('span.amt', U.peso(x.amt))))
+                    .map((x) => h('button.row', { type: 'button', style: { minHeight: '52px' }, onclick: () => M.ordersView.detail(x.o) }, h('div.grow', h('div.t', x.t + ' · ' + x.o.no), h('div.s', U.fmtDateTime(x.at) + ' · ' + x.why + (x.who ? ' · approved by ' + x.who.name : ''))), h('span.amt', U.peso(x.amt))))
                 )
               : h('p.muted', { style: { marginTop: '8px' } }, 'None in this period.')
           )
@@ -233,6 +236,10 @@
           waste[key] = (waste[key] || 0) + v;
           wasteTotal += v;
         } else if (m.type === 'receive') received += m.qty * (m.cost || 0);
+      }
+      if (r.voidWaste > 0) {
+        waste['Voided orders, already made'] = r.voidWaste;
+        wasteTotal += r.voidWaste;
       }
       const variance = counts.reduce((t, c) => t + c.value, 0);
       parts.push(

@@ -31,6 +31,7 @@
     const u = usage[ing.id];
     return u > 0 ? Math.max(0, ing.onHand) / u : null;
   };
+  const coverDays = (dl) => (dl < 1 ? 'under 1 day' : (dl < 3 ? U.trim(Math.floor(dl * 10) / 10) : Math.floor(dl)) + (dl >= 1 && dl < 2 ? ' day' : ' days'));
   const coverText = (dl) => (dl < 1 ? 'under 1 day' : (dl < 3 ? U.trim(Math.floor(dl * 10) / 10) : Math.floor(dl)) + ' d cover');
   const expiryDefault = (ing) => (ing && ing.shelfLife ? U.addDays(today(), ing.shelfLife) : '');
 
@@ -113,7 +114,7 @@
           c.addEventListener('input', () => ((r.cost = c.value), recalc()));
           const e = dateIn(r.exp, 'Expiry date');
           e.addEventListener('change', () => (r.exp = e.value));
-          const quick = h('span.quick-exp', [1, 3, 7].map((d) => h('button', { type: 'button', 'aria-label': 'Expires in ' + d + ' days', onclick: () => ((r.exp = U.addDays(today(), d)), (e.value = r.exp)) }, '+' + d + 'd')));
+          const quick = h('span.quick-exp', [1, 3, 7].map((d) => h('button', { type: 'button', 'aria-label': d === 1 ? 'Expires tomorrow' : 'Expires in ' + d + ' days', onclick: () => ((r.exp = U.addDays(today(), d)), (e.value = r.exp)) }, '+' + d + 'd')));
           return h(
             'div.recv-row',
             h('label.field', h('span', 'Item'), sel),
@@ -163,12 +164,39 @@
     );
   }
 
+  /* ---------- correct a lot's use-by date ---------- */
+  function lotDateSheet(ing, lot, done) {
+    const s = ui().sheet({ title: 'Use-by date', cls: 'narrow', icon: 'clock' });
+    const e = dateIn(lot.exp, 'Use-by date');
+    s.setBody(
+      h('p.lead', { style: { margin: '0 0 12px' } }, ing.name + ' · ' + U.fmtQty(lot.qty, ing.unit)),
+      h('label.field', h('span', 'Use by'), e),
+      h('span.quick-exp', { style: { marginTop: '10px' } }, [1, 3, 7].map((d) => h('button', { type: 'button', onclick: () => (e.value = U.addDays(today(), d)) }, d === 1 ? 'Tomorrow' : 'In ' + d + ' days')))
+    );
+    s.setFoot(
+      h('button.btn', { type: 'button', onclick: () => (e.value = '') }, 'No date'),
+      h('button.btn.primary', {
+        type: 'button',
+        onclick: async () => {
+          try {
+            await C.setLotExpiry(ing.id, lot.id, e.value);
+            s.close();
+            ui().toast('Use-by date saved.', 'ok');
+            done();
+          } catch (err) {
+            ui().toast(err.message, 'err');
+          }
+        },
+      }, 'Save')
+    );
+  }
+
   /* ---------- add or remove ---------- */
   function adjustSheet(ingId, startDir) {
     let dir = startDir || 'remove';
     let reason = '';
     let note = '';
-    const rows = [{ ing: ingId || '', qty: '', exp: '' }];
+    const rows = [{ ing: ingId || '', qty: '', exp: expiryDefault(S.ings[ingId]) }];
     const s = ui().sheet({ title: 'Add or remove stock', icon: 'stock' });
     function draw() {
       const reasons = REASONS[dir];
@@ -478,7 +506,7 @@
           h(
             'dl.kv',
             h('dt', 'Cover'),
-            h('dd', dl == null ? '-' : coverText(dl)),
+            h('dd', dl == null ? '-' : coverDays(dl)),
             h('dt', 'Avg cost'),
             h('dd', U.peso(Math.round(perBuy(ing))) + ' / ' + ing.buyUnit),
             h('dt', 'Value'),
@@ -500,6 +528,7 @@
                     { style: { minHeight: '48px', padding: '8px 2px' } },
                     h('div.grow', h('div.t', U.fmtQty(l.qty, ing.unit)), h('div.s', l.exp ? 'Use by ' + U.fmtDay(l.exp) : 'No date')),
                     l.exp ? ui().expiryChip(L.daysUntil(l.exp, t), state) : null,
+                    canEdit ? h('button.btn.sm', { type: 'button', 'aria-label': 'Change use-by date', onclick: () => lotDateSheet(ing, l, () => (s.close(), detailSheet(ing.id))) }, ui().icon('edit', 16), 'Date') : null,
                     canEdit && state === 'expired' ? h('button.btn.sm.danger', { type: 'button', onclick: async () => (await writeOff([{ ing, lot: l }]), s.close()) }, 'Write off') : null
                   );
                 })
@@ -535,6 +564,7 @@
         h('button.btn', { type: 'button', onclick: () => receiveSheet() }, ui().icon('truck', 20), h('span', 'Receive')),
         h('button.btn', { type: 'button', onclick: () => adjustSheet() }, ui().icon('stock', 20), h('span', 'Add / remove')),
         h('button.btn', { type: 'button', onclick: () => countSheet() }, ui().icon('count', 20), h('span', 'Count')),
+        h('button.btn', { type: 'button', onclick: () => reorderSheet() }, ui().icon('list', 20), h('span', 'Reorder')),
         h('button.icon-btn.boxed', { type: 'button', 'aria-label': 'New stock item', onclick: () => editSheet(null) }, ui().icon('plus'), h('span.show-phone', 'New item'))
       );
     }
@@ -586,8 +616,8 @@
                   h(
                     'button.exp-item',
                     { type: 'button', onclick: () => detailSheet(x.ing) },
-                    h('span.grow', h('b', x.ing.name), h('span.muted', U.fmtQty(x.lot.qty, x.ing.unit))),
-                    ui().expiryChip(x.days, x.state)
+                    h('b', x.ing.name),
+                    h('span.exp-meta', h('span.muted', U.fmtQty(x.lot.qty, x.ing.unit)), ui().expiryChip(x.days, x.state))
                   )
                 )
               )
@@ -623,8 +653,8 @@
             h('div.grow', h('div.t', ing.name), h('div.s', ing.group + (dl != null ? ' · ' + coverText(dl) : ''))),
             h('div.stock-level.hide-phone', ui().level(ing.onHand, Math.max(ing.par, ing.onHand), { state: st, marker: ing.reorder, thin: true, label: ing.name + ' against par' })),
             h('span.amt', { style: { minWidth: '84px' } }, U.fmtQty(ing.onHand, ing.unit)),
-            n && n.state !== 'ok' ? ui().expiryChip(n.days, n.state) : null,
-            ui().badge(ui().STOCK_BADGE[st][0], ui().STOCK_BADGE[st][1])
+            h('span.exp-slot', n && n.state !== 'ok' ? ui().expiryChip(n.days, n.state) : null),
+            h('span.st-slot', ui().badge(ui().STOCK_BADGE[st][0], ui().STOCK_BADGE[st][1]))
           );
         })
       );

@@ -37,7 +37,9 @@
         h('h2', 'Set up the register'),
         h('button.choice', { type: 'button', onclick: () => run(true) }, ui().icon('sparkle', 26), h('div', h('b', 'Explore with sample data'), h('span', 'Two weeks of made-up sales, stock and shifts. Remove it from Settings when ready.'))),
         h('button.choice', { type: 'button', onclick: owner }, ui().icon('pos', 26), h('div', h('b', 'Start Mogoba for real'), h('span', 'Mogoba’s full menu and recipes, stock at zero, and your own owner PIN.'))),
-        h('p.hint', 'You can switch later in Settings.')
+        h('p.hint', 'You can switch later in Settings.'),
+        /* Public preview hosts share one storage origin with every other page they serve. */
+        /githack\.com$|githubusercontent\.com$/.test(location.hostname) ? h('p.hint', { style: { color: 'var(--warn)' } }, 'Preview link: for trying the app only. Run real sales from Mogoba’s own server or the installed app.') : null
       );
     }
     function owner() {

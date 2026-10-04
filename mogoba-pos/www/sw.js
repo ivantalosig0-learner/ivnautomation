@@ -1,6 +1,6 @@
 /* Mogoba POS: offline cache. The whole app is cached on install, served cache-first,
  * and replaced atomically when a new version is deployed (bump VERSION). */
-const VERSION = 'mogoba-pos-0843ca486b';
+const VERSION = 'mogoba-pos-d70ff2c45e';
 const FILES = [
   "assets/fonts/bhs-ko.woff2",
   "assets/fonts/bhs-latin.woff2",
@@ -60,7 +60,7 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim())
+    caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith('mogoba-pos-') && k !== VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim())
   );
 });
 

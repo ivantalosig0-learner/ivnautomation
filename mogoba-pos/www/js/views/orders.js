@@ -257,7 +257,7 @@
             'div.list',
             list.map((o) =>
               h(
-                'div.row',
+                'div.row.kq-row',
                 h('span.q-no', '#' + o.queue),
                 h('span.wait', { class: waitClass(o.paidAt), title: 'Minutes waiting' }, Math.max(0, Math.round((Date.now() - o.paidAt) / 60000)) + "'"),
                 h('button.grow', { type: 'button', style: { textAlign: 'left' }, onclick: () => open(o) }, h('div.t', summary(o)), h('div.s', U.fmtTime(o.paidAt) + ' · ' + C.TYPES[o.type] + (o.table ? ' T' + o.table : '') + (o.customer ? ' · ' + o.customer : ''))),

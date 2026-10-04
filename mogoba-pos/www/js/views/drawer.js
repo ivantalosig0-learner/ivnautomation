@@ -215,7 +215,7 @@
                 h('dt', 'Expected'),
                 h('dd.big', U.peso(d.expected))
               ),
-              cash.length ? h('div', h('div.group-label', 'Cash in / out'), h('div.list', cash.map((c) => h('div.row', { style: { minHeight: '48px', padding: '8px 2px' } }, ui().icon(c.type === 'in' ? 'in' : 'out', 20), h('div.grow', h('div.t', c.reason), h('div.s', U.fmtTime(c.at) + ' · ' + (c.by ? c.by.name : '') + (c.approver && c.approver.id !== (c.by && c.by.id) ? ' · ok ' + c.approver.name : ''))), h('span.amt', (c.type === 'in' ? '+' : '−') + U.peso(c.amount)))))) : null
+              cash.length ? h('div', h('div.group-label', 'Cash in / out'), h('div.list', cash.map((c) => h('div.row', { style: { minHeight: '48px', padding: '8px 2px' } }, ui().icon(c.type === 'in' ? 'in' : 'out', 20), h('div.grow', h('div.t', c.reason), h('div.s', U.fmtTime(c.at) + ' · ' + (c.by ? c.by.name : '') + (c.approver && c.approver.id !== (c.by && c.by.id) ? ' · approved by ' + c.approver.name : ''))), h('span.amt', (c.type === 'in' ? '+' : '−') + U.peso(c.amount)))))) : null
             ),
             h(
               'div.panel.glass.stack',

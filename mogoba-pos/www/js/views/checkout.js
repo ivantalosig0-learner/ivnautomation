@@ -147,7 +147,7 @@
   }
 
   /* ---------- reason picker for taking back things the kitchen started ---------- */
-  function askVoidReason(title, withWaste) {
+  function askVoidReason(title, withWaste, okLabel, lead) {
     return new Promise((res) => {
       let done = false;
       let reason = '';
@@ -157,7 +157,7 @@
       inp.addEventListener('input', () => (reason = inp.value));
       const reasons = ['Customer changed their mind', 'Entered by mistake', 'Kitchen mistake', 'Took too long'];
       s.setBody(
-        h('p.lead', 'This item was already sent to the kitchen. The removal is logged with your name.'),
+        h('p.lead', lead || 'This item was already sent to the kitchen. The removal is logged with your name.'),
         h('div.chips', reasons.map((r) => h('button.chip', { type: 'button', onclick: () => ((inp.value = r), (reason = r)) }, r))),
         h('div', { style: { marginTop: '10px' } }, inp),
         withWaste
@@ -180,7 +180,7 @@
               s.close();
             },
           },
-          'Remove item'
+          okLabel || 'Remove item'
         )
       );
     });
@@ -488,7 +488,7 @@
           'div.pay-due',
           h('span.lbl', payments.length ? 'Still to pay' : 'Amount due'),
           h('span.big', { class: remaining <= 0 ? 'done' : '' }, U.peso(Math.max(0, remaining))),
-          payments.length ? h('span.muted', 'of ' + U.peso(total)) : h('span.muted', C.TYPES[c.type] + (c.table ? ' · Table ' + c.table : '') + ' · ' + C.cartTotals().items + ' items')
+          payments.length ? h('span.muted', 'of ' + U.peso(total)) : h('span.muted', C.TYPES[c.type] + (c.table ? ' · Table ' + c.table : '') + ' · ' + C.cartTotals().items + (C.cartTotals().items === 1 ? ' item' : ' items'))
         ),
         payments.length
           ? h(
@@ -690,11 +690,14 @@
         act('trash', c.held ? 'Delete this ticket' : 'Clear order', c.lines.some((l) => l.sent) ? 'Needs a manager: the kitchen has it' : 'Start over', async () => {
           if (!c.lines.length && !c.held) return s.close();
           let ap = null;
+          let why = null;
           if (c.lines.some((l) => l.sent)) {
             ap = await ui().approve('void', 'Approve clearing', 'This ticket was sent to the kitchen.');
             if (!ap) return;
+            why = await askVoidReason(c.held ? 'Why delete this ticket?' : 'Why clear this order?', true, c.held ? 'Delete ticket' : 'Clear order', 'The kitchen already has it. This is logged with your name.');
+            if (!why) return;
           } else if (!(await ui().confirm({ title: 'Clear this order?', message: 'All ' + c.lines.length + ' items will be removed.', ok: 'Clear order', danger: true }))) return;
-          await C.clearCart(ap);
+          await C.clearCart(ap, why);
           s.close();
           ui().closeAll();
         }, true)

@@ -223,7 +223,9 @@
       .map((r) =>
         r
           .map((v) => {
-            const s = v == null ? '' : String(v);
+            let s = v == null ? '' : String(v);
+            /* Spreadsheets run cells that start with = + - @ as formulas; customer text could. */
+            if (/^[=+\-@\t\r]/.test(s) && !/^-?\d+(\.\d+)?$/.test(s)) s = "'" + s;
             return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
           })
           .join(',')

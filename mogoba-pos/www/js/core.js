@@ -326,6 +326,19 @@
     t.put('audit', { id: U.uid(), at: Date.now(), by: who(S.user), approver: who(approver), action, detail: detail || '' });
   }
 
+  /* One business write at a time. Builders read the in-memory state (shift totals, receipt
+   * numbers, stock), which only updates after a commit, so two quick taps must not overlap. */
+  let chain = Promise.resolve();
+  function exclusive(fn) {
+    const run = chain.then(() => fn());
+    chain = run.then(
+      () => {},
+      () => {}
+    );
+    return run;
+  }
+  const serial = (f) => (...a) => exclusive(() => f(...a));
+
   async function commit(stores, fn) {
     const all = Array.from(new Set(stores.concat(['outbox', 'audit'])));
     const after = await DB.write(all, fn);
@@ -573,19 +586,33 @@
     cartChanged();
   }
 
-  async function clearCart(approver) {
+  /* why = {reason, wasted} when the kitchen already had it: prepared food goes to waste. */
+  async function clearCart(approver, why) {
     const c = S.cart;
     const sent = c.lines.some((l) => l.sent);
-    if (c.held) {
-      await commit(['orders'], (t) => {
-        t.del('orders', c.id);
-        audit(t, 'ticket.delete', (c.table || c.customer || 'Ticket') + ' · ' + c.lines.length + ' lines', approver);
+    const at = Date.now();
+    let st = { moves: [], ings: {} };
+    if (sent && why && why.wasted) {
+      const use = {};
+      for (const l of c.lines.filter((x) => x.sent)) {
+        const u = L.unitRecipe(l, menu());
+        for (const k in u) use[k] = (use[k] || 0) + u[k] * l.qty;
+      }
+      st = stockMoves(ctx(), use, -1, 'waste', c.id, at, 'Voided after kitchen: ' + why.reason);
+    }
+    const detail = (c.table || c.customer || 'Ticket') + ' · ' + c.lines.length + ' lines' + (why ? ' · ' + why.reason + (why.wasted ? ' · wasted' : '') : '');
+    if (c.held || sent) {
+      await commit(['orders', 'moves', 'ings'], (t) => {
+        if (c.held) t.del('orders', c.id);
+        for (const m of st.moves) t.put('moves', m);
+        for (const k in st.ings) t.put('ings', st.ings[k]);
+        if (st.moves.length) outbox(t, 'stock.moves', { moves: st.moves }, at);
+        audit(t, c.held ? 'ticket.delete' : 'ticket.clear', detail, approver);
         return () => {
+          applyIngs(st.ings);
           S.open = S.open.filter((o) => o.id !== c.id);
         };
       });
-    } else if (sent) {
-      await commit([], (t) => audit(t, 'ticket.clear', c.lines.length + ' lines', approver));
     }
     S.cart = newCart();
     await DB.write(['kv'], (t) => t.del('kv', 'draft'));
@@ -686,6 +713,9 @@
 
   async function voidOrder(order, opts) {
     const at = Date.now();
+    /* Build from the saved copy, not the one the screen was showing. */
+    order = (await DB.get('orders', order.id)) || order;
+    if (order.status === 'voided') throw new Error('Order #' + order.queue + ' is already voided.');
     const b = buildVoid(ctx(), order, opts, at);
     await commit(['orders', 'moves', 'ings', 'shifts'], (t) => {
       t.put('orders', b.order);
@@ -705,7 +735,9 @@
 
   async function refundOrder(order, opts) {
     const at = Date.now();
+    order = (await DB.get('orders', order.id)) || order;
     const b = buildRefund(ctx(), order, opts, at);
+    if (!b.refund.lines.length) throw new Error('Those items were already refunded.');
     await commit(['orders', 'moves', 'ings', 'shifts'], (t) => {
       t.put('orders', b.order);
       for (const m of b.moves) t.put('moves', m);
@@ -798,10 +830,26 @@
     M.bus.emit('stock');
     return b;
   }
-  const receive = (rows, note) => stockOp('receive', buildReceive(ctx(), rows, note || {}, Date.now()), rows.length + ' items' + (note && note.supplier ? ' from ' + note.supplier : ''));
-  const waste = (rows, reason) => stockOp('waste', buildWaste(ctx(), rows, reason, Date.now()), rows.length + ' items · ' + reason);
-  const count = (rows, note) => stockOp('count', buildCount(ctx(), rows, note, Date.now()), rows.length + ' items counted');
-  const adjust = (rows, reason) => stockOp('adjust', buildAdjust(ctx(), rows, reason, Date.now()), rows.map((r) => (r.qty > 0 ? '+' : '') + U.trim(r.qty) + ' ' + (S.ings[r.ing] ? S.ings[r.ing].name : r.ing)).join(', ') + ' · ' + reason);
+  const receive = serial((rows, note) => stockOp('receive', buildReceive(ctx(), rows, note || {}, Date.now()), rows.length + ' items' + (note && note.supplier ? ' from ' + note.supplier : '')));
+  const waste = serial((rows, reason) => stockOp('waste', buildWaste(ctx(), rows, reason, Date.now()), rows.length + ' items · ' + reason));
+  const count = serial((rows, note) => stockOp('count', buildCount(ctx(), rows, note, Date.now()), rows.length + ' items counted'));
+  const adjust = serial((rows, reason) => stockOp('adjust', buildAdjust(ctx(), rows, reason, Date.now()), rows.map((r) => (r.qty > 0 ? '+' : '') + U.trim(r.qty) + ' ' + (S.ings[r.ing] ? S.ings[r.ing].name : r.ing)).join(', ') + ' · ' + reason));
+
+  /* Correct a lot's use-by date (misread label, supplier's real date). Quantity is untouched;
+   * a zero-quantity movement keeps the change in the item's history. */
+  function buildLotExpiry(ctx, ingId, lotId, exp, at) {
+    const cur = ctx.ings[ingId];
+    if (!cur) throw new Error('That item is gone.');
+    const lots = L.lotsOf(cur);
+    const old = lots.find((l) => l.id === lotId);
+    if (!old) throw new Error('That lot was used up. Reopen the item.');
+    if (exp && !/^\d{4}-\d{2}-\d{2}$/.test(exp)) throw new Error('Pick a date.');
+    const ing = Object.assign({}, cur, { lots: L.sortLots(lots.map((l) => (l.id === lotId ? Object.assign({}, l, { exp: exp || '' }) : l))), updatedAt: at });
+    const day = (d) => (d ? U.fmtDay(d) : 'no date');
+    const move = { id: U.uid(), ing: ingId, qty: 0, type: 'adjust', ref: lotId, at, day: U.dayKey(at), cost: cur.cost, by: ctx.user ? ctx.user.id : '', note: 'Use-by changed: ' + day(old.exp) + ' to ' + day(exp), exp: exp || '' };
+    return { moves: [move], ings: { [ingId]: ing } };
+  }
+  const setLotExpiry = serial((ingId, lotId, exp) => stockOp('adjust', buildLotExpiry(ctx(), ingId, lotId, exp, Date.now()), (S.ings[ingId] ? S.ings[ingId].name : ingId) + ' · use-by ' + (exp || 'none')));
 
   async function saveIngredient(ing) {
     const isNew = !ing.id;
@@ -991,26 +1039,27 @@
     addMore,
     setQty,
     patchLine,
-    removeSent,
+    removeSent: serial(removeSent),
     setCart,
-    clearCart,
-    holdCart,
-    resume,
-    completeSale,
-    recordSale,
-    createTicket,
-    voidOrder,
-    refundOrder,
-    setKitchen,
+    clearCart: serial(clearCart),
+    holdCart: serial(holdCart),
+    resume: serial(resume),
+    completeSale: serial(completeSale),
+    recordSale: serial(recordSale),
+    createTicket: serial(createTicket),
+    voidOrder: serial(voidOrder),
+    refundOrder: serial(refundOrder),
+    setKitchen: serial(setKitchen),
     discLabel,
-    openShift,
-    cashMove,
-    closeShift,
+    openShift: serial(openShift),
+    cashMove: serial(cashMove),
+    closeShift: serial(closeShift),
     drawer,
     receive,
     waste,
     count,
     adjust,
+    setLotExpiry,
     saveIngredient,
     usedIn,
     saveItem,
@@ -1027,6 +1076,6 @@
     auditLog,
     usage,
     verifyStock,
-    build: { buildSale, buildVoid, buildRefund, buildReceive, buildWaste, buildAdjust, buildCount, buildOpenShift, buildCloseShift, buildCash, emptyTot },
+    build: { buildSale, buildVoid, buildRefund, buildReceive, buildWaste, buildAdjust, buildCount, buildLotExpiry, buildOpenShift, buildCloseShift, buildCash, emptyTot },
   };
 })((window.M = window.M || {}));

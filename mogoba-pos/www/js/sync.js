@@ -10,10 +10,22 @@
   let busy = false;
   let timer = null;
   let started = false;
+  let tick = null;
+  let stopped = false;
 
+  /* The sync server is the online ordering server unless set apart. A base ending in /api
+   * gets /sync added, so the same address works in both settings. */
+  function target() {
+    const c = (S.settings && S.settings.sync) || {};
+    const o = (S.settings && S.settings.online) || {};
+    const server = o.mode === 'server';
+    let url = String(c.url || (server && o.url) || '').trim().replace(/\/+$/, '');
+    if (/\/api$/.test(url)) url += '/sync';
+    return { url, key: c.key || (server ? o.key : '') || '' };
+  }
   function enabled() {
     const c = S.settings && S.settings.sync;
-    return !!(c && c.enabled && c.url && S.meta && !S.meta.demo);
+    return !!(c && c.enabled && target().url && S.meta && !S.meta.demo);
   }
 
   function compute() {
@@ -54,11 +66,12 @@
 
   async function run() {
     clearTimeout(timer);
+    if (stopped) return;
     if (busy || !enabled() || !navigator.onLine) return refresh();
     busy = true;
     compute();
     M.bus.emit('sync', st);
-    const cfg = S.settings.sync;
+    const cfg = target();
     try {
       for (let guard = 0; guard < 40; guard++) {
         const batch = await M.db.outboxBatch(50);
@@ -115,11 +128,16 @@
         run();
       });
       addEventListener('offline', refresh);
-      setInterval(() => {
+      tick = setInterval(() => {
         if (enabled() && !busy && !st.backoff) run();
         else refresh();
       }, 30000);
       run();
+    },
+    stop() {
+      clearInterval(tick);
+      clearTimeout(timer);
+      stopped = true;
     },
   };
 })((window.M = window.M || {}));

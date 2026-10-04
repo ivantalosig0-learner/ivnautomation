@@ -379,6 +379,7 @@
       cogs: 0,
       vat: 0,
       voids: { count: 0, amount: 0 },
+      voidWaste: 0,
       byHour: new Array(24).fill(0),
       byHourCount: new Array(24).fill(0),
       byDay: {},
@@ -394,6 +395,12 @@
       if (o.status === 'voided') {
         r.voids.count++;
         r.voids.amount += o.totals.total;
+        /* Voided after the kitchen made it: the stock is gone, so its cost is waste. */
+        if (o.voidInfo && !o.voidInfo.restock) {
+          let lost = o.cogs || 0;
+          for (const rf of o.refunds || []) if (rf.restock) lost -= rf.cogs || 0;
+          r.voidWaste += Math.max(0, lost);
+        }
         continue;
       }
       const t = o.totals;
@@ -404,7 +411,7 @@
       r.discounts += t.discountTotal;
       r.refunds += refunded;
       r.net += net;
-      r.vat += t.vat || 0;
+      r.vat += t.total > 0 ? Math.round(((t.vat || 0) * net) / t.total) : 0;
       let cogs = o.cogs || 0;
       for (const rf of o.refunds || []) if (rf.restock) cogs -= rf.cogs || 0;
       r.cogs += cogs;

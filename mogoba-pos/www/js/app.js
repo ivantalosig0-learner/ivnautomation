@@ -61,6 +61,12 @@
           .catch((e) => {
             if (!settled) return done(true);
             if (e && e.name === 'AbortError') {
+              /* Another tab owns the register now: this one must stop selling, polling and saving. */
+              App.lost = true;
+              S.user = null;
+              S.ready = false;
+              if (M.online) M.online.stop();
+              M.sync.stop();
               M.ui.closeAll();
               fatal('Opened somewhere else', 'Mogoba POS is open in another tab. This one stopped so stock and cash stay exact.', h('button.btn.primary.lg.block', { type: 'button', onclick: () => location.reload() }, 'Use it here instead'));
             }
@@ -112,11 +118,15 @@
   }
 
   function showLock() {
+    if (App.lost) return;
     ui().closeAll();
     if (App.cleanup) App.cleanup();
     App.cleanup = null;
     App.route = null;
     M.lock.mountLock(root(), enter);
+    /* Online orders and sync keep running behind the lock screen, so the shop stays open. */
+    M.sync.start();
+    if (M.online && !M.online.state.timer) M.online.start();
   }
 
   /* ---------- shell ---------- */
@@ -230,6 +240,7 @@
   }
 
   function lockNow() {
+    if (App.lost) return;
     C.persistCart();
     C.logout();
     showLock();
@@ -293,7 +304,7 @@
   /* ---------- background duties ---------- */
   ['pointerdown', 'keydown'].forEach((ev) => addEventListener(ev, () => (App.last = Date.now()), { passive: true, capture: true }));
   setInterval(async () => {
-    if (!S.user || !S.settings) return;
+    if (App.lost || !S.user || !S.settings) return;
     const min = S.settings.sales.autoLockMin;
     if (min > 0 && Date.now() - App.last > min * 60000 && !document.querySelector('.sheet')) lockNow();
     const d = U.dayKey();

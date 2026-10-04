@@ -254,6 +254,32 @@ const orderBody = (store, extra) => {
     for (const d of String(dtotal / 100)) await reg.click('.keypad button[aria-label="' + d + '"]');
     await reg.click('button:has-text("Verify and accept")');
     ok(!!(await until(async () => ((await cust.locator('#track-status').innerText()) === 'Confirmed' ? true : null), 10000)), 'customer tracking switches to Confirmed');
+    console.log('Double taps and lot dates');
+    const race = await reg.evaluate(async () => {
+      const o = M.state.today.find((x) => x.status === 'paid' && !x.onlineCode);
+      const r = await Promise.allSettled([M.core.voidOrder(o, { reason: 'Test', restock: true }), M.core.voidOrder(o, { reason: 'Test', restock: true })]);
+      const v = await M.core.verifyStock();
+      return { done: r.filter((x) => x.status === 'fulfilled').length, why: (r.find((x) => x.status === 'rejected') || {}).reason + '', diffs: v.diffs.length };
+    });
+    ok(race.done === 1 && /already voided/.test(race.why) && race.diffs === 0, 'a double-tapped void runs once and the ledger still matches: ' + JSON.stringify(race));
+    const twice = await reg.evaluate(async (c) => {
+      const before = M.state.open.length;
+      const o = Object.assign({}, M.online.state.orders[c], { code: c + 'X', status: 'pending', posOrderId: '', payment: { method: 'cash', ref: '' } });
+      localStorage.setItem('mogoba.bridge.order.' + o.code, JSON.stringify(o));
+      M.online.state.orders[o.code] = o;
+      await Promise.allSettled([M.online.accept(o, 20), M.online.accept(o, 20)]);
+      return M.state.open.filter((x) => x.onlineCode === o.code).length + ':' + (M.state.open.length - before);
+    }, dcode);
+    ok(twice === '1:1', 'accepting the same online order twice at once opens one ticket: ' + twice);
+    const lot = await reg.evaluate(async () => {
+      const ing = Object.values(M.state.ings).find((i) => (i.lots || []).some((l) => l.qty > 0 && l.exp));
+      const l = ing.lots.find((x) => x.qty > 0 && x.exp);
+      await M.core.setLotExpiry(ing.id, l.id, '2030-01-31');
+      const after = M.state.ings[ing.id].lots.find((x) => x.id === l.id);
+      const v = await M.core.verifyStock();
+      return after.exp + ' ' + (after.qty === l.qty) + ' ' + v.diffs.length;
+    });
+    ok(lot === '2030-01-31 true 0', 'a lot use-by date can be corrected without touching quantity: ' + lot);
     ok(derr.length === 0, 'no page errors in the demo' + (derr.length ? ': ' + derr.slice(0, 3).join(' | ') : ''));
     await dctx.close();
   } catch (e) {
