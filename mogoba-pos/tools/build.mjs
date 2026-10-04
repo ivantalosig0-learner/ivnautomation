@@ -49,7 +49,20 @@ html = html
 
 mkdirSync(DIST, { recursive: true });
 writeFileSync(join(DIST, 'mogoba-pos.html'), html);
+
+/* 3. web preview (claude.ai artifact): the host adds the document skeleton, so ship only the
+ * title, styles and body content. ENV 'preview' turns print and file downloads into a
+ * clear message, because that viewer cannot open the print dialog or save files. */
+const title = html.match(/<title>[\s\S]*?<\/title>/)[0];
+const style = html.match(/<style>[\s\S]*?<\/style>/)[0];
+const body = html
+  .match(/<body>([\s\S]*)<\/body>/)[1]
+  .replace('window.M = { ASSETS: ', "window.M = { ENV: 'preview', ASSETS: ");
+const preview = title + '\n' + style + '\n' + body.trim() + '\n';
+mkdirSync(join(DIST, 'web'), { recursive: true });
+writeFileSync(join(DIST, 'web', 'mogoba-pos.html'), preview);
 const kb = (n) => (n / 1024).toFixed(0) + ' KB';
 const appBytes = files.reduce((t, f) => t + statSync(join(WWW, f)).size, 0);
 console.log('sw.js       ', version, '·', files.length, 'files ·', kb(appBytes));
 console.log('single file  dist/mogoba-pos.html ·', kb(Buffer.byteLength(html)));
+console.log('web preview  dist/web/mogoba-pos.html ·', kb(Buffer.byteLength(preview)));

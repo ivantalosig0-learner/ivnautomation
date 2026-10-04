@@ -202,6 +202,10 @@
   };
 
   U.download = (name, text, type) => {
+    if (M.ENV === 'preview') {
+      if (M.ui) M.ui.toast('Downloads are turned off in this web preview. They work in the installed app and in Chrome.', 'err', 5000);
+      return false;
+    }
     const blob = new Blob([text], { type: type || 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);

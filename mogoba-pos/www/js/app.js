@@ -41,22 +41,41 @@
   }
 
   /* ---------- one register per device: two tabs would double-count stock ---------- */
+  /* Where the lock API is missing or refused (some embedded frames), run without the guard. */
   function singleTab() {
     if (!navigator.locks || !navigator.locks.request) return Promise.resolve(true);
     return new Promise((res) => {
-      navigator.locks
-        .request('mogoba-pos-register', { ifAvailable: true }, (lock) => {
-          res(!!lock);
-          return lock ? new Promise(() => {}) : null;
-        })
-        .catch(() => {
-          M.ui.closeAll();
-          fatal('Opened somewhere else', 'Mogoba POS was opened in another tab or window, so this one stopped to keep the stock and cash counts exact.', h('button.btn.primary.lg.block', { type: 'button', onclick: () => location.reload() }, 'Use it here instead'));
-        });
+      let settled = false;
+      const done = (v) => {
+        if (!settled) {
+          settled = true;
+          res(v);
+        }
+      };
+      try {
+        navigator.locks
+          .request('mogoba-pos-register', { ifAvailable: true }, (lock) => {
+            done(!!lock);
+            return lock ? new Promise(() => {}) : null;
+          })
+          .catch((e) => {
+            if (!settled) return done(true);
+            if (e && e.name === 'AbortError') {
+              M.ui.closeAll();
+              fatal('Opened somewhere else', 'Mogoba POS was opened in another tab or window, so this one stopped to keep the stock and cash counts exact.', h('button.btn.primary.lg.block', { type: 'button', onclick: () => location.reload() }, 'Use it here instead'));
+            }
+          });
+      } catch (e) {
+        done(true);
+      }
     });
   }
   function steal() {
-    navigator.locks.request('mogoba-pos-register', { steal: true }, () => new Promise(() => {})).catch(() => {});
+    try {
+      navigator.locks.request('mogoba-pos-register', { steal: true }, () => new Promise(() => {})).catch(() => {});
+    } catch (e) {
+      /* lock API refused: carry on without it */
+    }
     setTimeout(start, 50);
   }
 
@@ -221,8 +240,12 @@
     }
     const hash = '#/' + r;
     if (location.hash !== hash) {
-      if (replace) history.replaceState(null, '', hash);
-      else history.pushState(null, '', hash);
+      try {
+        if (replace) history.replaceState(null, '', hash);
+        else history.pushState(null, '', hash);
+      } catch (e) {
+        /* history is locked in some embedded frames; navigation still works without it */
+      }
     }
     render(r);
   }

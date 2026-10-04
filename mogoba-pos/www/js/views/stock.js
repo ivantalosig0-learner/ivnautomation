@@ -284,7 +284,9 @@
       return;
     }
     const est = items.reduce((t, x) => t + x.units * perBuy(x.ing), 0);
+    const listBox = h('textarea.input', { readonly: true, hidden: true, rows: 6, 'aria-label': 'Reorder list text', style: { marginTop: '12px' } });
     const text = 'Order for ' + S.settings.business.name + ' (' + U.fmtDate(Date.now()) + '):\n' + items.map((x) => '- ' + x.ing.name + ': ' + x.units + ' ' + x.ing.buyUnit).join('\n');
+    listBox.value = text;
     s.setBody(
       h('p.lead', 'Brings each item back up to its par level. Copy it into Messenger or SMS for your supplier.'),
       h(
@@ -295,7 +297,8 @@
           h('tbody', items.map((x) => h('tr', h('td', x.ing.name, ' ', ui().badge(L.stockStatus(x.ing), ui().STOCK_BADGE[L.stockStatus(x.ing)][1])), h('td.r', U.fmtQty(x.ing.onHand, x.ing.unit)), h('td.r', x.units + ' ' + x.ing.buyUnit), h('td.r', U.peso(Math.round(x.units * perBuy(x.ing)))))))
         )
       ),
-      h('div.sumrow.total', { style: { marginTop: '12px' } }, h('span.lbl', 'Estimated total'), h('b.num', U.peso(Math.round(est))))
+      h('div.sumrow.total', { style: { marginTop: '12px' } }, h('span.lbl', 'Estimated total'), h('b.num', U.peso(Math.round(est)))),
+      listBox
     );
     s.setFoot(
       h(
@@ -307,7 +310,9 @@
               await navigator.clipboard.writeText(text);
               ui().toast('Copied. Paste it to your supplier.', 'ok');
             } catch (e) {
-              U.download('reorder-' + U.dayKey() + '.txt', text, 'text/plain');
+              listBox.hidden = false;
+              listBox.select();
+              ui().toast('Copy was blocked here. The list is selected below — copy it from there.', 'err', 4500);
             }
           },
         },

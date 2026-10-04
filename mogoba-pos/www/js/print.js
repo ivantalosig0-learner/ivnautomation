@@ -173,6 +173,10 @@
 
   /* Browser printing through a hidden frame, sized for the receipt roll. */
   function printText(text) {
+    if (M.ENV === 'preview') {
+      M.ui.toast('Printing is turned off in this web preview. It works in the Android app and in Chrome.', 'err', 5000);
+      return;
+    }
     const paper = M.state.settings.print.paper === 80 ? 80 : 58;
     const f = document.createElement('iframe');
     f.setAttribute('aria-hidden', 'true');

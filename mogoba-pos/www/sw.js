@@ -1,6 +1,6 @@
 /* Mogoba POS — offline cache. The whole app is cached on install, served cache-first,
  * and replaced atomically when a new version is deployed (bump VERSION). */
-const VERSION = 'mogoba-pos-0cc4c23677';
+const VERSION = 'mogoba-pos-6ddb12562a';
 const FILES = [
   "assets/fonts/bhs-ko.woff2",
   "assets/fonts/bhs-latin.woff2",

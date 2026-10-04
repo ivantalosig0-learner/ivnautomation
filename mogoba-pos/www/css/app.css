@@ -136,7 +136,7 @@ h1, h2, h3, h4, p { margin: 0; }
     radial-gradient(40vmax 34vmax at 18% 100%, var(--glow-4), transparent 62%),
     var(--bg);
 }
-#app { position: relative; z-index: 1; height: 100vh; height: 100dvh; }
+#app { position: relative; z-index: 1; height: 100%; }
 
 /* ---------- glass ---------- */
 .glass {
@@ -257,7 +257,7 @@ select.input option { background: var(--glass-solid); color: var(--ink); }
 .badge.solid { background: var(--gochujang); color: #fff; }
 
 /* ---------- shell ---------- */
-.shell { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 12px; height: 100%; padding: 12px; padding-top: max(12px, env(safe-area-inset-top)); }
+.shell { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 12px; height: 100%; padding: 16px; padding-top: max(16px, env(safe-area-inset-top)); }
 .rail { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 8px; min-height: 0; overflow-y: auto; scrollbar-width: none; }
 .rail::-webkit-scrollbar { display: none; }
 .rail .logo { width: 56px; height: 56px; border-radius: 16px; margin-bottom: 10px; box-shadow: 0 0 0 1px var(--line-2), 0 10px 24px -10px rgba(226, 35, 26, .7); }
@@ -559,7 +559,7 @@ button.row:active, button.row:hover { background: var(--soft); }
 /* ---------- phone ---------- */
 @media (max-width: 760px) {
   body { font-size: 15px; }
-  .shell { grid-template-columns: minmax(0, 1fr); padding: 8px 8px 0; gap: 8px; }
+  .shell { grid-template-columns: minmax(0, 1fr); padding: 12px 16px 0; gap: 10px; }
   .rail { display: none; }
   .main { gap: 8px; padding-bottom: calc(70px + env(safe-area-inset-bottom)); }
   .topbar { min-height: 56px; padding: 6px 6px 6px 10px; border-radius: 18px; }
@@ -568,7 +568,7 @@ button.row:active, button.row:hover { background: var(--soft); }
   .topbar .shift-chip, .user-btn .nm, .pill .txt { display: none; }
   .pill .ic { display: inline-flex; }
   .pill { padding: 0 12px; height: 36px; }
-  .tabbar { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); z-index: 20; padding: 6px; border-radius: 22px; background: var(--glass-strong); -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%); border: 1px solid var(--line-2); box-shadow: var(--shadow); }
+  .tabbar { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 16px; right: 16px; bottom: max(10px, env(safe-area-inset-bottom)); z-index: 20; padding: 6px; border-radius: 22px; background: var(--glass-strong); -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%); border: 1px solid var(--line-2); box-shadow: var(--shadow); }
   .tabbar button { min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; font-weight: 700; color: var(--ink-3); border-radius: 16px; position: relative; }
   .tabbar button[aria-current="page"] { color: var(--ink); background: var(--soft); }
   .tabbar button[aria-current="page"] .ic { color: var(--board); }
@@ -591,11 +591,11 @@ button.row:active, button.row:hover { background: var(--soft); }
   .sheet-foot { padding: 12px 16px calc(14px + env(safe-area-inset-bottom)); }
   .pay, .done-grid, .split, .split.even, .form-grid { grid-template-columns: minmax(0, 1fr); }
   .lock { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
-  .lock-brand { padding: 22px 20px 8px; flex-direction: row; align-items: center; gap: 14px; }
+  .lock-brand { padding: 22px 16px 8px; flex-direction: row; align-items: center; gap: 14px; }
   .lock-brand .hangul, .lock-brand p, .lock-brand .clock { display: none; }
   .lock-brand img { width: 56px; height: 56px; border-radius: 16px; }
   .lock-brand h1 { font-size: 26px; }
-  .lock-panel { align-items: flex-start; padding: 8px 12px 16px; }
+  .lock-panel { align-items: flex-start; padding: 8px 16px 16px; }
   .lock-card { padding: 20px; }
   .pinpad { grid-template-columns: repeat(3, 72px); gap: 12px; }
   .pinpad button { width: 72px; height: 72px; }
