@@ -1,10 +1,11 @@
-/* Mogoba POS — UI kit: icons, sheets, dialogs, PIN approval, keypads, toasts. */
+/* Mogoba POS: UI kit: icons, sheets, dialogs, PIN approval, keypads, toasts. */
 (function (M) {
   'use strict';
   const U = M.util;
   const h = U.h;
 
   const ICONS = {
+    gauge: '<path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-6"/><circle cx="12" cy="18" r="1.6"/><path d="M7 13.5l-.8-.6M12 10V9M17 13.5l.8-.6"/>',
     pos: '<rect x="3" y="10" width="18" height="11" rx="2"/><path d="M7 10V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v5M7 14h2M11 14h2M15 14h2M7 17.5h10"/>',
     orders: '<path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
     stock: '<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8M12 13v8"/>',
@@ -354,5 +355,70 @@
 
   const STOCK_BADGE = { ok: ['ok', 'In stock'], low: ['low', 'Low'], out: ['out', 'Out'] };
 
-  M.ui = { icon, toast, sheet, closeAll, confirm, pinPad, approve, keypad, askAmount, seg, stepper, field, empty, badge, STOCK_BADGE };
+  /* ---------- situation graphics ---------- */
+
+  /* Level bar: value against a full mark (par, target), with an optional marker tick
+   * (reorder point, last week). state picks the color: ok, low, out, accent. */
+  function level(value, max, opts) {
+    const o = opts || {};
+    const pct = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
+    const bar = h('div.lvl', { class: o.state || 'accent', role: 'meter', 'aria-valuemin': '0', 'aria-valuemax': String(Math.round(max)), 'aria-valuenow': String(Math.round(Math.max(0, value))), 'aria-label': o.label || '' }, h('i', { style: { width: pct * 100 + '%' } }));
+    if (o.marker != null && max > 0) bar.append(h('b', { style: { left: Math.max(0, Math.min(1, o.marker / max)) * 100 + '%' }, title: o.markerLabel || '' }));
+    if (o.thin) bar.classList.add('thin');
+    return bar;
+  }
+
+  /* Bullet graph (after Stephen Few): bar = actual, thin bar = projection, tick = target,
+   * three bands of one hue for poor, fair and good. */
+  function bullet(actual, target, projected, opts) {
+    const o = opts || {};
+    const max = Math.max(target * 1.25, actual, projected || 0, 1);
+    const pc = (v) => Math.max(0, Math.min(100, (v / max) * 100)) + '%';
+    return h(
+      'div.bullet',
+      { role: 'meter', 'aria-valuemin': '0', 'aria-valuemax': String(Math.round(max)), 'aria-valuenow': String(Math.round(actual)), 'aria-label': o.label || '' },
+      h('span.band.b3'),
+      h('span.band.b2', { style: { width: pc(target) } }),
+      h('span.band.b1', { style: { width: pc(target * 0.7) } }),
+      projected ? h('span.proj', { style: { width: pc(projected) } }) : null,
+      h('span.act', { class: actual >= (o.expected || 0) ? 'ok' : 'low', style: { width: pc(actual) } }),
+      h('span.tgt', { style: { left: pc(target) } })
+    );
+  }
+
+  /* Stacked share bar with a legend: segments [{value, cls, label}]. */
+  function stackBar(segments, opts) {
+    const total = segments.reduce((t, x) => t + x.value, 0) || 1;
+    return h(
+      'div.stackbar-wrap',
+      h('div.stackbar', { role: 'img', 'aria-label': segments.map((x) => x.label + ' ' + x.value).join(', ') }, segments.filter((x) => x.value > 0).map((x) => h('i', { class: x.cls, style: { width: (x.value / total) * 100 + '%' } }))),
+      opts && opts.legend === false ? null : h('div.legend', segments.map((x) => h('span', h('i', { class: x.cls }), x.label + ' ', h('b', x.text != null ? x.text : String(x.value)))))
+    );
+  }
+
+  /* Sparkline for a short series; the last point is emphasized. */
+  function spark(values, opts) {
+    const o = opts || {};
+    const w = o.w || 120;
+    const ht = o.h || 32;
+    const max = Math.max(...values, 1);
+    const step = values.length > 1 ? w / (values.length - 1) : w;
+    const pts = values.map((v, i) => [i * step, ht - 3 - (Math.max(0, v) / max) * (ht - 6)]);
+    const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join('');
+    const last = pts[pts.length - 1] || [0, ht];
+    const span = document.createElement('span');
+    span.className = 'spark';
+    span.setAttribute('aria-hidden', 'true');
+    span.innerHTML = '<svg viewBox="-3 0 ' + (w + 6) + ' ' + ht + '" width="' + w + '" height="' + ht + '" preserveAspectRatio="none"><path d="' + d + 'L' + last[0].toFixed(1) + ',' + ht + 'L0,' + ht + 'Z" class="sp-area"/><path d="' + d + '" class="sp-line"/><circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="3" class="sp-dot"/></svg>';
+    return span;
+  }
+
+  /* Expiry chip for a lot: Expired / Today / Tomorrow / 3 days. */
+  function expiryChip(days, state) {
+    if (days == null) return null;
+    const t = days < 0 ? 'Expired' : days === 0 ? 'Expires today' : days === 1 ? 'Expires tomorrow' : 'Expires in ' + days + ' d';
+    return h('span.badge', { class: state === 'expired' ? 'out' : state === 'soon' ? 'low' : 'muted' }, t);
+  }
+
+  M.ui = { icon, toast, sheet, closeAll, confirm, pinPad, approve, keypad, askAmount, seg, stepper, field, empty, badge, STOCK_BADGE, level, bullet, stackBar, spark, expiryChip };
 })((window.M = window.M || {}));

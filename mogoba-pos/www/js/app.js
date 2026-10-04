@@ -1,4 +1,4 @@
-/* Mogoba POS — app shell: boot, single-tab guard, navigation, top bar, auto-lock, day rollover. */
+/* Mogoba POS: app shell: boot, single-tab guard, navigation, top bar, auto-lock, day rollover. */
 (function (M) {
   'use strict';
   const U = M.util;
@@ -9,7 +9,7 @@
 
   M.asset = (p) => (M.ASSETS && M.ASSETS[p]) || 'assets/' + p;
 
-  const NAV = ['register', 'orders', 'stock', 'drawer', 'reports', 'menu', 'settings'];
+  const NAV = ['overview', 'register', 'orders', 'stock', 'drawer', 'reports', 'menu', 'settings'];
   const PHONE_TABS = ['register', 'orders', 'stock', 'drawer'];
   const App = (M.app = { route: null, cleanup: null, day: U.dayKey(), last: Date.now() });
   const root = () => document.getElementById('app');
@@ -133,6 +133,7 @@
     drawNav();
     drawTop();
     M.sync.start();
+    if (M.online) M.online.start();
     go('register', true);
     if (!S.meta.demo && C.can('*') && Date.now() - (S.meta.lastBackup || 0) > 3 * 864e5) {
       setTimeout(() => ui().toast(S.meta.lastBackup ? 'Last backup was ' + U.ago(S.meta.lastBackup) + '. Settings → Download backup.' : 'No backup yet. Settings → Download backup.', 'err', 6000), 800);
@@ -143,7 +144,7 @@
 
   function badgeFor(r) {
     if (r === 'orders') {
-      const n = S.today.filter((o) => o.status === 'paid' && o.kitchen && o.kitchen !== 'done').length;
+      const n = S.today.filter((o) => o.status === 'paid' && o.kitchen && o.kitchen !== 'done').length + (M.online ? M.online.pendingCount() : 0);
       return n ? String(n) : '';
     }
     if (r === 'stock') {
@@ -207,6 +208,7 @@
       h('h1', v ? v.title : ''),
       h('span.shift-chip', sh ? 'Shift open since ' + U.fmtTime(sh.openedAt) : 'No open shift'),
       h('div.grow'),
+      M.online && M.online.pendingCount() ? h('button.pill.bad.alert-pill', { type: 'button', 'aria-label': M.online.pendingCount() + ' online orders to confirm', onclick: () => M.online.inbox() }, ui().icon('orders', 16), h('b', String(M.online.pendingCount())), h('span.txt', 'online ' + (M.online.pendingCount() === 1 ? 'order' : 'orders'))) : null,
       syncPill(),
       h('button.user-btn', { type: 'button', 'aria-label': 'Signed in as ' + S.user.name + '. Open staff menu', onclick: userMenu }, h('span.avatar', { class: 'r-' + S.user.role }, S.user.name.slice(0, 1).toUpperCase()), h('span.nm', S.user.name))
     );
@@ -310,6 +312,10 @@
     drawTop();
   });
   M.bus.on('stock', drawNav);
+  M.bus.on('online', () => {
+    drawNav();
+    drawTop();
+  });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') C.persistCart();
   });

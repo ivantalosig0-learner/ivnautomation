@@ -5,7 +5,7 @@ Point of sale, kitchen queue, inventory and sales tracking for **Mogoba Korean F
 stored on the device and keeps working with no internet. Optional online sync pushes the same
 events to a server when a connection is available.
 
-Status: **demo build** — feature-complete web app, packaged as one offline HTML file. The
+Status: **demo build**: feature-complete web app, packaged as one offline HTML file. The
 Android APK (Capacitor) is the next step, after the demo is approved.
 
 ## Try it
@@ -21,29 +21,29 @@ Sample PINs: Owner `1234` · Mark, manager `2580` · Joy, cashier `0000`.
 
 ## What it does
 
-- **Register** — Mogoba's full menu board (50 items, 12 categories, bilingual Korean/English),
+- **Register**: Mogoba's full menu board (50 items, 12 categories, bilingual Korean/English),
   photos, flavours and sizes, add-ons, kitchen notes, custom items, dine-in / take-out /
   delivery (own rider, Foodpanda, GrabFood), held tickets for tables, "Popular" tab from the
   last 14 days of sales, sold-out and "n left" badges driven by live stock.
-- **Payments** — cash with one-tap tender and change, GCash, Maya, card, Foodpanda, GrabFood,
+- **Payments**: cash with one-tap tender and change, GCash, Maya, card, Foodpanda, GrabFood,
   split tender. Order number (#queue) and receipt number per device.
-- **Discounts** — Senior Citizen / PWD per RA 9994 and RA 10754 (20% of the eligible share,
+- **Discounts**: Senior Citizen / PWD per RA 9994 and RA 10754 (20% of the eligible share,
   group meals pro-rated by diners, VAT exemption when VAT-registered, name + ID captured and
   printed for signature), percent and peso discounts with reason and manager approval.
-- **Controls** — role-based staff (owner / manager / cashier) with 4-digit PINs; manager PIN
+- **Controls**: role-based staff (owner / manager / cashier) with 4-digit PINs; manager PIN
   approval for discounts, voids, refunds, pay-outs and removing items the kitchen already has;
   every sensitive action in an activity log; auto-lock; wrong-PIN lockout.
-- **Orders** — kitchen queue (preparing → ready → picked up), today, past days, reprint,
+- **Orders**: kitchen queue (preparing → ready → picked up), today, past days, reprint,
   partial refunds (pro-rata with discounts), whole-order voids, restock or count-as-waste.
-- **Stock** — recipe-based depletion (base + option + add-on), append-only movement ledger,
+- **Stock**: recipe-based depletion (base + option + add-on), append-only movement ledger,
   receiving with moving-average cost, waste log, blind counts with variance, par / reorder
   points, days of cover from 14-day usage, reorder list you can paste to a supplier.
-- **Drawer** — open shift with float, cash in / out, X-reading, blind close by denomination,
+- **Drawer**: open shift with float, cash in / out, X-reading, blind close by denomination,
   over / short, Z-reading history.
-- **Reports** — net sales, orders, average order, gross profit and food cost %, sales by hour
+- **Reports**: net sales, orders, average order, gross profit and food cost %, sales by hour
   or day, payments, order types, top items, categories, SC/PWD log (CSV), voids and refunds,
   waste and count variance; CSV export of sales and line items.
-- **Data** — backup / restore (JSON), stock-vs-ledger integrity check, persistent storage
+- **Data**: backup / restore (JSON), stock-vs-ledger integrity check, persistent storage
   request, single-tab guard so two tabs can never double-count.
 
 ## Architecture
@@ -51,7 +51,7 @@ Sample PINs: Owner `1234` · Mark, manager `2580` · Joy, cashier `0000`.
 ```
 www/
   index.html, css/app.css         glass UI, brand tokens, dark + light, "lite glass" mode
-  js/logic.js                     pure business rules (money in centavos) — unit tested
+  js/logic.js                     pure business rules (money in centavos), unit tested
   js/db.js                        IndexedDB; db.write() = one atomic transaction
   js/core.js                      state + builders (pure) + live operations
   js/seed.js                      Mogoba menu, ingredients, recipes (starting values)
@@ -88,7 +88,7 @@ npm start & npm run e2e       # 31 browser checks (needs Playwright + Chromium)
 
 ## Android APK (next phase)
 
-Plan: Capacitor wraps `www/` unchanged (local assets → offline from first launch, ~4–6 MB APK).
+Plan: Capacitor wraps `www/` unchanged (local assets → offline from first launch, about 4 to 6 MB APK).
 Native additions: Bluetooth ESC/POS printing for 58/80 mm printers (bytes already produced by
 `print.escpos()`), automatic daily backup file to device storage, keep-screen-on, and a
 signed release build. Online sync target: an endpoint on the existing VPS that stores events

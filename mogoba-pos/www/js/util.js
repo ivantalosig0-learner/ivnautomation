@@ -1,4 +1,4 @@
-/* Mogoba POS — shared helpers: money, time, ids, hashing, DOM builder. */
+/* Mogoba POS: shared helpers: money, time, ids, hashing, DOM builder. */
 (function (M) {
   'use strict';
   const U = (M.util = {});

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* Build:
- *   1. www/sw.js        — offline cache list + content-hash version (hosted PWA)
- *   2. dist/mogoba-pos.html — the whole app in ONE file (fonts, photos, logo inlined).
+ *   1. www/sw.js: offline cache list + content-hash version (hosted PWA)
+ *   2. dist/mogoba-pos.html: the whole app in ONE file (fonts, photos, logo inlined).
  *      Opens from a phone's Files app, a laptop or a USB stick with no server and no internet.
  * The Android build (Capacitor) packages www/ as-is. */
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from 'node:fs';
@@ -12,6 +12,33 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const WWW = join(ROOT, 'www');
 const DIST = join(ROOT, 'dist');
+
+/* 0. copy lint: em and en dashes read as machine-written, so the build refuses them. */
+const LINT = ['www', 'order', 'server', 'docs', 'README.md'];
+const lintHits = [];
+const lintWalk = (p) => {
+  let st;
+  try {
+    st = statSync(p);
+  } catch (e) {
+    return;
+  }
+  if (st.isDirectory()) {
+    if (/node_modules|data$/.test(p)) return;
+    for (const f of readdirSync(p)) lintWalk(join(p, f));
+  } else if (/\.(js|mjs|css|html|md|json)$/.test(p)) {
+    readFileSync(p, 'utf8')
+      .split('\n')
+      .forEach((l, i) => {
+        if (/[\u2013\u2014]/.test(l)) lintHits.push(relative(ROOT, p) + ':' + (i + 1));
+      });
+  }
+};
+for (const p of LINT) lintWalk(join(ROOT, p));
+if (lintHits.length) {
+  console.error('Copy lint: remove em/en dashes at\n  ' + lintHits.join('\n  '));
+  process.exit(1);
+}
 
 const walk = (d) => readdirSync(d).flatMap((f) => (statSync(join(d, f)).isDirectory() ? walk(join(d, f)) : [join(d, f)]));
 const files = walk(WWW)

@@ -1,6 +1,6 @@
-/* Mogoba POS — the shop's real menu (transcribed from Mogoba's menu board) and a starting
+/* Mogoba POS: the shop's real menu (transcribed from Mogoba's menu board) and a starting
  * ingredient list with recipes. Ingredient costs, par levels and portion sizes are sensible
- * starting values for the owner to correct in Stock and Menu — they are not supplier quotes. */
+ * starting values for the owner to correct in Stock and Menu. They are not supplier quotes. */
 (function (M) {
   'use strict';
 
@@ -10,11 +10,11 @@
 
   /* id, name, group, unit, buyUnit, buyFactor, buyPrice(₱), par(buy units), reorder(buy units) */
   const ING = [
-    ['chicken', 'Chicken, cut (raw)', 'Meat & seafood', 'g', 'kg', 1000, 200, 25, 10],
-    ['pork', 'Pork belly', 'Meat & seafood', 'g', 'kg', 1000, 360, 8, 3],
-    ['fishcake', 'Fishcake (eomuk)', 'Meat & seafood', 'g', 'kg', 1000, 320, 4, 1.5],
-    ['ham', 'Gimbap ham & crabstick', 'Meat & seafood', 'g', 'kg', 1000, 300, 3, 1],
-    ['egg', 'Eggs', 'Meat & seafood', 'pc', 'tray (30)', 30, 270, 4, 1.5],
+    ['chicken', 'Chicken, cut (raw)', 'Meat and seafood', 'g', 'kg', 1000, 200, 25, 10],
+    ['pork', 'Pork belly', 'Meat and seafood', 'g', 'kg', 1000, 360, 8, 3],
+    ['fishcake', 'Fishcake (eomuk)', 'Meat and seafood', 'g', 'kg', 1000, 320, 4, 1.5],
+    ['ham', 'Gimbap ham and crabstick', 'Meat and seafood', 'g', 'kg', 1000, 300, 3, 1],
+    ['egg', 'Eggs', 'Meat and seafood', 'pc', 'tray (30)', 30, 270, 4, 1.5],
     ['rice', 'Rice', 'Dry goods', 'g', 'kg', 1000, 56, 50, 15],
     ['breading', 'Breading mix', 'Dry goods', 'g', 'kg', 1000, 110, 10, 3],
     ['oil', 'Cooking oil', 'Dry goods', 'ml', 'L', 1000, 125, 20, 6],
@@ -23,19 +23,19 @@
     ['bihon', 'Bihon noodles', 'Dry goods', 'g', 'kg', 1000, 95, 5, 2],
     ['seaweed', 'Gim seaweed sheets', 'Dry goods', 'pc', 'pack (50)', 50, 300, 4, 1.2],
     ['fries', 'Frozen fries', 'Dry goods', 'g', 'kg', 1000, 190, 10, 3],
-    ['veg', 'Gimbap vegetables', 'Produce & prepped', 'g', 'kg', 1000, 120, 5, 1.5],
-    ['mixveg', 'Mixed vegetables', 'Produce & prepped', 'g', 'kg', 1000, 110, 4, 1.5],
-    ['kimchi', 'Kimchi', 'Produce & prepped', 'g', 'kg', 1000, 180, 10, 3],
-    ['cukimchi', 'Cucumber kimchi', 'Produce & prepped', 'g', 'kg', 1000, 150, 4, 1.5],
-    ['danmuji', 'Pickled radish (danmuji)', 'Produce & prepped', 'g', 'kg', 1000, 200, 4, 1.5],
-    ['gochujang', 'Gochujang sauce', 'Sauces & dairy', 'ml', 'L', 1000, 280, 5, 1.5],
-    ['honeybutter', 'Honey butter glaze', 'Sauces & dairy', 'ml', 'L', 1000, 320, 3, 1],
-    ['spicyglaze', 'Spicy yangnyeom glaze', 'Sauces & dairy', 'ml', 'L', 1000, 300, 3, 1],
-    ['cheesepowder', 'Prinkle cheese powder', 'Sauces & dairy', 'g', 'kg', 1000, 650, 2, 0.6],
-    ['mozzarella', 'Mozzarella', 'Sauces & dairy', 'g', 'kg', 1000, 520, 3, 1],
-    ['milk', 'Fresh milk', 'Sauces & dairy', 'ml', 'L', 1000, 95, 12, 4],
-    ['condensed', 'Condensed milk', 'Sauces & dairy', 'ml', 'L', 1000, 250, 3, 1],
-    ['teabase', 'Black tea base', 'Drink bar', 'ml', 'L', 1000, 15, 20, 6],
+    ['veg', 'Gimbap vegetables', 'Produce and prepped', 'g', 'kg', 1000, 120, 5, 1.5],
+    ['mixveg', 'Mixed vegetables', 'Produce and prepped', 'g', 'kg', 1000, 110, 4, 1.5],
+    ['kimchi', 'Kimchi', 'Produce and prepped', 'g', 'kg', 1000, 180, 10, 3],
+    ['cukimchi', 'Cucumber kimchi', 'Produce and prepped', 'g', 'kg', 1000, 150, 4, 1.5],
+    ['danmuji', 'Pickled radish (danmuji)', 'Produce and prepped', 'g', 'kg', 1000, 200, 4, 1.5],
+    ['gochujang', 'Gochujang sauce', 'Sauces and dairy', 'ml', 'L', 1000, 280, 5, 1.5],
+    ['honeybutter', 'Honey butter glaze', 'Sauces and dairy', 'ml', 'L', 1000, 320, 3, 1],
+    ['spicyglaze', 'Spicy yangnyeom glaze', 'Sauces and dairy', 'ml', 'L', 1000, 300, 3, 1],
+    ['cheesepowder', 'Prinkle cheese powder', 'Sauces and dairy', 'g', 'kg', 1000, 650, 2, 0.6],
+    ['mozzarella', 'Mozzarella', 'Sauces and dairy', 'g', 'kg', 1000, 520, 3, 1],
+    ['milk', 'Fresh milk', 'Sauces and dairy', 'ml', 'L', 1000, 95, 12, 4],
+    ['condensed', 'Condensed milk', 'Sauces and dairy', 'ml', 'L', 1000, 250, 3, 1],
+    ['teabase', 'Black tea base', 'Drink bar', 'ml', 'L', 1000, 15, 8, 3],
     ['creamer', 'Non-dairy creamer', 'Drink bar', 'g', 'kg', 1000, 180, 5, 1.5],
     ['pearls', 'Tapioca pearls', 'Drink bar', 'g', 'kg', 1000, 90, 6, 2],
     ['espresso', 'Espresso beans', 'Drink bar', 'g', 'kg', 1000, 800, 3, 1],
@@ -43,7 +43,7 @@
     ['okinawa', 'Okinawa brown sugar syrup', 'Drink bar', 'ml', 'L', 1000, 220, 2, 0.6],
     ['taro', 'Taro powder', 'Drink bar', 'g', 'kg', 1000, 350, 1.5, 0.5],
     ['choco', 'Chocolate powder', 'Drink bar', 'g', 'kg', 1000, 350, 1.5, 0.5],
-    ['cookies', 'Cookies & cream powder', 'Drink bar', 'g', 'kg', 1000, 350, 1.5, 0.5],
+    ['cookies', 'Cookies and cream powder', 'Drink bar', 'g', 'kg', 1000, 350, 1.5, 0.5],
     ['redvelvet', 'Red velvet powder', 'Drink bar', 'g', 'kg', 1000, 350, 1.5, 0.5],
     ['s_wintermelon', 'Wintermelon syrup', 'Drink bar', 'ml', 'L', 1000, 220, 3, 1],
     ['s_strawberry', 'Strawberry syrup', 'Drink bar', 'ml', 'L', 1000, 220, 2, 0.6],
@@ -55,7 +55,7 @@
     ['s_passion', 'Passion fruit syrup', 'Drink bar', 'ml', 'L', 1000, 220, 1.5, 0.5],
     ['s_watermelon', 'Watermelon syrup', 'Drink bar', 'ml', 'L', 1000, 220, 1.5, 0.5],
     ['soda', 'Soda water', 'Drink bar', 'ml', 'L', 1000, 45, 24, 8],
-    ['coke', 'Coke / Sprite (bottle)', 'Ready-to-sell', 'pc', 'case (24)', 24, 480, 2, 0.5],
+    ['coke', 'Coke or Sprite (bottle)', 'Ready-to-sell', 'pc', 'case (24)', 24, 480, 2, 0.5],
     ['water', 'Bottled water', 'Ready-to-sell', 'pc', 'case (24)', 24, 240, 2, 0.5],
     ['cup_s', 'Cup + lid, small', 'Packaging', 'pc', 'sleeve (50)', 50, 150, 6, 2],
     ['cup_m', 'Cup + lid, medium', 'Packaging', 'pc', 'sleeve (50)', 50, 175, 8, 2],
@@ -66,6 +66,18 @@
     ['tub', 'Sides tub, 500 ml', 'Packaging', 'pc', 'pack (25)', 25, 200, 3.2, 1],
     ['bilao', 'Bilao tray + cover', 'Packaging', 'pc', 'pc', 1, 45, 15, 5],
   ];
+
+  /* Shelf life in days once received, sealed and stored right (chill 5°C or colder, frozen
+   * -18°C or colder). Aparri runs hot, so these sit at the low end of safe ranges. A shorter
+   * label date always wins: change it on receiving. 0 means no expiry tracking. */
+  const SHELF = {
+    chicken: 2, pork: 3, fishcake: 180, ham: 14, egg: 21, rice: 180, breading: 180, oil: 365, tteok: 5, ramyeon: 180,
+    bihon: 365, seaweed: 180, fries: 365, veg: 3, mixveg: 3, kimchi: 90, cukimchi: 5, danmuji: 90, gochujang: 7,
+    honeybutter: 5, spicyglaze: 7, cheesepowder: 180, mozzarella: 21, milk: 7, condensed: 180, teabase: 1, creamer: 180,
+    pearls: 180, espresso: 90, matchapw: 90, okinawa: 3, taro: 180, choco: 180, cookies: 180, redvelvet: 180,
+    s_wintermelon: 90, s_strawberry: 90, s_lychee: 90, s_mango: 90, s_blueberry: 90, s_greenapple: 90, s_lemon: 90,
+    s_passion: 90, s_watermelon: 90, soda: 180, coke: 180, water: 365,
+  };
 
   function ingredients(stocked) {
     return ING.map(([id, name, group, unit, buyUnit, buyFactor, buyPrice, par, reorder], i) => ({
@@ -79,6 +91,9 @@
       par: par * buyFactor,
       reorder: reorder * buyFactor,
       onHand: stocked ? par * buyFactor : 0,
+      lots: [],
+      shelfLife: SHELF[id] || 0,
+      supplier: '',
       active: true,
       sort: i,
       updatedAt: Date.now(),
@@ -142,7 +157,7 @@
   add({ id: 'chicken-box', cat: 'chicken', name: 'Chicken in a Box', ko: '치킨', img: 'classic', price: P(490), variantLabel: 'Flavour', variants: flav([490, 500, 500, 500], 100), addons: ['addon'], recipe: [r('chicken', 800), r('breading', 100), r('oil', 100), r('box_chicken', 1)] });
   // Street food
   add({ id: 'fries', cat: 'street', name: 'Fries', ko: '감자튀김', price: P(70), recipe: [r('fries', 150), r('oil', 30), r('cup_snack', 1)] });
-  add({ id: 'chicken-fries', cat: 'street', name: 'Chicken & Fries', ko: '치킨 감자튀김', price: P(120), recipe: [r('chicken', 100), r('breading', 20), r('fries', 100), r('oil', 35), r('cup_snack', 1)] });
+  add({ id: 'chicken-fries', cat: 'street', name: 'Chicken and Fries', ko: '치킨 감자튀김', price: P(120), recipe: [r('chicken', 100), r('breading', 20), r('fries', 100), r('oil', 35), r('cup_snack', 1)] });
   add({ id: 'chicken-pops', cat: 'street', name: 'Chicken Pops', ko: '치킨팝', img: 'prinkle', price: P(120), recipe: [r('chicken', 140), r('breading', 25), r('oil', 25), r('cup_snack', 1)] });
   add({ id: 'col-pop', cat: 'street', name: 'Col-Pop', ko: '콜팝', price: P(120), recipe: [r('chicken', 110), r('breading', 20), r('oil', 20), r('cup_snack', 1)] });
   add({ id: 'ramyeon', cat: 'street', name: 'Ramyeon', ko: '라면', img: 'ramyeon', price: P(120), addons: ['addon'], recipe: [r('ramyeon', 1), r('egg', 1), r('kimchi', 30)] });
@@ -155,7 +170,7 @@
   add({ id: 'fishcake-tub', cat: 'sides', name: 'Stir-fried Fishcake', ko: '어묵볶음', img: 'fishcake', price: P(150), unitNote: 'tub', recipe: [r('fishcake', 350), r('gochujang', 30), r('oil', 20), r('tub', 1)] });
   // Add-ons sold on their own
   add({ id: 'extra-rice', cat: 'addons', name: 'Rice', ko: '밥', price: P(20), recipe: [r('rice', 150)] });
-  add({ id: 'extra-kimchi', cat: 'addons', name: 'Kimchi / Radish', ko: '김치', price: P(20), variantLabel: 'Choose', variants: [{ id: 'kimchi', name: 'Kimchi', price: P(20), recipe: [r('kimchi', 50)] }, { id: 'radish', name: 'Pickled radish', price: P(20), recipe: [r('danmuji', 50)] }] });
+  add({ id: 'extra-kimchi', cat: 'addons', name: 'Kimchi or Radish', ko: '김치', price: P(20), variantLabel: 'Choose', variants: [{ id: 'kimchi', name: 'Kimchi', price: P(20), recipe: [r('kimchi', 50)] }, { id: 'radish', name: 'Pickled radish', price: P(20), recipe: [r('danmuji', 50)] }] });
   add({ id: 'extra-fishcake', cat: 'addons', name: 'Fishcake', ko: '어묵', price: P(20), recipe: [r('fishcake', 50)] });
   add({ id: 'extra-mozz', cat: 'addons', name: 'Mozzarella Cheese', ko: '모짜렐라', price: P(20), recipe: [r('mozzarella', 30)] });
   // Bilao
@@ -173,7 +188,7 @@
     ['matcha', 'Matcha', 'matchapw', [4, 5, 6]],
     ['taro', 'Taro', 'taro', [15, 20, 25]],
     ['chocolate', 'Chocolate', 'choco', [15, 20, 25]],
-    ['cookies', 'Cookies & Cream', 'cookies', [15, 20, 25]],
+    ['cookies', 'Cookies and Cream', 'cookies', [15, 20, 25]],
     ['redvelvet', 'Red Velvet', 'redvelvet', [15, 20, 25]],
   ];
   for (const [id, name, ing, q] of MT) add({ id: 'mt-' + id, cat: 'milktea', name, ko: '밀크티', img: 'milktea', price: P(40), variantLabel: 'Size', variants: sized([40, 50, 60], (i) => milkBase(i).concat([r(ing, q[i])])) });
@@ -192,8 +207,8 @@
   add({ id: 'cf-macchiato', cat: 'coffee', name: 'Café Macchiato', ko: '커피', price: P(50), variantLabel: 'Size', variants: sized([50, 60, 70], (i) => [shot(i), milk(i)]) });
   add({ id: 'cf-cappuccino', cat: 'coffee', name: 'Cappuccino', ko: '커피', price: P(50), variantLabel: 'Size', variants: sized([50, 60, 70], (i) => [shot(i), milk(i)]) });
   add({ id: 'cf-spanish', cat: 'coffee', name: 'Spanish Latte', ko: '커피', price: P(50), variantLabel: 'Size', variants: sized([50, 60, 70], (i) => [shot(i), milk(i), r('condensed', S(20, 25, 30)(i))]) });
-  add({ id: 'sd-coke', cat: 'softdrinks', name: 'Coke / Sprite', ko: '음료', price: P(35), unitNote: 'price not on board — set yours', variantLabel: 'Choose', variants: [{ id: 'coke', name: 'Coke', price: P(35), recipe: [r('coke', 1)] }, { id: 'sprite', name: 'Sprite', price: P(35), recipe: [r('coke', 1)] }] });
-  add({ id: 'sd-water', cat: 'softdrinks', name: 'Bottled Water', ko: '물', price: P(20), unitNote: 'price not on board — set yours', recipe: [r('water', 1)] });
+  add({ id: 'sd-coke', cat: 'softdrinks', name: 'Coke or Sprite', ko: '음료', price: P(35), unitNote: 'Price not on the menu board', variantLabel: 'Choose', variants: [{ id: 'coke', name: 'Coke', price: P(35), recipe: [r('coke', 1)] }, { id: 'sprite', name: 'Sprite', price: P(35), recipe: [r('coke', 1)] }] });
+  add({ id: 'sd-water', cat: 'softdrinks', name: 'Bottled Water', ko: '물', price: P(20), unitNote: 'Price not on the menu board', recipe: [r('water', 1)] });
 
   /* Price shown on a tile: single price or a range across variants. */
   function priceRange(item) {
@@ -218,10 +233,27 @@
       footer: 'This is not an official receipt or invoice.\nGamsahamnida! Come back soon.',
     },
     device: { name: 'Counter 1', prefix: 'A' },
-    sales: { blockOutOfStock: false, autoLockMin: 10, tableForDineIn: false },
+    sales: { blockOutOfStock: false, autoLockMin: 10, tableForDineIn: false, dailyTarget: 1500000, foodCostTarget: 40 },
     print: { paper: 58, autoReceipt: false, kitchenTicket: false },
     ui: { theme: 'dark', glass: 'full' },
     sync: { url: '', key: '', enabled: false },
+    online: {
+      enabled: false,
+      mode: 'demo',
+      url: '',
+      key: '',
+      accepting: true,
+      prepMinutes: 20,
+      hours: [0, 1, 2, 3, 4, 5, 6].map((day) => ({ day, open: '09:00', close: '20:00' })),
+      pickup: true,
+      delivery: { enabled: true, fee: 5000, minOrder: 30000, area: 'Aparri town proper' },
+      payments: {
+        gcash: { enabled: true, accountName: '', number: '', qr: '' },
+        maya: { enabled: true, accountName: '', number: '', qr: '' },
+        cash: { enabled: true, maxTotal: 100000 },
+      },
+      pausedUntil: 0,
+    },
   });
 
   M.seed = { ingredients, CATS, MODS, items, priceRange, NOTES, SETTINGS, P };

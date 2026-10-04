@@ -1,4 +1,4 @@
-/* Mogoba POS — IndexedDB storage.
+/* Mogoba POS: IndexedDB storage.
  * Every business write goes through db.write(), which runs ONE transaction over all touched
  * stores, so an order, its stock moves, its audit entry and its sync event land together or
  * not at all. */

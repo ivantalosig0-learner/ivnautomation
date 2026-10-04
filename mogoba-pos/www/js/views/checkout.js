@@ -1,4 +1,4 @@
-/* Mogoba POS — order-taking flows: item options, line edits, discounts, payment, tickets. */
+/* Mogoba POS: order-taking flows: item options, line edits, discounts, payment, tickets. */
 (function (M) {
   'use strict';
   const U = M.util;
@@ -330,7 +330,7 @@
         while (sc.people.length < sc.count) sc.people.push({ type: 'SC', name: '', idNo: '' });
         sc.people.length = sc.count;
         parts.push(
-          h('p.lead', { style: { marginTop: '14px' } }, '20% off the eligible share' + (vat ? ', VAT-exempt,' : '') + ' under RA 9994 / RA 10754. Group meals are shared equally across diners. Record each ID — it prints on the receipt for signature.'),
+          h('p.lead', { style: { marginTop: '14px' } }, '20% off the eligible share' + (vat ? ', VAT-exempt,' : '') + ' under RA 9994 / RA 10754. Group meals are shared equally across diners. Record each ID. It prints on the receipt for signature.'),
           h(
             'div.form-grid',
             h('div.field', h('span', 'Senior / PWD diners'), ui().stepper(sc.count, (v) => {
@@ -503,7 +503,7 @@
               )
             )
           : null,
-        total === 0 ? h('button.btn.go.lg.block', { type: 'button', onclick: finish }, 'Complete — no charge') : null
+        total === 0 ? h('button.btn.go.lg.block', { type: 'button', onclick: finish }, 'Complete, no charge') : null
       );
       const methods = h(
         'div.methods',
@@ -548,7 +548,7 @@
           const kp = ui().keypad((v) => {
             entered = v;
             go.disabled = !(entered > 0) || entered > remaining;
-            U.mount(go, entered > remaining ? 'More than due — use cash for change' : 'Record ' + U.peso(entered) + ' ' + C.PAY[method]);
+            U.mount(go, entered > remaining ? 'More than due. Use cash for change.' : 'Record ' + U.peso(entered) + ' ' + C.PAY[method]);
           }, entered);
           right.append(refIn, kp.el, go);
         }
@@ -687,7 +687,7 @@
           M.print.printText(M.print.kitchen(c));
           s.close();
         }),
-        act('trash', c.held ? 'Delete this ticket' : 'Clear order', c.lines.some((l) => l.sent) ? 'Needs a manager — the kitchen has it' : 'Start over', async () => {
+        act('trash', c.held ? 'Delete this ticket' : 'Clear order', c.lines.some((l) => l.sent) ? 'Needs a manager: the kitchen has it' : 'Start over', async () => {
           if (!c.lines.length && !c.held) return s.close();
           let ap = null;
           if (c.lines.some((l) => l.sent)) {

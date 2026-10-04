@@ -1,4 +1,4 @@
-/* Mogoba POS — Reports: sales, margin, items, payments, SC/PWD log, waste and count variance. */
+/* Mogoba POS: Reports: sales, margin, items, payments, SC/PWD log, waste and count variance. */
 (function (M) {
   'use strict';
   const U = M.util;
@@ -7,7 +7,6 @@
   const S = M.state;
   const h = U.h;
   const ui = () => M.ui;
-  const NS = 'http://www.w3.org/2000/svg';
 
   const view = { range: 'today' };
   const RANGES = [['today', 'Today'], ['yesterday', 'Yesterday'], ['7d', '7 days'], ['30d', '30 days'], ['month', 'This month']];
@@ -25,111 +24,8 @@
     return [U.addDays(from, -n), U.addDays(from, -1)];
   }
 
-  function svg(tag, attrs) {
-    const el = document.createElementNS(NS, tag);
-    for (const k in attrs) el.setAttribute(k, attrs[k]);
-    return el;
-  }
-  /* 4-ish clean ticks: steps of 1, 2, 2.5 or 5 × 10^k. */
-  function ticks(v) {
-    if (v <= 0) return { top: 100000, step: 25000 };
-    const raw = v / 4;
-    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
-    const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((x) => x >= raw);
-    return { top: step * Math.ceil(v / step - 1e-9), step };
-  }
-  const tickLabel = (c) => {
-    const p = c / 100;
-    if (p >= 1e6) return '₱' + U.trim(p / 1e6) + 'M';
-    if (p >= 1000) return '₱' + U.trim(p / 1000) + 'K';
-    return '₱' + U.trim(p);
-  };
-  /* Rounded-top column, square at the baseline. */
-  function colPath(x, y, w, hgt) {
-    const r = Math.min(4, w / 2, hgt);
-    return 'M' + x + ',' + (y + hgt) + 'V' + (y + r) + 'Q' + x + ',' + y + ' ' + (x + r) + ',' + y + 'H' + (x + w - r) + 'Q' + (x + w) + ',' + y + ' ' + (x + w) + ',' + (y + r) + 'V' + (y + hgt) + 'Z';
-  }
-
-  /* Single-series column chart with per-bar hover/focus tooltip and a table fallback. */
-  function columns(data, opts) {
-    const W = 640;
-    const H = 220;
-    const pad = { l: 46, r: 8, t: 18, b: 26 };
-    const iw = W - pad.l - pad.r;
-    const ih = H - pad.t - pad.b;
-    const tk = ticks(Math.max(...data.map((d) => d.value), 0));
-    const max = tk.top;
-    const box = h('div.chart');
-    const s = svg('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': opts.label });
-    for (let v = 0; v <= max + 1e-6; v += tk.step) {
-      const y = pad.t + ih - (ih * v) / max;
-      s.appendChild(svg('line', { x1: pad.l, x2: W - pad.r, y1: y, y2: y, class: 'grid-l' }));
-      const t = svg('text', { x: pad.l - 8, y: y + 4, 'text-anchor': 'end', class: 'axis-t' });
-      t.textContent = tickLabel(v);
-      s.appendChild(t);
-    }
-    const band = iw / data.length;
-    const bw = Math.min(24, band * 0.62);
-    const peak = data.reduce((b, d, i) => (d.value > data[b].value ? i : b), 0);
-    const every = data.length > 16 ? 3 : data.length > 10 ? 2 : 1;
-    const tip = h('div.chart-tip', { hidden: true });
-    data.forEach((d, i) => {
-      const x = pad.l + band * i + (band - bw) / 2;
-      const bh = max ? (ih * Math.max(0, d.value)) / max : 0;
-      const g = svg('g', { tabindex: '0', role: 'listitem', 'aria-label': d.label + ': ' + opts.fmt(d.value) });
-      g.appendChild(svg('rect', { x: pad.l + band * i, y: pad.t, width: band, height: ih, class: 'hit' }));
-      if (bh > 0) g.appendChild(svg('path', { d: colPath(x, pad.t + ih - bh, bw, bh), class: 'bar' + (d.dim ? ' dim' : '') }));
-      const show = () => {
-        g.classList.add('on');
-        tip.hidden = false;
-        U.mount(tip, h('b', opts.fmt(d.value)), d.full || d.label, d.sub ? h('div.muted', d.sub) : null);
-        const rect = s.getBoundingClientRect();
-        const cx = ((x + bw / 2) / W) * rect.width;
-        const cy = ((pad.t + ih - bh) / H) * rect.height;
-        tip.style.left = Math.max(60, Math.min(rect.width - 60, cx)) + 'px';
-        tip.style.top = cy + 'px';
-      };
-      const hide = () => {
-        g.classList.remove('on');
-        tip.hidden = true;
-      };
-      g.addEventListener('pointerenter', show);
-      g.addEventListener('pointerleave', hide);
-      g.addEventListener('focus', show);
-      g.addEventListener('blur', hide);
-      s.appendChild(g);
-      if (i % every === 0 || i === data.length - 1) {
-        const t = svg('text', { x: pad.l + band * i + band / 2, y: H - 8, 'text-anchor': 'middle', class: 'axis-t' });
-        t.textContent = d.label;
-        s.appendChild(t);
-      }
-      if (i === peak && d.value > 0) {
-        const t = svg('text', { x: x + bw / 2, y: pad.t + ih - bh - 6, 'text-anchor': 'middle', class: 'val-t' });
-        t.textContent = U.peso0(d.value);
-        s.appendChild(t);
-      }
-    });
-    box.append(s, tip);
-    const table = h('details', { style: { marginTop: '6px' } }, h('summary.muted', { style: { fontSize: '12.5px', cursor: 'pointer' } }, 'Show as table'), h('table.tbl', h('tbody', data.map((d) => h('tr', h('td', d.full || d.label), h('td.r', opts.fmt(d.value)))))));
-    return h('div', box, table);
-  }
-
-  function hbars(rows, fmt, sub) {
-    const max = Math.max(...rows.map((r) => r.value), 1);
-    return h(
-      'div.hbars',
-      { role: 'list' },
-      rows.map((r) =>
-        h(
-          'div.hbar',
-          { role: 'listitem', 'aria-label': r.name + ': ' + fmt(r.value) + (r.sub ? ', ' + r.sub : '') },
-          h('span.nm', { title: r.name }, r.name),
-          h('span.track', h('i', { style: { width: Math.max(1, (r.value / max) * 100) + '%' } })),
-          h('span.v', fmt(r.value), sub && r.sub ? h('span.muted', { style: { fontWeight: 600, marginLeft: '6px' } }, r.sub) : null)
-        )
-      )
-    );
-  }
+  const columns = (data, opts) => M.charts.columns(data, opts);
+  const hbars = (rows, fmt) => M.charts.hbars(rows, fmt);
 
   function delta(cur, prev) {
     if (!prev) return null;
@@ -176,7 +72,7 @@
       const p = L.aggregate(prevOrders, menu, { keepOrders: false });
       const single = from === to;
       const parts = [];
-      U.mount(head, h('h2', 'Reports'), h('span.muted.hide-phone', { style: { fontWeight: 700 } }, single ? U.fmtDay(from) : U.fmtDay(from) + ' – ' + U.fmtDay(to)), orders.length ? h('button.btn', { type: 'button', onclick: () => exportCsv(orders, from, to) }, ui().icon('download', 20), 'Export CSV') : null);
+      U.mount(head, h('h2', 'Reports'), h('span.muted.hide-phone', { style: { fontWeight: 700 } }, single ? U.fmtDay(from) : U.fmtDay(from) + ' to ' + U.fmtDay(to)), orders.length ? h('button.btn', { type: 'button', onclick: () => exportCsv(orders, from, to) }, ui().icon('download', 20), 'Export CSV') : null);
       if (!orders.length) {
         U.mount(body, h('div.panel.glass', ui().empty('No sales in this period', 'Pick another range, or ring up a sale on the register.')));
         return;
@@ -194,16 +90,49 @@
       if (single) {
         const hrs = [];
         for (let i = 7; i <= 21; i++) hrs.push(i);
-        series = hrs.map((i) => ({ label: (i % 12 || 12) + (i < 12 ? 'a' : 'p'), full: (i % 12 || 12) + ':00 ' + (i < 12 ? 'AM' : 'PM'), value: r.byHour[i], sub: r.byHourCount[i] + ' orders' }));
+        series = hrs.map((i) => ({ label: (i % 12 || 12) + (i < 12 ? 'a' : 'p'), full: (i % 12 || 12) + ':00 ' + (i < 12 ? 'AM' : 'PM'), value: r.byHour[i], mark: p.byHour ? p.byHour[i] : null, sub: r.byHourCount[i] + ' orders' }));
       } else {
         series = [];
-        for (let d = from; d <= to; d = U.addDays(d, 1)) series.push({ label: d.slice(8), full: U.fmtDay(d), value: r.byDay[d] || 0 });
+        let k = 0;
+        for (let d = from; d <= to; d = U.addDays(d, 1), k++) series.push({ label: d.slice(8), full: U.fmtDay(d), value: r.byDay[d] || 0, mark: p.byDay ? p.byDay[U.addDays(pf, k)] || 0 : null });
       }
+      /* menu engineering and busy hours come straight from the order lines */
+      const eng = {};
+      const heat = [0, 1, 2, 3, 4, 5, 6].map(() => new Array(24).fill(0));
+      const dayCount = [0, 0, 0, 0, 0, 0, 0];
+      const seenDay = new Set();
+      for (const o of orders) {
+        if (o.status !== 'paid') continue;
+        const dt = new Date(o.paidAt);
+        heat[dt.getDay()][dt.getHours()] += L.orderNet(o);
+        if (!seenDay.has(o.day)) {
+          seenDay.add(o.day);
+          dayCount[dt.getDay()]++;
+        }
+        for (const l of o.lines) {
+          if (!l.itemId) continue;
+          const cat = S.cats.find((c) => c.id === (S.items[l.itemId] ? S.items[l.itemId].cat : l.cat));
+          const e = (eng[l.itemId] = eng[l.itemId] || { name: l.name, kind: cat ? cat.kind : 'food', qty: 0, net: 0, cost: 0 });
+          e.qty += l.qty;
+          e.net += L.lineNet(l);
+          e.cost += (l.ucost || 0) * l.qty;
+        }
+      }
+      for (let d = 0; d < 7; d++) for (let hr = 0; hr < 24; hr++) heat[d][hr] = dayCount[d] ? heat[d][hr] / dayCount[d] : 0;
+      const engPts = Object.values(eng)
+        .filter((e) => e.qty > 0)
+        .map((e) => ({ name: e.name, kind: e.kind, qty: e.qty, margin: Math.round((e.net - e.cost) / e.qty) }));
+      const engBox = h('div');
+      const drawEng = (kind) => {
+        const pts = engPts.filter((x) => x.kind === kind);
+        U.mount(engBox, pts.length > 2 ? M.charts.matrix(pts) : h('p.muted', 'Needs more sales in this period.'));
+      };
+      drawEng(view.eng || 'food');
       const top = Object.values(r.items).sort((a, b) => b.net - a.net);
       parts.push(
         h(
           'div.split',
-          h('div.panel.glass', h('div.panel-title', h('h3', single ? 'Net sales by hour' : 'Net sales by day'), h('span.sub', single ? 'peak hours help plan prep and staff' : '')), columns(series, { label: single ? 'Net sales by hour' : 'Net sales by day', fmt: (v) => U.peso(v) })),
+          h('div.panel.glass', h('div.panel-title', h('h3', single ? 'Net sales by hour' : 'Net sales by day')), columns(series, { label: single ? 'Net sales by hour' : 'Net sales by day', fmt: (v) => U.peso(v), seriesLabel: 'This period', markLabel: 'Previous period' })),
           h(
             'div.panel.glass',
             h('div.panel-title', h('h3', 'Payments')),
@@ -234,6 +163,23 @@
           h('div.panel.glass', h('div.panel-title', h('h3', 'Categories')), hbars(Object.entries(r.byCat).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ name: (S.cats.find((c) => c.id === k) || { name: 'Custom items' }).name, value: v })), U.peso0))
         )
       );
+
+      if (!single) {
+        const hrs = [];
+        for (let i = 9; i < 20; i++) hrs.push(i);
+        parts.push(
+          h(
+            'div.split.even',
+            h('section.panel.glass', h('div.panel-title', h('h3', 'Busy hours'), h('span.sub', 'average sales per day')), M.charts.heatmap(heat, hrs, { fmt: U.peso0, label: 'Average sales by weekday and hour' })),
+            h(
+              'section.panel.glass',
+              h('div.panel-title', h('h3', 'Menu engineering'), ui().seg([['food', 'Food'], ['drink', 'Drinks']], view.eng || 'food', (v) => ((view.eng = v), drawEng(v)), 'Menu group')),
+              engBox,
+              h('p.muted', { style: { fontSize: '12.5px', marginTop: '8px' } }, 'Figures: sold · margin per serving. Split at the menu average.')
+            )
+          )
+        );
+      }
 
       /* controls: discounts, voids, refunds */
       const voids = orders.filter((o) => o.status === 'voided');

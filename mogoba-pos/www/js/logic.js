@@ -1,4 +1,4 @@
-/* Mogoba POS — pure business logic (no DOM, no storage).
+/* Mogoba POS: pure business logic (no DOM, no storage).
  * Money is always integer centavos. Quantities of ingredients are base units (g, ml, pc).
  * Loaded as a classic script in the app (window.M.logic) and as a CommonJS module in tests. */
 (function (root, factory) {
@@ -45,7 +45,7 @@
    * Order discount kinds:
    *   pct   {value: 0..100}
    *   amt   {value: centavos}
-   *   scpwd {count, diners}  — RA 9994 / RA 10754: 20% off the eligible share, plus VAT
+   *   scpwd {count, diners}: RA 9994 / RA 10754, 20% off the eligible share, plus VAT
    *         exemption on that share when VAT-registered. Group meals are pro-rated by
    *         count/diners. Cannot be combined with another order discount (one at a time). */
   function totals(order, cfg) {
@@ -256,6 +256,94 @@
     return (base * (cost || 0) + qty * unitCost) / (base + qty);
   }
 
+  /* ---------- lots & expiry ----------
+   * Each ingredient keeps lots: [{id, qty, exp: 'YYYY-MM-DD' or '', at, cost}].
+   * Stock leaves first-expiry-first-out (undated lots last). The lots always sum to
+   * max(0, onHand), so the ledger stays the single source of truth for quantity. */
+  const r3 = (x) => Math.round(x * 1000) / 1000;
+  const lotKey = (l) => (l.exp || '9999-12-31') + '|' + String(l.at || 0).padStart(15, '0');
+  function sortLots(lots) {
+    return (lots || []).slice().sort((a, b) => (lotKey(a) < lotKey(b) ? -1 : lotKey(a) > lotKey(b) ? 1 : 0));
+  }
+  function lotsTotal(lots) {
+    return r3((lots || []).reduce((s, l) => s + l.qty, 0));
+  }
+  /* Older records have no lots: treat what is on hand as one undated lot. */
+  function lotsOf(ing) {
+    if (Array.isArray(ing.lots)) return ing.lots;
+    return ing.onHand > 0 ? [{ id: 'undated', qty: ing.onHand, exp: '', at: 0 }] : [];
+  }
+  /* Take qty first-expiry-first-out; preferId is taken first (writing off one lot). */
+  function takeLots(lots, qty, preferId) {
+    let need = Math.max(0, qty);
+    const order = sortLots(lots);
+    if (preferId) {
+      const i = order.findIndex((l) => l.id === preferId);
+      if (i > 0) order.unshift(order.splice(i, 1)[0]);
+    }
+    const out = [];
+    const taken = [];
+    for (const l of order) {
+      if (need > 1e-9) {
+        const t = Math.min(l.qty, need);
+        need -= t;
+        if (t > 0) taken.push({ id: l.id, qty: r3(t), exp: l.exp || '' });
+        const left = r3(l.qty - t);
+        if (left > 1e-9) out.push(Object.assign({}, l, { qty: left }));
+      } else out.push(l);
+    }
+    return { lots: sortLots(out), taken, short: r3(Math.max(0, need)) };
+  }
+  /* Lots with the same expiry date merge, so the list stays short. */
+  function addLot(lots, lot) {
+    if (!(lot.qty > 0)) return sortLots(lots);
+    const exp = lot.exp || '';
+    const same = (lots || []).find((l) => (l.exp || '') === exp);
+    if (same) return sortLots(lots.map((l) => (l === same ? Object.assign({}, l, { qty: r3(l.qty + lot.qty) }) : l)));
+    return sortLots((lots || []).concat([Object.assign({}, lot, { exp, qty: r3(lot.qty) })]));
+  }
+  /* Restocked items (void, refund) go back to the lot they most likely came from. */
+  function returnLots(lots, qty, at) {
+    if (!(qty > 0)) return sortLots(lots);
+    const s = sortLots(lots);
+    if (!s.length) return [{ id: 'undated', qty: r3(qty), exp: '', at: at || 0 }];
+    s[0] = Object.assign({}, s[0], { qty: r3(s[0].qty + qty) });
+    return s;
+  }
+  function fitLots(lots, onHand) {
+    const total = lotsTotal(lots);
+    const target = Math.max(0, onHand);
+    if (total > target + 1e-6) return takeLots(lots, total - target).lots;
+    if (total < target - 1e-6) return addLot(lots, { id: 'undated', qty: r3(target - total), exp: '', at: 0 });
+    return sortLots(lots);
+  }
+  function daysUntil(exp, today) {
+    const p = (k) => {
+      const [y, m, d] = k.split('-').map(Number);
+      return Date.UTC(y, m - 1, d);
+    };
+    return Math.round((p(exp) - p(today)) / 864e5);
+  }
+  /* "Soon" scales with shelf life: same day for 1-day items (tea base), 1 day for chicken,
+   * up to 3 days for long-life stock. */
+  function soonWindow(ing) {
+    const life = ing.shelfLife || 0;
+    return life > 0 ? Math.min(3, Math.round(life * 0.25)) : 3;
+  }
+  function expiryState(exp, today, soonDays) {
+    if (!exp) return 'none';
+    const d = daysUntil(exp, today);
+    if (d < 0) return 'expired';
+    if (d <= (soonDays == null ? 3 : soonDays)) return 'soon';
+    return 'ok';
+  }
+  /* The most urgent dated lot of an ingredient, or null. */
+  function nextExpiry(ing, today) {
+    const lot = sortLots(lotsOf(ing)).find((l) => l.exp && l.qty > 0);
+    if (!lot) return null;
+    return { lot, days: daysUntil(lot.exp, today), state: expiryState(lot.exp, today, soonWindow(ing)) };
+  }
+
   /* ---------- shifts ---------- */
 
   /* Bills and coins from ₱1,000 down to ₱1; loose centavo coins are entered as one total. */
@@ -382,6 +470,17 @@
     stockStatus,
     suggestOrder,
     avgCost,
+    sortLots,
+    lotsTotal,
+    lotsOf,
+    takeLots,
+    addLot,
+    returnLots,
+    fitLots,
+    daysUntil,
+    soonWindow,
+    expiryState,
+    nextExpiry,
     countTotal,
     emptyTot,
     drawer,

@@ -1,4 +1,4 @@
-/* Mogoba POS — receipts, kitchen tickets and shift reports as fixed-width text.
+/* Mogoba POS: receipts, kitchen tickets and shift reports as fixed-width text.
  * The same text drives the on-screen preview, browser printing (58/80 mm) and the ESC/POS
  * byte stream used by Bluetooth thermal printers in the Android build. */
 (function (M) {
@@ -116,7 +116,7 @@
     }
     out.push(rule(w));
     if (b.footer) out.push(center(b.footer, w));
-    if (opts && opts.copy) out.push('', center('— REPRINT ' + U.fmtDateTime(Date.now()) + ' —', w));
+    if (opts && opts.copy) out.push('', center('REPRINT ' + U.fmtDateTime(Date.now()), w));
     return out.join('\n');
   }
 
@@ -127,7 +127,7 @@
     out.push(M.core.TYPES[order.type] + (order.table ? ' · Table ' + order.table : '') + (order.customer ? ' · ' + order.customer : ''));
     out.push(rule(w));
     for (const l of order.lines) {
-      out.push(...wrap(l.qty + ' x ' + l.name + (l.variantName ? ' — ' + l.variantName : ''), w));
+      out.push(...wrap(l.qty + ' x ' + l.name + (l.variantName ? ', ' + l.variantName : ''), w));
       for (const m of l.mods || []) out.push('    + ' + m.name);
       if (l.note) out.push('    ** ' + l.note.toUpperCase());
     }
@@ -165,6 +165,12 @@
       out.push(lr('  Counted', amt(shift.counted), w));
       out.push(lr(shift.overShort === 0 ? '  Balanced' : shift.overShort > 0 ? '  Over' : '  Short', amt(Math.abs(shift.overShort)), w));
       if (shift.note) out.push('  Note: ' + shift.note);
+      const ws = Object.entries(shift.wallets || {});
+      if (ws.length) {
+        out.push(rule(w));
+        out.push('E-wallets (app vs register)');
+        for (const [k, v] of ws) out.push(lr('  ' + M.core.PAY[k], amt(v.counted) + ' / ' + amt(v.expected), w), lr('  ' + (v.diff === 0 ? 'Matches' : v.diff > 0 ? 'Over' : 'Short'), amt(Math.abs(v.diff)), w));
+      }
     }
     out.push(rule(w));
     out.push(center('Printed ' + U.fmtDateTime(Date.now()), w));
@@ -200,7 +206,7 @@
 
   /* ESC/POS bytes for 58/80 mm Bluetooth printers (used by the Android build). */
   function escpos(text) {
-    const ascii = text.replace(/₱/g, 'P').replace(/[—–]/g, '-').replace(/·/g, '-').replace(/[^\x20-\x7e\n]/g, '');
+    const ascii = text.replace(/₱/g, 'P').replace(/[\u2013\u2014]/g, '-').replace(/·/g, '-').replace(/[^\x20-\x7e\n]/g, '');
     const bytes = [0x1b, 0x40, 0x1b, 0x74, 0x00];
     for (const ch of ascii) bytes.push(ch === '\n' ? 0x0a : ch.charCodeAt(0));
     bytes.push(0x0a, 0x0a, 0x0a, 0x1d, 0x56, 0x42, 0x00);

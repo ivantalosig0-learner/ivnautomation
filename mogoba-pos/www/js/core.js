@@ -1,4 +1,4 @@
-/* Mogoba POS — domain core.
+/* Mogoba POS: domain core.
  * builders (build*) are pure functions of an explicit context and return records to write;
  * live operations wrap them in ONE IndexedDB transaction and update memory only after commit.
  * The demo-history generator uses the very same builders, so sample data has real shapes. */
@@ -32,6 +32,7 @@
     card: 'Card',
     foodpanda: 'Foodpanda',
     grab: 'GrabFood',
+    online: 'Online order',
     other: 'Other',
     none: 'No charge',
   };
@@ -69,6 +70,19 @@
     });
   }
 
+  /* Apply a quantity change to an ingredient and keep its expiry lots in step:
+   * removals leave first-expiry-first-out (or from preferLot), returns go back to the
+   * earliest lot, additions with a date start a new lot. */
+  function applyQty(cur, qty, at, opts) {
+    const o = opts || {};
+    const onHand = r3(cur.onHand + qty);
+    let lots = L.lotsOf(cur);
+    if (qty < 0) lots = L.takeLots(lots, -qty, o.preferLot).lots;
+    else if (qty > 0 && o.lot) lots = L.addLot(lots, Object.assign({ id: U.uid(), at }, o.lot, { qty }));
+    else if (qty > 0) lots = L.returnLots(lots, qty, at);
+    return Object.assign({}, cur, { onHand, lots: L.fitLots(lots, onHand), updatedAt: at });
+  }
+
   function stockMoves(ctx, use, sign, type, ref, at, note) {
     const moves = [];
     const ings = {};
@@ -77,7 +91,7 @@
       if (!cur || !use[id]) continue;
       const qty = r3(sign * use[id]);
       moves.push({ id: U.uid(), ing: id, qty, type, ref: ref || '', at, day: U.dayKey(at), cost: cur.cost, by: ctx.user ? ctx.user.id : '', note: note || '' });
-      ings[id] = Object.assign({}, cur, { onHand: r3(cur.onHand + qty), updatedAt: at });
+      ings[id] = applyQty(cur, qty, at);
     }
     return { moves, ings };
   }
@@ -143,7 +157,7 @@
 
   function buildVoid(ctx, order, opts, at) {
     if (order.status !== 'paid') throw new Error('Only paid orders can be voided.');
-    if (!ctx.shift) throw new Error('Open a shift first — the cash goes back out of the drawer.');
+    if (!ctx.shift) throw new Error('Open a shift first. The cash goes back out of the drawer.');
     const left = (l) => l.qty - L.refundedQty(order, l.id);
     const st = opts.restock ? stockMoves(ctx, lineUseMap(order.lines, left), 1, 'void', order.id, at, opts.reason) : { moves: [], ings: {} };
     const back = {};
@@ -166,7 +180,7 @@
 
   function buildRefund(ctx, order, opts, at) {
     if (order.status !== 'paid') throw new Error('Only paid orders can be refunded.');
-    if (!ctx.shift) throw new Error('Open a shift first — refunds come out of the drawer.');
+    if (!ctx.shift) throw new Error('Open a shift first. Refunds come out of the drawer.');
     const picks = opts.picks.filter((p) => p.qty > 0);
     if (!picks.length) throw new Error('Pick at least one item to refund.');
     const amount = L.refundAmount(order, picks);
@@ -206,19 +220,41 @@
       if (!cur || !(row.qty > 0)) continue;
       const unitCost = row.unitCost >= 0 ? row.unitCost : cur.cost;
       const cost = L.avgCost(cur.onHand, cur.cost, row.qty, unitCost);
-      moves.push({ id: U.uid(), ing: row.ing, qty: r3(row.qty), type: 'receive', ref: note.ref || '', at, day: U.dayKey(at), cost: unitCost, by: ctx.user ? ctx.user.id : '', note: note.supplier || note.note || '' });
-      ings[row.ing] = Object.assign({}, cur, { onHand: r3(cur.onHand + row.qty), cost, updatedAt: at });
+      moves.push({ id: U.uid(), ing: row.ing, qty: r3(row.qty), type: 'receive', ref: note.ref || '', at, day: U.dayKey(at), cost: unitCost, by: ctx.user ? ctx.user.id : '', note: note.supplier || note.note || '', exp: row.exp || '' });
+      ings[row.ing] = Object.assign(applyQty(cur, r3(row.qty), at, { lot: { exp: row.exp || '', cost: unitCost } }), { cost });
     }
     if (!moves.length) throw new Error('Enter a quantity for at least one item.');
     return { moves, ings };
   }
 
+  /* rows: [{ing, qty, lot?}]. With lot, that expiry lot is written off first. */
   function buildWaste(ctx, rows, reason, at) {
-    const use = {};
-    for (const row of rows) if (row.qty > 0) use[row.ing] = (use[row.ing] || 0) + row.qty;
-    const st = stockMoves(ctx, use, -1, 'waste', '', at, reason);
-    if (!st.moves.length) throw new Error('Enter a quantity for at least one item.');
-    return st;
+    const moves = [];
+    const ings = {};
+    for (const row of rows) {
+      const cur = ings[row.ing] || ctx.ings[row.ing];
+      if (!cur || !(row.qty > 0)) continue;
+      const qty = r3(-row.qty);
+      moves.push({ id: U.uid(), ing: row.ing, qty, type: 'waste', ref: '', at, day: U.dayKey(at), cost: cur.cost, by: ctx.user ? ctx.user.id : '', note: reason || '' });
+      ings[row.ing] = applyQty(cur, qty, at, { preferLot: row.lot });
+    }
+    if (!moves.length) throw new Error('Enter a quantity for at least one item.');
+    return { moves, ings };
+  }
+
+  /* Manual add or remove with a reason. rows: [{ing, qty (+ or -), exp?}] */
+  function buildAdjust(ctx, rows, reason, at) {
+    const moves = [];
+    const ings = {};
+    for (const row of rows) {
+      const cur = ings[row.ing] || ctx.ings[row.ing];
+      if (!cur || !row.qty) continue;
+      const qty = r3(row.qty);
+      moves.push({ id: U.uid(), ing: row.ing, qty, type: 'adjust', ref: '', at, day: U.dayKey(at), cost: cur.cost, by: ctx.user ? ctx.user.id : '', note: reason || '', exp: row.exp || '' });
+      ings[row.ing] = applyQty(cur, qty, at, qty > 0 ? { lot: { exp: row.exp || '', cost: cur.cost } } : {});
+    }
+    if (!moves.length) throw new Error('Enter a quantity to add or remove.');
+    return { moves, ings };
   }
 
   function buildCount(ctx, rows, note, at) {
@@ -233,7 +269,7 @@
       entries.push({ ing: row.ing, expected: cur.onHand, counted: row.counted, delta, cost: cur.cost });
       if (delta !== 0) {
         moves.push({ id: U.uid(), ing: row.ing, qty: delta, type: 'count', ref: id, at, day: U.dayKey(at), cost: cur.cost, by: ctx.user ? ctx.user.id : '', note: note || '' });
-        ings[row.ing] = Object.assign({}, cur, { onHand: r3(row.counted), updatedAt: at, countedAt: at });
+        ings[row.ing] = Object.assign(applyQty(cur, delta, at, delta > 0 ? { lot: { exp: '' } } : {}), { countedAt: at });
       } else {
         ings[row.ing] = Object.assign({}, cur, { countedAt: at });
       }
@@ -249,11 +285,19 @@
 
   const drawer = L.drawer;
 
-  function buildCloseShift(ctx, counts, note, at) {
+  /* wallets: {gcash: counted centavos, maya: ...} as seen in each app; compared with the register. */
+  function buildCloseShift(ctx, counts, note, at, wallets) {
     const counted = L.countTotal(counts);
     const d = drawer(ctx.shift);
     const zNo = (ctx.meta.zSeq || 0) + 1;
-    const shift = Object.assign({}, ctx.shift, { status: 'closed', closedAt: at, closedBy: who(ctx.user), counts, counted, expected: d.expected, overShort: counted - d.expected, note: note || '', zNo });
+    const t = ctx.shift.tot || emptyTot();
+    const w = {};
+    for (const k in wallets || {}) {
+      if (!(wallets[k] >= 0)) continue;
+      const expected = (t.sales[k] || 0) - (t.refunds[k] || 0);
+      w[k] = { expected, counted: wallets[k], diff: wallets[k] - expected };
+    }
+    const shift = Object.assign({}, ctx.shift, { status: 'closed', closedAt: at, closedBy: who(ctx.user), counts, counted, expected: d.expected, overShort: counted - d.expected, wallets: w, note: note || '', zNo });
     return { shift, meta: Object.assign({}, ctx.meta, { zSeq: zNo }) };
   }
 
@@ -343,6 +387,7 @@
     const now = Date.now();
     const meta = { deviceId: U.uid(), seq: 0, zSeq: 0, queueDay: '', queueN: 0, demo: !!opts.demo, createdAt: now, lastBackup: 0, schema: 1 };
     const settings = M.seed.SETTINGS();
+    settings.online.enabled = !!opts.demo;
     const users = opts.demo
       ? [makeUser('Owner', 'owner', '1234', 0), makeUser('Mark', 'manager', '2580', 1), makeUser('Joy', 'cashier', '0000', 2)]
       : [makeUser(opts.owner.name, 'owner', opts.owner.pin, 0)];
@@ -507,7 +552,7 @@
       if (cart.held) t.put('orders', cart);
       for (const m of st.moves) t.put('moves', m);
       for (const k in st.ings) t.put('ings', st.ings[k]);
-      audit(t, 'line.void', take + ' × ' + l.name + (l.variantName ? ' (' + l.variantName + ')' : '') + ' — ' + reason + (wasted ? ' · wasted' : ''), approver);
+      audit(t, 'line.void', take + ' × ' + l.name + (l.variantName ? ' (' + l.variantName + ')' : '') + ': ' + reason + (wasted ? ' · wasted' : ''), approver);
       if (st.moves.length) outbox(t, 'stock.moves', { moves: st.moves }, at);
       return () => applyIngs(st.ings);
     });
@@ -598,6 +643,42 @@
     return b.order;
   }
 
+  /* A sale that did not come from the cashier's cart (online orders). The current cart is untouched. */
+  async function recordSale(cart, payments) {
+    const at = Date.now();
+    const b = buildSale(ctx(), Object.assign(newCart(), cart), payments, at);
+    await commit(['orders', 'moves', 'ings', 'kv', 'shifts'], (t) => {
+      t.put('orders', b.order);
+      for (const m of b.moves) t.put('moves', m);
+      for (const k in b.ings) t.put('ings', b.ings[k]);
+      t.put('kv', { k: 'meta', v: b.meta });
+      t.put('shifts', b.shift);
+      outbox(t, 'order.paid', { order: b.order, moves: b.moves }, at);
+      audit(t, 'online.paid', (cart.onlineCode || '') + ' · ' + U.peso(b.order.totals.total));
+      return () => {
+        S.meta = b.meta;
+        S.shift = b.shift;
+        applyIngs(b.ings);
+        upsertToday(b.order);
+      };
+    });
+    return b.order;
+  }
+
+  /* An open ticket waiting for payment at pickup (cash online orders). */
+  async function createTicket(cart) {
+    const c = Object.assign(newCart(), cart, { held: true, heldAt: Date.now(), updatedAt: Date.now() });
+    await commit(['orders'], (t) => {
+      t.put('orders', c);
+      audit(t, 'online.ticket', (cart.onlineCode || '') + ' · ' + c.lines.length + ' lines');
+      return () => {
+        if (!S.open.find((o) => o.id === c.id)) S.open.push(c);
+      };
+    });
+    M.bus.emit('cart');
+    return c;
+  }
+
   async function voidOrder(order, opts) {
     const at = Date.now();
     const b = buildVoid(ctx(), order, opts, at);
@@ -683,8 +764,8 @@
     return b.entry;
   }
 
-  async function closeShift(counts, note) {
-    const b = buildCloseShift(ctx(), counts, note, Date.now());
+  async function closeShift(counts, note, wallets) {
+    const b = buildCloseShift(ctx(), counts, note, Date.now(), wallets);
     await commit(['shifts', 'kv'], (t) => {
       t.put('shifts', b.shift);
       t.put('kv', { k: 'meta', v: b.meta });
@@ -715,11 +796,15 @@
   const receive = (rows, note) => stockOp('receive', buildReceive(ctx(), rows, note || {}, Date.now()), rows.length + ' items' + (note && note.supplier ? ' from ' + note.supplier : ''));
   const waste = (rows, reason) => stockOp('waste', buildWaste(ctx(), rows, reason, Date.now()), rows.length + ' items · ' + reason);
   const count = (rows, note) => stockOp('count', buildCount(ctx(), rows, note, Date.now()), rows.length + ' items counted');
+  const adjust = (rows, reason) => stockOp('adjust', buildAdjust(ctx(), rows, reason, Date.now()), rows.map((r) => (r.qty > 0 ? '+' : '') + U.trim(r.qty) + ' ' + (S.ings[r.ing] ? S.ings[r.ing].name : r.ing)).join(', ') + ' · ' + reason);
 
   async function saveIngredient(ing) {
     const isNew = !ing.id;
     const rec = Object.assign({ onHand: 0, cost: 0, par: 0, reorder: 0, active: true, sort: Object.keys(S.ings).length }, ing, { id: ing.id || U.uid(), updatedAt: Date.now() });
-    if (!isNew) rec.onHand = S.ings[rec.id].onHand;
+    if (!isNew) {
+      rec.onHand = S.ings[rec.id].onHand;
+      rec.lots = S.ings[rec.id].lots;
+    }
     await commit(['ings'], (t) => {
       t.put('ings', rec);
       outbox(t, 'ingredient.saved', { ing: rec });
@@ -865,7 +950,7 @@
     return out;
   }
 
-  /* Rebuild on-hand from the ledger — the integrity check for stock. */
+  /* Rebuild on-hand from the ledger: the integrity check for stock. */
   async function verifyStock() {
     const moves = await DB.all('moves');
     const sum = {};
@@ -873,7 +958,9 @@
     const diffs = [];
     for (const id in S.ings) {
       const want = r3(sum[id] || 0);
-      if (Math.abs(want - S.ings[id].onHand) > 0.01) diffs.push({ id, name: S.ings[id].name, stored: S.ings[id].onHand, ledger: want });
+      const ing = S.ings[id];
+      if (Math.abs(want - ing.onHand) > 0.01) diffs.push({ id, name: ing.name, stored: ing.onHand, ledger: want });
+      else if (Math.abs(L.lotsTotal(L.lotsOf(ing)) - Math.max(0, ing.onHand)) > 0.01) diffs.push({ id, name: ing.name, stored: ing.onHand, lots: L.lotsTotal(L.lotsOf(ing)) });
     }
     return { moves: moves.length, diffs };
   }
@@ -905,6 +992,8 @@
     holdCart,
     resume,
     completeSale,
+    recordSale,
+    createTicket,
     voidOrder,
     refundOrder,
     setKitchen,
@@ -916,6 +1005,7 @@
     receive,
     waste,
     count,
+    adjust,
     saveIngredient,
     usedIn,
     saveItem,
@@ -932,6 +1022,6 @@
     auditLog,
     usage,
     verifyStock,
-    build: { buildSale, buildVoid, buildRefund, buildReceive, buildWaste, buildCount, buildOpenShift, buildCloseShift, buildCash, emptyTot },
+    build: { buildSale, buildVoid, buildRefund, buildReceive, buildWaste, buildAdjust, buildCount, buildOpenShift, buildCloseShift, buildCash, emptyTot },
   };
 })((window.M = window.M || {}));

@@ -1,4 +1,4 @@
-/* Mogoba POS — sample history for the demo: two weeks of trading built with the same
+/* Mogoba POS: sample history for the demo: two weeks of trading built with the same
  * builders as live sales (so every number in Reports, Stock and Drawer reconciles).
  * Never pushed to sync. Wiped by Settings → Data → Start fresh. */
 (function (M) {
@@ -81,7 +81,7 @@
         const target = neglect ? ing.par * 0.45 : ing.par;
         const units = Math.ceil(Math.max(0, target - ing.onHand) / ing.buyFactor - 1e-9);
         if (units <= 0) continue;
-        rows.push({ ing: k, qty: units * ing.buyFactor, unitCost: ing.cost * (0.96 + rand() * 0.08) });
+        rows.push({ ing: k, qty: units * ing.buyFactor, unitCost: ing.cost * (0.96 + rand() * 0.08), exp: ing.shelfLife ? U.addDays(day, ing.shelfLife) : '' });
       }
       if (rows.length) {
         const at = T(day, 8, 0);
@@ -216,6 +216,10 @@
       if (d % 3 === 0) wrows.push({ ing: 'oil', qty: 3000 });
       if (chance(0.3)) wrows.push({ ing: 'kimchi', qty: int(2, 5) * 100 });
       apply(B.buildWaste(ctx, wrows, d % 3 === 0 ? 'Oil change and leftover rice' : 'Leftover rice', T(day, 20, 5)));
+      /* closing check: anything past its use-by date tomorrow is thrown out */
+      const expired = [];
+      for (const k in ings) for (const lot of L.lotsOf(ings[k])) if (lot.exp && lot.exp <= day && lot.qty > 0) expired.push({ ing: k, qty: lot.qty, lot: lot.id });
+      if (expired.length) apply(B.buildWaste(ctx, expired, 'Expired', T(day, 20, 8)));
       if (d === 7 || d === DAYS - 1) {
         ctx.user = owner;
         const crow = ['chicken', 'pork', 'rice', 'oil', 'kimchi', 'tteok', 'pearls', 'cup_m', 'box_dosirak', 'seaweed'].map((k) => {
@@ -249,8 +253,9 @@
     /* the last few of today's orders are still in the kitchen */
     out.orders
       .filter((o) => o.day === today && o.status === 'paid')
+      .filter((o) => now - o.paidAt < 25 * 60000)
       .slice(-3)
-      .forEach((o, i) => (o.kitchen = i === 0 ? 'ready' : 'prep'));
+      .forEach((o, i, a) => (o.kitchen = i === a.length - 1 ? 'prep' : 'ready'));
 
     const meta = Object.assign({}, ctx.meta, { demo: true, lastBackup: Date.now() });
     await M.db.write(['orders', 'moves', 'ings', 'shifts', 'cash', 'counts', 'audit', 'kv'], (t) => {
@@ -263,7 +268,62 @@
       for (const a of out.audit) t.put('audit', a);
       t.put('kv', { k: 'meta', v: meta });
     });
+    sampleOnline(now);
     return { orders: out.orders.length, moves: out.moves.length };
+  }
+
+  /* Two website orders so Orders > Online has something to show: one waiting for the GCash
+   * check, one already picked up. Same record shape the customer site writes. */
+  function sampleOnline(now) {
+    const S = M.state;
+    const it = (id, vid, qty, mods) => {
+      const item = S.items[id];
+      const v = vid ? item.variants.find((x) => x.id === vid) : null;
+      const ms = (mods || []).map((oid) => {
+        const o = S.mods.addon.options.find((x) => x.id === oid);
+        return { gid: 'addon', oid, name: o.name, price: o.price };
+      });
+      return { itemId: id, variantId: vid || '', name: item.name, variantName: v ? v.name : '', mods: ms, unit: (v ? v.price : item.price) + ms.reduce((t, m) => t + m.price, 0), qty, note: '' };
+    };
+    const rec = (code, minsAgo, status, method, lines, extra) => {
+      const at = now - minsAgo * 60000;
+      const subtotal = lines.reduce((t, l) => t + l.unit * l.qty, 0);
+      return Object.assign(
+        {
+          code,
+          token: U.randHex(16),
+          clientId: U.uid(),
+          createdAt: at,
+          updatedAt: at,
+          status,
+          customer: { name: 'Sample customer', phone: '09171234567' },
+          fulfillment: { type: 'pickup', time: 'asap', address: '', landmark: '' },
+          lines,
+          subtotal,
+          deliveryFee: 0,
+          total: subtotal,
+          payment: { method, ref: method === 'cash' ? '' : '1012345678901', sender: method === 'cash' ? '' : 'Sample C.', proof: '', verified: false },
+          note: '',
+          reason: '',
+          etaAt: 0,
+          timeline: [{ status: 'pending', at, by: 'customer' }],
+          posOrderId: '',
+        },
+        extra || {}
+      );
+    };
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf('mogoba.bridge.order.') === 0) localStorage.removeItem(k);
+      }
+      const a = rec('MGB-2041', 3, 'pending', 'gcash', [it('chicken-dosirak', 'honey', 2, ['mozz']), it('mt-wintermelon', 'l', 1)]);
+      const b = rec('MGB-1987', 95, 'completed', 'cash', [it('gimbap-dosirak', null, 1)], { timeline: [{ status: 'pending', at: now - 95 * 60000, by: 'customer' }, { status: 'accepted', at: now - 92 * 60000, by: 'register' }, { status: 'ready', at: now - 75 * 60000, by: 'register' }, { status: 'completed', at: now - 70 * 60000, by: 'register' }], updatedAt: now - 70 * 60000 });
+      localStorage.setItem('mogoba.bridge.order.' + a.code, JSON.stringify(a));
+      localStorage.setItem('mogoba.bridge.order.' + b.code, JSON.stringify(b));
+    } catch (e) {
+      /* storage blocked: the Online tab simply starts empty */
+    }
   }
 
   M.demo = { generate };

@@ -1,4 +1,4 @@
-/* Mogoba POS — Settings: business & receipt, register rules, printing, look, staff, sync, data. */
+/* Mogoba POS: Settings: business & receipt, register rules, printing, look, staff, sync, data. */
 (function (M) {
   'use strict';
   const U = M.util;
@@ -69,7 +69,7 @@
     const LBL = { login: 'Signed in', void: 'Void', refund: 'Refund', discount: 'Discount', 'line.void': 'Removed sent item', 'ticket.delete': 'Deleted ticket', 'ticket.clear': 'Cleared ticket', 'shift.open': 'Opened shift', 'shift.close': 'Closed shift', 'cash.in': 'Cash in', 'cash.out': 'Cash out', 'stock.receive': 'Received stock', 'stock.waste': 'Logged waste', 'stock.count': 'Stock count', 'menu.edit': 'Edited menu', 'menu.add': 'Added menu item', settings: 'Changed settings', 'user.add': 'Added staff', 'user.edit': 'Edited staff', backup: 'Backup', restore: 'Restored backup' };
     s.setBody(
       rows.length
-        ? h('div.list', rows.map((a) => h('div.row', { style: { minHeight: '52px', padding: '8px 4px' } }, h('div.grow', h('div.t', LBL[a.action] || a.action, h('span.muted', { style: { fontWeight: 600 } }, ' · ' + (a.by ? a.by.name : '—') + (a.approver && (!a.by || a.approver.id !== a.by.id) ? ', approved by ' + a.approver.name : ''))), h('div.s', U.fmtDateTime(a.at) + (a.detail ? ' · ' + a.detail : ''))))))
+        ? h('div.list', rows.map((a) => h('div.row', { style: { minHeight: '52px', padding: '8px 4px' } }, h('div.grow', h('div.t', LBL[a.action] || a.action, h('span.muted', { style: { fontWeight: 600 } }, ' · ' + (a.by ? a.by.name : '-') + (a.approver && (!a.by || a.approver.id !== a.by.id) ? ', approved by ' + a.approver.name : ''))), h('div.s', U.fmtDateTime(a.at) + (a.detail ? ' · ' + a.detail : ''))))))
         : ui().empty('Nothing yet', 'Sign-ins, voids, refunds, discounts and stock changes appear here.')
     );
   }
@@ -113,7 +113,7 @@
     const demo = S.meta.demo;
     const ok = await ui().confirm({
       title: demo ? 'Remove the sample data?' : 'Erase everything on this device?',
-      message: demo ? 'Sample sales, stock movements and demo staff are deleted. You keep Mogoba’s menu and recipes and set up your owner PIN. Stock starts at zero — do a count before opening.' : 'All sales, stock history, staff and settings on this device are deleted. This cannot be undone. Download a backup first.',
+      message: demo ? 'Sample sales, stock movements and demo staff are deleted. You keep Mogoba’s menu and recipes and set up your owner PIN. Stock starts at zero. Count it before opening.' : 'All sales, stock history, staff and settings on this device are deleted. This cannot be undone. Download a backup first.',
       ok: demo ? 'Remove sample data' : 'Erase everything',
       danger: true,
     });
@@ -130,6 +130,122 @@
     const r = await C.verifyStock();
     if (!r.diffs.length) return ui().toast('Stock matches the ledger (' + r.moves + ' movements checked).', 'ok', 4000);
     ui().toast(r.diffs.length + ' items differ from the ledger: ' + r.diffs.map((d) => d.name).slice(0, 3).join(', '), 'err', 6000);
+  }
+
+  /* QR images are resized in the browser so settings stay small and the code stays sharp. */
+  function readQr(file) {
+    return new Promise((res, rej) => {
+      if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return rej(new Error('Use a PNG or JPG image of the QR code.'));
+      const fr = new FileReader();
+      fr.onerror = () => rej(new Error('Could not read that file.'));
+      fr.onload = () => {
+        const img = new Image();
+        img.onerror = () => rej(new Error('That file is not a readable image.'));
+        img.onload = () => {
+          const k = Math.min(1, 900 / Math.max(img.width, img.height));
+          const cv = document.createElement('canvas');
+          cv.width = Math.round(img.width * k);
+          cv.height = Math.round(img.height * k);
+          const cx = cv.getContext('2d');
+          cx.imageSmoothingEnabled = k < 1;
+          cx.fillStyle = '#fff';
+          cx.fillRect(0, 0, cv.width, cv.height);
+          cx.drawImage(img, 0, 0, cv.width, cv.height);
+          res(cv.toDataURL('image/png'));
+        };
+        img.src = fr.result;
+      };
+      fr.readAsDataURL(file);
+    });
+  }
+
+  function onlinePanel(st) {
+    const o = JSON.parse(JSON.stringify(st.online || {}));
+    const put = (msg) => save({ online: o }, msg);
+    const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const hours = o.hours || [];
+    const first = hours[0] || { open: '09:00', close: '20:00' };
+    const openDays = new Set(hours.map((x) => x.day));
+    const setHours = (open, close, days) => {
+      o.hours = [0, 1, 2, 3, 4, 5, 6].filter((d) => days.has(d)).map((day) => ({ day, open, close }));
+      put();
+    };
+    const openIn = h('input.input', { type: 'time', value: first.open, 'aria-label': 'Opens at' });
+    const closeIn = h('input.input', { type: 'time', value: first.close, 'aria-label': 'Closes at' });
+    openIn.addEventListener('change', () => setHours(openIn.value, closeIn.value, openDays));
+    closeIn.addEventListener('change', () => setHours(openIn.value, closeIn.value, openDays));
+    const field = (label, val, onSave, extra) => {
+      const i = h('input.input', Object.assign({ value: val == null ? '' : val, 'aria-label': label, maxlength: 80 }, extra || {}));
+      i.addEventListener('change', () => onSave(i.value.trim()));
+      return ui().field(label, i);
+    };
+    const wallet = (key, label) => {
+      const w = (o.payments[key] = Object.assign({ enabled: false, accountName: '', number: '', qr: '' }, o.payments[key] || {}));
+      const file = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', hidden: true });
+      file.addEventListener('change', async () => {
+        const f = file.files && file.files[0];
+        if (!f) return;
+        try {
+          w.qr = await readQr(f);
+          put(label + ' QR saved.');
+        } catch (e) {
+          ui().toast(e.message, 'err');
+        }
+      });
+      return h(
+        'div.wallet',
+        h('div.wallet-qr', w.qr ? h('img', { src: w.qr, alt: label + ' QR code' }) : h('span.muted', 'No QR yet')),
+        h(
+          'div.stack-sm.grow',
+          sw(label, w.qr ? 'Customers scan this QR' : 'Upload the QR to turn this on', !!w.enabled && !!w.qr, (v) => {
+            if (v && !w.qr) return ui().toast('Upload the ' + label + ' QR first.', 'err');
+            w.enabled = v;
+            put();
+          }),
+          h('div.form-grid', field('Account name', w.accountName, (v) => ((w.accountName = v), put())), field('Number', w.number, (v) => ((w.number = v), put()), { inputmode: 'tel' })),
+          h('div.row-gap', file, h('button.btn.sm', { type: 'button', onclick: () => file.click() }, ui().icon('upload', 18), w.qr ? 'Replace QR' : 'Upload QR'), w.qr ? h('button.btn.sm.danger', { type: 'button', onclick: () => ((w.qr = ''), (w.enabled = false), put('QR removed.')) }, 'Remove') : null)
+        )
+      );
+    };
+    o.payments = o.payments || {};
+    o.delivery = Object.assign({ enabled: false, fee: 0, minOrder: 0, area: '' }, o.delivery || {});
+    const link = M.online ? M.online.siteUrl() : '';
+    return panel(
+      'Online ordering',
+      o.enabled ? (o.accepting ? 'taking orders' : 'paused') : 'off',
+      sw('Take orders from the website', 'Orders arrive in Orders → Online with a sound.', !!o.enabled, (v) => ((o.enabled = v), put())),
+      h('div.field', h('span', 'Connection'), ui().seg([['demo', 'This device (demo)'], ['server', 'Mogoba server']], o.mode || 'demo', (v) => ((o.mode = v), put()), 'Connection')),
+      (o.mode || 'demo') === 'server' ? h('div.form-grid', field('Server address', o.url, (v) => ((o.url = v), put()), { type: 'url', placeholder: 'https://…/mogoba/api' }), field('Register key', o.key, (v) => ((o.key = v), put()), { type: 'password', autocomplete: 'off' })) : h('small.muted', 'Demo: the website and this register share one browser. Use the server for real customers.'),
+      link ? h('div.row-gap', h('span.muted', 'Customer site'), h('code.selectable', { style: { fontSize: '12.5px', wordBreak: 'break-all' } }, link)) : null,
+      h('div.group-label', 'Hours and timing'),
+      h('div.form-grid', ui().field('Opens', openIn), ui().field('Closes', closeIn)),
+      h('div.chips', DAYS.map((d, i) => h('button.chip', { type: 'button', 'aria-pressed': String(openDays.has(i)), onclick: (e) => {
+        if (openDays.has(i)) openDays.delete(i);
+        else openDays.add(i);
+        e.currentTarget.setAttribute('aria-pressed', String(openDays.has(i)));
+        setHours(openIn.value, closeIn.value, openDays);
+      } }, d))),
+      h('div.field', h('span', 'Usual prep time'), ui().seg([[15, '15 min'], [20, '20 min'], [30, '30 min'], [45, '45 min']], o.prepMinutes || 20, (v) => ((o.prepMinutes = v), put()), 'Prep time')),
+      h('div.group-label', 'Pickup and delivery'),
+      sw('Pickup', null, o.pickup !== false, (v) => ((o.pickup = v), put())),
+      sw('Delivery', null, !!o.delivery.enabled, (v) => ((o.delivery.enabled = v), put())),
+      h(
+        'div.form-grid',
+        field('Delivery fee (₱)', U.trim(o.delivery.fee / 100), (v) => {
+          const c = U.toCents(v);
+          if (c >= 0) (o.delivery.fee = c), put();
+        }, { inputmode: 'decimal' }),
+        field('Minimum order (₱)', U.trim(o.delivery.minOrder / 100), (v) => {
+          const c = U.toCents(v);
+          if (c >= 0) (o.delivery.minOrder = c), put();
+        }, { inputmode: 'decimal' }),
+        h('div.span2', field('Delivery area', o.delivery.area, (v) => ((o.delivery.area = v), put())))
+      ),
+      h('div.group-label', 'Payments'),
+      wallet('gcash', 'GCash'),
+      wallet('maya', 'Maya'),
+      sw('Cash on pickup or delivery', null, !(o.payments.cash && o.payments.cash.enabled === false), (v) => ((o.payments.cash = { enabled: v }), put()))
+    );
   }
 
   function mount(el) {
@@ -189,10 +305,22 @@
             h('span', 'Lock the screen after'),
             ui().seg([[0, 'Never'], [2, '2 min'], [5, '5 min'], [10, '10 min'], [30, '30 min']], st.sales.autoLockMin, (v) => save({ sales: { autoLockMin: v } }, false), 'Auto-lock')
           ),
-          sw('Stop sales when stock runs out', 'Off: sell anyway and show a warning — good while recipes and counts are still being tuned.', !!st.sales.blockOutOfStock, (v) => save({ sales: { blockOutOfStock: v } })),
-          sw('Require a table number for dine-in', null, !!st.sales.tableForDineIn, (v) => save({ sales: { tableForDineIn: v } }))
+          sw('Stop sales when stock runs out', 'When off, the register warns and still sells.', !!st.sales.blockOutOfStock, (v) => save({ sales: { blockOutOfStock: v } })),
+          sw('Require a table number for dine-in', null, !!st.sales.tableForDineIn, (v) => save({ sales: { tableForDineIn: v } })),
+          h(
+            'div.form-grid',
+            inp(U.trim((st.sales.dailyTarget || 0) / 100), 'Daily sales target (₱)', (v) => {
+              const c = U.toCents(v);
+              if (c >= 0) save({ sales: { dailyTarget: c } });
+            }, { inputmode: 'decimal' }),
+            inp(String(st.sales.foodCostTarget || 40), 'Food cost target (%)', (v) => {
+              const n = parseFloat(v);
+              if (n > 0 && n < 100) save({ sales: { foodCostTarget: n } });
+            }, { inputmode: 'decimal' })
+          )
         )
       );
+      if (owner) parts.push(onlinePanel(st));
 
       parts.push(
         panel(
@@ -236,7 +364,7 @@
         );
       }
 
-      const syncInfo = { demo: 'Off while sample data is loaded', local: 'Off — everything stays on this device', offline: 'Offline — ' + pending + ' changes waiting', syncing: 'Sending…', error: 'Retrying — ' + (sy.error || 'server error'), pending: pending + ' changes waiting', ok: 'Up to date' + (sy.lastOk ? ' · ' + U.ago(sy.lastOk) : '') }[sy.state];
+      const syncInfo = { demo: 'Off while sample data is loaded', local: 'Off. Everything stays on this device', offline: 'Offline, ' + pending + ' changes waiting', syncing: 'Sending…', error: 'Retrying: ' + (sy.error || 'server error'), pending: pending + ' changes waiting', ok: 'Up to date' + (sy.lastOk ? ' · ' + U.ago(sy.lastOk) : '') }[sy.state];
       const url = h('input.input', { value: st.sync.url, placeholder: 'https://…', 'aria-label': 'Sync address', type: 'url', disabled: S.meta.demo });
       url.addEventListener('change', () => save({ sync: { url: url.value.trim() } }));
       const key = h('input.input', { value: st.sync.key, placeholder: 'Access key', 'aria-label': 'Access key', type: 'password', autocomplete: 'off', disabled: S.meta.demo });
@@ -245,7 +373,7 @@
         panel(
           'Online sync',
           syncInfo,
-          h('p.muted', { style: { fontSize: '13.5px' } }, 'The register always works offline. With sync on, each sale, refund, stock movement and shift is sent to the owner’s server when internet is available — nothing is lost if the connection drops mid-day.'),
+          h('p.muted', { style: { fontSize: '13.5px' } }, 'The register works offline. With sync on, every sale, refund, stock change and shift goes to the server when there is internet.'),
           sw('Sync to the server', S.meta.demo ? 'Remove the sample data first' : null, !!st.sync.enabled && !S.meta.demo, async (v) => {
             if (S.meta.demo) return ui().toast('Remove the sample data before turning on sync.', 'err');
             await save({ sync: { enabled: v } }, false);
@@ -266,9 +394,9 @@
           h(
             'dl.kv',
             h('dt', 'Storage used'),
-            h('dd', est && est.usage != null ? (est.usage / 1048576).toFixed(1) + ' MB' : '—'),
+            h('dd', est && est.usage != null ? (est.usage / 1048576).toFixed(1) + ' MB' : '-'),
             h('dt', 'Protected from clean-up'),
-            h('dd', persisted ? 'Yes' : 'Not granted — keep regular backups'),
+            h('dd', persisted ? 'Yes' : 'Not granted. Keep regular backups'),
             h('dt', 'Device ID'),
             h('dd.selectable', { style: { fontFamily: 'var(--mono)', fontSize: '12px' } }, S.meta.deviceId),
             h('dt', 'Version'),

@@ -1,4 +1,4 @@
-/* Mogoba POS — first-run setup and the staff sign-in screen. */
+/* Mogoba POS: first-run setup and the staff sign-in screen. */
 (function (M) {
   'use strict';
   const U = M.util;
@@ -21,7 +21,7 @@
       h('div.hangul', { 'aria-hidden': 'true' }, h('span', '먹'), h('span.r', '어'), h('span', '봐')),
       h('img', { src: M.asset('logo.png'), alt: 'Mogoba Korean Food House logo', width: 88, height: 88 }),
       h('h1', 'Mogoba', h('br'), 'Korean Food House'),
-      h('p', sub || 'Go on, try it. Register, kitchen queue, stock and reports — on this tablet, with or without internet.'),
+      h('p', sub || 'Register, kitchen, stock and reports on one tablet. Works with or without internet.'),
       clock
     );
   }
@@ -37,7 +37,7 @@
         h('h2', 'Set up the register'),
         h('button.choice', { type: 'button', onclick: () => run(true) }, ui().icon('sparkle', 26), h('div', h('b', 'Explore with sample data'), h('span', 'Two weeks of made-up sales, stock and shifts so every screen has something to show. Remove it from Settings when you are ready.'))),
         h('button.choice', { type: 'button', onclick: owner }, ui().icon('pos', 26), h('div', h('b', 'Start Mogoba for real'), h('span', 'Mogoba’s full menu and recipes, stock at zero, and your own owner PIN.'))),
-        h('p.hint', 'You can switch later — Settings → Data.')
+        h('p.hint', 'You can switch later in Settings.')
       );
     }
     function owner() {
@@ -104,7 +104,7 @@
             )
           )
         ),
-        S.meta.demo ? h('p.hint', 'Sample PINs — Owner 1234 · Mark (manager) 2580 · Joy (cashier) 0000') : null
+        S.meta.demo ? h('p.hint', 'Sample PINs: Owner 1234 · Mark, manager 2580 · Joy, cashier 0000') : null
       );
     }
     function pin(u) {

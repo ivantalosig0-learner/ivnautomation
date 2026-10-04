@@ -1,4 +1,4 @@
-/* Mogoba POS — Register: menu grid + live ticket. */
+/* Mogoba POS: Register: menu grid + live ticket. */
 (function (M) {
   'use strict';
   const U = M.util;
@@ -18,7 +18,7 @@
     const cat = catOf(item.cat);
     const n = L.itemAvailability(item, S.ings);
     const [lo, hi] = M.seed.priceRange(item);
-    const price = lo === hi ? U.peso(lo, true) : U.peso(lo, true) + '–' + U.trim(hi / 100);
+    const price = lo === hi ? U.peso(lo, true) : U.peso(lo, true) + ' to ' + U.peso(hi, true);
     const pic = item.img
       ? h('div.tile-img', { style: { backgroundImage: 'url("' + M.asset('food/' + item.img + '.jpg') + '")' } })
       : h('div.tile-mono', { class: (item.ko || '').length > 3 ? 'small' : '' }, item.ko || item.name.slice(0, 2));

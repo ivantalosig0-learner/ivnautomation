@@ -1,4 +1,4 @@
-/* Mogoba POS — online sync.
+/* Mogoba POS: online sync.
  * Every committed change appends an event to the outbox in the same transaction. This engine
  * pushes the outbox oldest-first to the configured endpoint; each event carries a unique eid,
  * so a retried batch is safe to replay (the server de-duplicates on eid). Sales never wait for

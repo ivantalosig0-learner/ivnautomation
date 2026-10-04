@@ -166,3 +166,56 @@ test('aggregate: net, refunds, voids, item allocation', () => {
   assert.equal(r.cogs, 1600);
   assert.equal(r.byCat.dosirak, 24000);
 });
+
+test('lots: first-expiry-first-out, undated last, short reported', () => {
+  const lots = [
+    { id: 'b', qty: 500, exp: '2026-10-09', at: 2 },
+    { id: 'u', qty: 300, exp: '', at: 0 },
+    { id: 'a', qty: 200, exp: '2026-10-06', at: 1 },
+  ];
+  const r = L.takeLots(lots, 600);
+  assert.deepEqual(r.taken.map((t) => [t.id, t.qty]), [['a', 200], ['b', 400]]);
+  assert.deepEqual(r.lots.map((l) => [l.id, l.qty]), [['b', 100], ['u', 300]]);
+  assert.equal(r.short, 0);
+  assert.equal(L.takeLots(lots, 2000).short, 1000);
+});
+
+test('lots: write off a chosen lot first', () => {
+  const lots = [{ id: 'a', qty: 200, exp: '2026-10-06' }, { id: 'b', qty: 500, exp: '2026-10-09' }];
+  const r = L.takeLots(lots, 500, 'b');
+  assert.deepEqual(r.lots.map((l) => [l.id, l.qty]), [['a', 200]]);
+});
+
+test('lots: same expiry merges, returns go to the earliest lot, fit keeps the sum equal to on-hand', () => {
+  let lots = L.addLot([], { id: 'x', qty: 100, exp: '2026-10-10', at: 1 });
+  lots = L.addLot(lots, { id: 'y', qty: 50, exp: '2026-10-10', at: 2 });
+  assert.equal(lots.length, 1);
+  assert.equal(lots[0].qty, 150);
+  lots = L.addLot(lots, { id: 'z', qty: 40, exp: '2026-10-07', at: 3 });
+  lots = L.returnLots(lots, 10);
+  assert.equal(lots[0].id, 'z');
+  assert.equal(lots[0].qty, 50);
+  assert.equal(L.lotsTotal(L.fitLots(lots, 120)), 120);
+  assert.equal(L.fitLots(lots, 120)[0].exp, '2026-10-10');
+  const grown = L.fitLots(lots, 300);
+  assert.equal(L.lotsTotal(grown), 300);
+  assert.equal(grown[grown.length - 1].exp, '');
+  assert.deepEqual(L.fitLots(lots, -40), []);
+});
+
+test('lots: legacy records become one undated lot; expiry states', () => {
+  assert.deepEqual(L.lotsOf({ onHand: 250 }), [{ id: 'undated', qty: 250, exp: '', at: 0 }]);
+  assert.deepEqual(L.lotsOf({ onHand: -5 }), []);
+  assert.equal(L.daysUntil('2026-10-07', '2026-10-04'), 3);
+  assert.equal(L.expiryState('2026-10-03', '2026-10-04', 3), 'expired');
+  assert.equal(L.expiryState('2026-10-05', '2026-10-04', 1), 'soon');
+  assert.equal(L.expiryState('2026-10-07', '2026-10-04', 1), 'ok');
+  assert.equal(L.expiryState('', '2026-10-04', 1), 'none');
+  assert.equal(L.soonWindow({ shelfLife: 3 }), 1);
+  assert.equal(L.soonWindow({ shelfLife: 30 }), 3);
+  assert.equal(L.soonWindow({ shelfLife: 1 }), 0);
+  assert.equal(L.soonWindow({ shelfLife: 2 }), 1);
+  const n = L.nextExpiry({ shelfLife: 7, lots: [{ id: 'a', qty: 1, exp: '' }, { id: 'b', qty: 2, exp: '2026-10-05' }] }, '2026-10-04');
+  assert.equal(n.lot.id, 'b');
+  assert.equal(n.state, 'soon');
+});

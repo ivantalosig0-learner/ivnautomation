@@ -280,8 +280,8 @@ const near = (a, b, eps) => Math.abs(a - b) <= (eps || 0.001);
   }
   await p2.waitForSelector('.cartbar .btn');
   await p2.screenshot({ path: path.join(SHOTS, '51-phone-register.png') });
-  const overflow = await p2.evaluate(() => document.documentElement.scrollWidth > innerWidth);
-  ok(!overflow, 'no horizontal scroll at 390 px');
+  const overflow = await p2.evaluate(() => document.documentElement.scrollWidth > innerWidth || innerWidth !== 390);
+  ok(!overflow, 'no horizontal scroll or zoom-out at 390 px');
   await p2.click('.cartbar .btn');
   await p2.screenshot({ path: path.join(SHOTS, '52-phone-ticket.png') });
   await p2.click('.sheet .charge');

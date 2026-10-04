@@ -1,6 +1,6 @@
-/* Mogoba POS — offline cache. The whole app is cached on install, served cache-first,
+/* Mogoba POS: offline cache. The whole app is cached on install, served cache-first,
  * and replaced atomically when a new version is deployed (bump VERSION). */
-const VERSION = 'mogoba-pos-6ddb12562a';
+const VERSION = 'mogoba-pos-9193fc9671';
 const FILES = [
   "assets/fonts/bhs-ko.woff2",
   "assets/fonts/bhs-latin.woff2",
@@ -30,11 +30,13 @@ const FILES = [
   "css/app.css",
   "index.html",
   "js/app.js",
+  "js/charts.js",
   "js/core.js",
   "js/db.js",
   "js/demo.js",
   "js/lock.js",
   "js/logic.js",
+  "js/online.js",
   "js/print.js",
   "js/seed.js",
   "js/sync.js",
@@ -44,6 +46,7 @@ const FILES = [
   "js/views/drawer.js",
   "js/views/menu.js",
   "js/views/orders.js",
+  "js/views/overview.js",
   "js/views/register.js",
   "js/views/reports.js",
   "js/views/settings.js",
