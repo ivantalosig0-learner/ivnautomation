@@ -84,7 +84,11 @@ open-now status, Reserve sending to Messenger. "We built this before asking for 
 **4. Where guests slip away.** Walk the road left to right. Point at one red box that matches
 what they told you in discovery.
 
-**5. The numbers.** Pick one number to stress. {{R: which stat lands best and why}}
+**5. The numbers.** Pick one number to stress: the **31%**. "In one year, the share of people
+who only pick places rated 4.5 or more almost doubled, from 17% to 31%. At 4.1, Juval's is
+skipped by them before they ever see the food." If they mention Foodpanda, use the **1 in 4**
+instead: "On a ₱1,000 bilao, an app keeps ₱200 to ₱330. Your own QR costs about ₱10." Say once
+that the review studies are from the US, so they show direction, not a promise.
 
 **6. Hapag.** "Hapag means the dining table. Everything sits at the same table: every guest,
 order, peso and hour worked." Explain the three colours: bring guests in, run the restaurant,
@@ -115,10 +119,13 @@ are worked out. You or your bookkeeper approve the payroll."
 
 **15. Flywheel.** "Separate apps never talk to each other. Here, each part feeds the next."
 
-**16. Roadmap.** "We do not switch everything on at once. First two weeks: reviews and Google
-profile. Then ordering and the POS."
+**16. Roadmap.** "We do not switch everything on at once. First two weeks: Google profile,
+review stands, your own domain and the Undas ads. By January: the events board, the stamp
+card, and the staff clock before the December payroll. The POS comes after that, one kitchen
+at a time, once the staff are used to the first steps."
 
-**17. Packages (presenter only, not in the PDF).** Show only if they ask about price.
+**17. Packages (presenter only, not in the PDF).** Show only if they ask about price. In the
+PowerPoint this slide is hidden in the slideshow; if they ask, type 17 and press Enter to jump to it.
 
 **18. Targets.** "These are our targets, not promises. We agree today's numbers together in
 week one and report every month."
@@ -134,8 +141,20 @@ week one and report every month."
 ### Cost and commitment
 
 **How much is this?**
-{{R: three packages with setup and monthly, from the research}} "Ads money goes straight to
-Facebook from your own card, and payment fees to GCash or Maya. Our fee is separate and fixed."
+Three starting points (slide 17, presenter copy only):
+
+| Package | Monthly | Setup | What it covers |
+|---|---|---|---|
+| Tanaw | ₱5,000 | ₱10,000 | Own domain and faster site, Google profile care, review stands and NFC cards, a reply to every review, 8 posts a month, monthly report |
+| Suki (most pick this) | ₱9,000 | ₱30,000 | Tanaw plus stamp card and birthdays, feedback with owner alerts, events board with deposits, Messenger ads and a monthly scorecard |
+| Hapag Buo | ₱14,000 | ₱60,000 | Suki plus the POS for three kitchens, stock and food cost, time clock and payroll prep, owner dashboard and 8 AM message |
+
+Hardware for Hapag Buo is at cost, about ₱35,000 to ₱60,000 (tablet ₱7,990, kitchen printers,
+cash drawer, small UPS). Lucia's adds ₱1,000 a month per terminal. Moving up a package credits
+the setup already paid. BIR accreditation of the POS is quoted separately, only if they want
+it. Say: "Ads money, the creators and payment fees are paid by you directly. Our fee is
+separate and fixed." If ₱14,000 feels heavy, the rule we use is that our monthly fee should
+stay under about 1.5 to 2% of their monthly sales; offer Tanaw or Suki first.
 
 **Why a monthly fee and not one payment?**
 Hosting, updates, backups, review replies, the monthly report and support cost us every month.
@@ -146,9 +165,10 @@ Yes. Most restaurants start with the website and the review cards, because they 
 show results within weeks. The POS and payroll can come later.
 
 **How long until everything is running?**
-Reviews, the Google profile and the website upgrades: the first two weeks. Online ordering and
-the events board: within 90 days. The POS, stock and staff clock: by month 6, one kitchen at a
-time, after the staff use each step daily. Most of it is already built for Mogoba, so we are
+Google profile, review stands, your own domain and the first ads: the first two weeks. The
+events board, stamp card and feedback, the staff clock (before the December payroll) and bilao
+pre-orders by QR: within 90 days. The POS, stock, owner dashboard and online pickup orders: by
+month 6, one kitchen at a time, after the staff use each step daily. Lucia's: by month 12. Most of it is already built for Mogoba, so we are
 extending, not starting from zero.
 
 **Is there a contract? Can we stop?**
@@ -258,13 +278,19 @@ never the star rating, and never pay guests.
 Cheap. An NFC review card costs around ₱140 online, NFC stickers about ₱10 each, and a locally printed acrylic table stand about ₱100 to ₱250. For 20 tables, two counter stands and six server cards: roughly ₱3,500 to ₱7,500 one time. We write and lock each chip so nobody can change where it points.
 
 **How many reviews can we expect?**
-Our base case, if staff offer the card at every bill: about 72 reviews by month 3, about 117 by month 6 and about 200 by month 12, assuming around 100 guests a day. If new reviews average 4.6 stars, the rating reaches about 4.5 around month 7. These are estimates; we measure from week one. It depends on how consistently the staff ask.
+Our base case, if staff offer the card at every bill: about 15 new reviews a month, so about
+72 by month 3, 117 by month 6 and 207 by month 12, assuming around 100 guests a day. If new
+reviews average about 4.4 at first and 4.6 later, the rating reaches about 4.3 by month 6 and
+4.5 by month 12. These are estimates; we measure from week one. It depends on how consistently the staff ask.
 
 ### Ads and content
 
 **How much should we spend on ads?**
-Three levels, all paid to Facebook (and TikTok) directly, including the 12% VAT on ad spend: about ₱5,600 a month to stay visible, about ₱16,500 in normal growth months, and about ₱38,700 only in peak months like December, Holy Week and fiesta season. You pay Facebook directly from your card. We set up, run and
-report. Start small, keep what works.
+Three levels, paid by you directly, with the 12% VAT included: ₱5,600 a month always on
+(₱5,000 of Facebook ads), about ₱16,560 in growth months (₱13,000 of ads plus one local
+creator) and about ₱38,720 only in peak months like December, Holy Week and fiesta season
+(Facebook, a few days of TikTok and two creators). You pay Meta and TikTok from your own card.
+We set up, run and report. Start small, keep what works.
 
 **Can't we just boost posts ourselves?**
 You can. The difference: we target only people within a short drive, use ads that open a
@@ -525,12 +551,35 @@ worked on one table.
 - No paying or rewarding guests for reviews, no "only ask happy guests".
 - No texting guests who did not agree to receive messages.
 - No prices in the Messenger message or the PDF. Prices only in person, as starting points.
+- No claim that Mogoba uses the POS every day. It is built and demo-ready; say exactly that.
+- No promise that Foodpanda or GrabFood will come; GrabFood is not in Cagayan at all.
 
 ---
 
 ## 8. Numbers cheat sheet
 
-{{R: the 10 key numbers with one-line meaning and source URL}}
+| Number | What it means | Source |
+|---|---|---|
+| 4.1 from 27 | Juval's on Google when we wrote the deck. Recheck the morning of the meeting. | Google Maps |
+| 31% (17% a year before) | People who only use businesses rated 4.5 stars or more (US survey, 2026) | [BrightLocal](https://www.brightlocal.com/research/local-consumer-review-survey/) |
+| 47% | Will not use a business with fewer than 20 reviews | BrightLocal, same survey |
+| 74% | Look for reviews from the last 3 months | BrightLocal, same survey |
+| 5 to 9% | More revenue for each extra star, independent restaurants (US Yelp data) | [Harvard Magazine on Luca](https://www.harvardmagazine.com/2011/10/hbs-study-finds-positive-yelp-reviews-lead-to-increased-business) |
+| 12% more reviews, +0.12 stars | What happened when businesses started replying to reviews (hotels) | [INFORMS](https://www.informs.org/News-Room/INFORMS-Releases/News-Releases/Want-to-improve-your-business-s-online-ratings-Make-sure-to-respond-to-reviews) |
+| 20 to 33% | Delivery app commission, by plan. A business QR costs about 1%. | [Klikit](https://klikit.io/en/learn/food-delivery-commission-fees-philippines-guide), [Maya Business](https://www.maya.ph/business/pricing) |
+| 95.8M (82%) | People in the Philippines reachable by Facebook ads; Messenger 65.8M | [DataReportal 2026](https://datareportal.com/reports/digital-2026-philippines) |
+| ₱5,600 / ₱16,560 / ₱38,720 | Monthly ad levels, 12% VAT and creators included | ads brief, `RESEARCH.md` section 2 |
+| 12% | VAT on Facebook, Google and TikTok ad spend since June 2025 (RA 12023) | [PwC](https://www.pwc.com/ph/en/tax/tax-publications/taxwise-or-otherwise/2025/soon-taking-effect-the-12-vat-on-digital-services.html) |
+| ₱500 a day | Region II minimum wage, RTWPB 2-24, since 5 Nov 2025; a new order is expected Nov 2026 | [NWPC Region II](https://nwpc.dole.gov.ph/region-ii/) |
+| about ₱16,100 | What one minimum-wage worker costs a month with SSS, PhilHealth, Pag-IBIG, 13th month and leave | staff brief, `RESEARCH.md` section 5 |
+| 28 to 35% | Food cost target for Philippine restaurants; above 40% needs fixing | [Klikit](https://klikit.io/en/learn/restaurant-profit-margins-philippines-2026) |
+| 27, 72, 117, 207 | Our review projection: today, month 3, 6 and 12 (about 15 a month) | our estimate |
+| ₱2,549 a year | A .ph domain such as juvals.ph | [DomainWink](https://www.domainwink.com/domains) |
+| ₱7,990 | Samsung Galaxy Tab A11 for the counter (it has no NFC) | [GSMArena](https://www.gsmarena.com/samsung_galaxy_tab_a11-14141.php) |
+| ₱0.56 | One SMS through Semaphore, before VAT | [Semaphore](https://semaphore.co/) |
+| 24 December | 13th month pay deadline | [PD 851](https://lawphil.net/statutes/presdecs/pd1975/pd_851_1975.html) |
+
+The full briefs with every source are in `RESEARCH.md`; the business blueprint is `HAPAG.md`.
 
 ---
 

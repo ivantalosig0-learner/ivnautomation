@@ -21,11 +21,14 @@ const pngs = fs.readdirSync(tmp).filter((f) => /^s-\d+\.jpg$/.test(f)).sort((a, 
 
 /* 2. titles, chapters and notes from the deck source */
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+const decode = (t) => t.replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(+d))
+  .replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 const slides = [...html.matchAll(/<section class="slide"([^>]*)>([\s\S]*?)<\/section>/g)].map((m) => {
   const attr = (k) => ((m[1].match(new RegExp(k + '="([^"]*)"')) || [])[1] || '');
-  const notes = ((m[2].match(/<aside class="notes">([\s\S]*?)<\/aside>/) || [])[1] || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-  const head = ((m[2].match(/<h[12][^>]*>([\s\S]*?)<\/h[12]>/) || [])[1] || '').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
-  return { title: attr('data-title'), chapter: attr('data-chapter'), head, notes };
+  const notes = decode(((m[2].match(/<aside class="notes">([\s\S]*?)<\/aside>/) || [])[1] || '').replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim();
+  const head = decode(((m[2].match(/<h[12][^>]*>([\s\S]*?)<\/h[12]>/) || [])[1] || '').replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim();
+  /* data-private (the prices) stays in the file but is hidden in the slideshow */
+  return { title: attr('data-title'), chapter: attr('data-chapter'), head, notes, hidden: /\bdata-private\b/.test(m[1]) };
 });
 if (slides.length !== pngs.length) throw new Error('Slide count mismatch: ' + slides.length + ' in the deck, ' + pngs.length + ' rendered');
 
@@ -45,6 +48,7 @@ slides.forEach((s, i) => {
   slide.background = { color: '15110E' };
   slide.addImage({ path: path.join(tmp, pngs[i]), x: 0, y: 0, w: 10, h: 5.625, altText: s.head || s.title });
   if (s.notes) slide.addNotes(s.notes);
+  if (s.hidden) slide.hidden = true;
 });
 
 pres.writeFile({ fileName: out }).then(() => {
