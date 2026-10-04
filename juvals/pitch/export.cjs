@@ -1,6 +1,7 @@
 /* Renders the deck with Chromium.
  *   node export.cjs pdf [out.pdf]   one 16:9 page per slide; slides marked data-private (prices) are left out
- *   node export.cjs preview [out]   same, but only slides with no [[placeholders]] left
+ *   node export.cjs presenter [out] every slide, prices included, for the presenter (and the PowerPoint)
+ *   node export.cjs preview [out]   same as pdf, but only slides with no [[placeholders]] left
  *   node export.cjs shots [dir]     a 1600x900 PNG of every slide, for review
  * Serves this folder on a local port so fonts and images load exactly as on the web. */
 'use strict';
@@ -29,12 +30,12 @@ server.listen(0, '127.0.0.1', async () => {
   const url = 'http://127.0.0.1:' + server.address().port + '/index.html';
   const browser = await chromium.launch();
   try {
-    if (mode === 'pdf' || mode === 'preview') {
+    if (mode === 'pdf' || mode === 'preview' || mode === 'presenter') {
       const page = await browser.newPage();
       await page.goto(url, { waitUntil: 'networkidle' });
       await page.evaluate(() => document.fonts.ready);
       await page.emulateMedia({ media: 'print' });
-      await page.addStyleTag({ content: '@media print { .slide[data-private] { display: none !important; } }' });
+      if (mode !== 'presenter') await page.addStyleTag({ content: '@media print { .slide[data-private] { display: none !important; } }' });
       /* preview: leave out slides that still carry [[placeholders]] */
       if (mode === 'preview') await page.evaluate(() => document.querySelectorAll('.slide').forEach((s) => s.innerHTML.includes('[[') && s.setAttribute('data-private', '')));
       const file = out || path.join(ROOT, 'Juvals-Growth-Plan.pdf');
