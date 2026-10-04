@@ -95,6 +95,11 @@ function inspect(slide) {
       if (b.rects.some((r) => Math.min(r.right, br.right) - Math.max(r.left, br.left) > 2 && Math.min(r.bottom, br.bottom) - Math.max(r.top, br.top) > 2)) out.push('text over ' + label(blk).split(' ')[0] + ': ' + label(b.el));
     }
   }
+  /* cards, devices and text keep a margin from the slide edges (3% of the height) */
+  const m = sr.height * 0.03;
+  const near = (r) => r.bottom > sr.bottom - m || r.right > sr.right - m || r.top < sr.top + m / 2 || r.left < sr.left + m / 2;
+  for (const B of blocks) if (near(B.getBoundingClientRect())) out.push('touches slide edge: ' + label(B).split(' ')[0]);
+  for (const b of boxes) if (b.rects.some(near)) out.push('text at slide edge: ' + label(b.el));
   /* boxes overlapping each other (cards, devices) unless one holds the other */
   for (let i = 0; i < blocks.length; i++) {
     for (let j = i + 1; j < blocks.length; j++) {
